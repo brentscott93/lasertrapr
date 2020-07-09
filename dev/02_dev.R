@@ -16,16 +16,34 @@
 ## Dependencies ----
 ## Add one line by package you want to add as dependency
 usethis::use_package( "thinkr" )
-
+usethis::use_package( "shinydashboard" )
+usethis::use_package("tidyverse", type = "depends")
+usethis::use_package( "rhandsontable" )
+usethis::use_package( "clipr" )
+usethis::use_package( "shinyWidgets" )
+usethis::use_package( "dygraphs" )
+usethis::use_package( "RcppRoll" )
+usethis::use_package( "shinyjs" )
+usethis::use_package( "pracma" )
+usethis::use_package( "magrittr" )
+usethis::use_package( "fresh" )
 ## Add modules ----
 ## Create a module infrastructure in R/
-golem::add_module( name = "name_of_module1" ) # Name of the module
-golem::add_module( name = "name_of_module2" ) # Name of the module
+golem::add_module( name = "mv" ) # Name of the module
+golem::add_module( name = "split_obs" )
+golem::add_module( name = "clean_data" )
+golem::add_module( name = "folder_manager" )
+#golem::add_module( name = "name_of_module2" ) # Name of the module
 
 ## Add helper functions ----
 ## Creates ftc_* and utils_*
 golem::add_fct( "helpers" ) 
 golem::add_utils( "helpers" )
+golem::add_fct( "split_obs" ) 
+golem::add_utils( "clean_data" )
+golem::add_fct( "clean" ) 
+golem::add_utils( "theme" )
+golem::add_fct( "calibrations" ) 
 
 ## External resources
 ## Creates .js and .css files at inst/app/www
