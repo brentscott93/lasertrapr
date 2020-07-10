@@ -3,7 +3,7 @@
 #' @param ... A series of options to be used inside the app.
 #'
 #' @export
-#' @importFrom shiny shinyApp
+#' @importFrom shiny shinyApp magrittr "%>%"
 #' @importFrom golem with_golem_options
 run_app <- function(
   ...
