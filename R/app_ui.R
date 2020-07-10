@@ -35,6 +35,7 @@ app_ui <- function(request) {
       
       dashboardBody(fresh::use_theme(theme_lasertrapr()),
         tabItems(
+          tabItem('home', fluidRow(img(src = 'www/lasertrapr-logo.gif'))),
           tabItem('obs', mod_split_obs_ui('split_obs')),
           tabItem('clean', mod_clean_data_ui('clean_data_ui'))
         #tabItem(tabName = 'mv', mod_mv_ui('mv'))

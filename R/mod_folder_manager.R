@@ -72,7 +72,7 @@ mod_folder_manager_server <- function(input, output, session, lasertrapr_folder,
   observeEvent(input$trap_create_date_actionButton,{
     if(substring(input$trap_create_date_textInput, 5, 5) == '-' & substring(input$trap_create_date_textInput, 8, 8) == '-'){
       golem::print_dev('yay')
-    dir.create(path = file.path(trap_selected_conditions()$path,input$trap_create_date_textInput))
+    dir.create(path = file.path(trap_selected_conditions()$path, input$trap_create_date_textInput))
     
     showNotification("Date folder created", type = "message")
     rv$new_trap_date <- rv$new_trap_date + 1
@@ -131,6 +131,8 @@ mod_folder_manager_server <- function(input, output, session, lasertrapr_folder,
    req(input$trap_project_selectInput)
    rv$conditions_names <-  list_dir(path = trap_selected_project()$path)
  })
+ 
+ 
 
   # make select input button with conditions names
 
@@ -223,20 +225,27 @@ mod_folder_manager_server <- function(input, output, session, lasertrapr_folder,
     updateSelectInput(session,
                       ns('trap_obs_selectInput'),
                          "Select Observation",
-                         c(Choose='',  rv$obs_names$name),
+                         c(Choose='',rv$obs_names$name),
                          selected = f$current_obs)
     f$new_obs_refresh_graph <- f$new_obs_refresh_graph + 1
   })
   
+  observeEvent(f$new_obs_from_split, ignoreNULL = T, ignoreInit = T, {
+    req(input$trap_date_selectInput)
+    rv$obs_names <-  list_dir(path = trap_selected_date()$path)%>%
+      dplyr::filter(str_detect(name, 'obs'))
+    updateSelectInput(session,
+                      ns('trap_obs_selectInput'),
+                      "Select Observation",
+                      c(Choose='',rv$obs_names$name))
+  })
   
   # make select input button with project names
   output$trap_obs = renderUI({
     req(input$trap_date_selectInput)
-    
-    
     selectInput(ns('trap_obs_selectInput'),
                 "Select Observation",
-                c(Choose='',  rv$obs_names$name),
+                c(Choose = '', rv$obs_names$name),
                 selectize = TRUE,
                 width = "100%")
   })

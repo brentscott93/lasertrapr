@@ -27,6 +27,9 @@ usethis::use_package( "shinyjs" )
 usethis::use_package( "pracma" )
 usethis::use_package( "magrittr" )
 usethis::use_package( "fresh" )
+usethis::use_package( "changepoint" )
+usethis::use_package( "gridExtra" )
+usethis::use_package( "gt" )
 ## Add modules ----
 ## Create a module infrastructure in R/
 golem::add_module( name = "mv" ) # Name of the module

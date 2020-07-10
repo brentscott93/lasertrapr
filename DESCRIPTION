@@ -22,7 +22,10 @@ Imports:
     shinyjs,
     pracma,
     magrittr,
-    fresh
+    fresh,
+    changepoint,
+    gridExtra,
+    gt
 Encoding: UTF-8
 LazyData: true
 RoxygenNote: 7.1.0

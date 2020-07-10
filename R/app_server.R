@@ -16,9 +16,10 @@ app_server <- function( input, output, session ) {
   #reactive values to store currently selected folders
   f <- reactiveValues(project = tibble(name = NA, path = 'please select'),
                       conditions = tibble(name = NA, path = 'please select'),
-                      date = tibble(name = NA, path = 'please select'),
+                      #date = tibble(name = NA, path = 'please select'),
                       new_obs = 0,
-                      new_obs_refresh_graph = 0)
+                      new_obs_refresh_graph = 0,
+                      new_obs_from_split= 0)
   # observe({golem::print_dev(str(f$date))})
   # 
   # observe({golem::print_dev(str(f$project))})
@@ -32,5 +33,7 @@ app_server <- function( input, output, session ) {
   callModule(mod_split_obs_server, "split_obs", f = f)
   
   callModule(mod_clean_data_server, "clean_data_ui", f = f)
-
+  
+  
+  
 }
