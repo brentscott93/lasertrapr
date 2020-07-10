@@ -8,7 +8,7 @@
 #' @param trap_files all raw Data...csv files in selected obsrevation
 #' @param dygraph_clean_date_window_1 beginning index to move
 #' @param dygraph_clean_date_window_2 end index to move
-#'
+#' @import tidyverse magrittr
 
 move_obs <- function(f, trap_selected_date, trap_obs, trap_selected_obs,  trap_files, dygraph_clean_date_window_1, dygraph_clean_date_window_2){
   #make destination folder
@@ -109,7 +109,7 @@ move_obs <- function(f, trap_selected_date, trap_obs, trap_selected_obs,  trap_f
 #' @param trim_from begin index to delete
 #' @param trim_to end index to delete
 #' @param f the reactiveValues list 'f' with all user selected folder info
-#'
+#' @import tidyverse magrittr
 
 trim_obs <- function(trap_selected_obs, trap_grouped_file, trim_from, trim_to, f){
   

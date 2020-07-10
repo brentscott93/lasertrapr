@@ -5,7 +5,7 @@
 #' @param id,input,output,session Internal parameters for {shiny}.
 #'
 #' @noRd 
-#'
+#' @import tidyverse magrittr
 #' @importFrom shiny NS tagList 
 mod_split_obs_ui <- function(id){
   ns <- NS(id)
@@ -114,6 +114,7 @@ mod_split_obs_ui <- function(id){
 #' split_obs Server Function
 #'
 #' @noRd 
+#' @import tidyverse magrittr
 mod_split_obs_server <- function(input, output, session, f){
   ns <- session$ns
  

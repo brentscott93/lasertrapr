@@ -5,7 +5,7 @@
 #' @param id,input,output,session Internal parameters for {shiny}.
 #'
 #' @noRd 
-#'
+#' @import tidyverse
 #' @importFrom shiny NS tagList 
 mod_clean_data_ui <- function(id){
   ns <- NS(id)
@@ -255,7 +255,8 @@ mod_clean_data_ui <- function(id){
 }
     
 #' clean_data Server Function
-#'
+#' @import tidyverse
+#' @importFrom magrittr "%<>%"
 #' @noRd 
 
 mod_clean_data_server <- function(input, output, session, f){

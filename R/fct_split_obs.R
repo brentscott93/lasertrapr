@@ -3,7 +3,7 @@
 #' @param input_data the shiny path to the user uploaded data
 #' @param date a file path to the date folder where data should be moved
 #' @param threshold a numeric value specifying number of seconds to divide observations by
-#'
+#' @import tidyverse magrittr
 
 split_obs <- function(input_data, project, conditions, date, threshold){
   golem::print_dev('starting split_obs')

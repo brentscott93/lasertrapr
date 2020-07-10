@@ -20,7 +20,7 @@ equipartition <- function(data){
 #' Performs Step Calibration of the Laser Trap
 #'
 #' @param vector a vector of trap data
-#'
+#' @import tidyverse magrittr 
 #' @export
 
 step_cal <- function(vector, step){

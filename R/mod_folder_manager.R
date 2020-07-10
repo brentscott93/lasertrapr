@@ -7,6 +7,7 @@
 #' @noRd 
 #'
 #' @importFrom shiny NS tagList 
+#' 
 mod_folder_manager_ui <- function(id){
   ns <- NS(id)
   tagList(
@@ -39,6 +40,7 @@ mod_folder_manager_ui <- function(id){
 #' folder_manager Server Function
 #'
 #' @noRd 
+#' @import tidyverse magrittr
 mod_folder_manager_server <- function(input, output, session, lasertrapr_folder, f){
   ns <- session$ns
   observe({
