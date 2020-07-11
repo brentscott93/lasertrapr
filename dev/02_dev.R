@@ -18,8 +18,6 @@
 usethis::use_package( "thinkr" )
 usethis::use_package( "shinydashboard" )
 usethis::use_package("tidyverse", type = "depends")
-usethis::use_package( "rhandsontable" )
-usethis::use_package( "clipr" )
 usethis::use_package( "shinyWidgets" )
 usethis::use_package( "dygraphs" )
 usethis::use_package( "RcppRoll" )

@@ -4,11 +4,23 @@
 \alias{step_cal}
 \title{Performs Step Calibration of the Laser Trap}
 \usage{
-step_cal(vector, step)
+step_cal(data, step)
 }
 \arguments{
-\item{vector}{a vector of trap data}
+\item{data}{A numeric vector of trap data}
+
+\item{step}{The known distance of each step in nanometers (i.e. how far did you move the stage)}
+}
+\value{
+A list containing the mV difference between before/after step, mv2nm_conversion, and a plot
 }
 \description{
-Performs Step Calibration of the Laser Trap
+This function applies \code{changepoint::cpt.mean()} to the supplied data (should be a Step.txt file) 
+    and calculates the mean of the of signal before and after the step. This will work only if the calibration was performed with one
+    step per file. Ideally the trace would look like this: ~~~¬____
+}
+\examples{
+#Read in raw trap data from step cal something like:
+#data <- readr::read_tsv('Step.txt', col_names = c('bead', 'trap'))
+todays_step_cal <- step_cal(data$bead, 50)
 }

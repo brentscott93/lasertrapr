@@ -5,7 +5,6 @@
 #' @param id,input,output,session Internal parameters for {shiny}.
 #'
 #' @noRd 
-#' @import tidyverse
 #' @importFrom shiny NS tagList 
 mod_clean_data_ui <- function(id){
   ns <- NS(id)

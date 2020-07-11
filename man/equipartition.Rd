@@ -7,8 +7,14 @@
 equipartition(data)
 }
 \arguments{
-\item{data}{a vector of trap data}
+\item{data}{A vector of trap data}
 }
 \description{
 Equipartition method for calibrating trap stiffness
+}
+\examples{
+#Read in trap data something like:
+#data <- readr::read_tsv('Equi.txt', col_names = c('bead', 'trap'))
+todays_equi_cal <- equipartition(data$bead)
+
 }

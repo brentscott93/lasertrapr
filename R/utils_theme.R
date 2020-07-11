@@ -1,6 +1,6 @@
 
 #' Theme for app
-
+#' @noRd
 theme_lasertrapr <- function(){
   fresh::create_theme(
   fresh::adminlte_color(

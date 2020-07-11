@@ -5,7 +5,7 @@
 #' @export
 #' @importFrom shiny shinyApp 
 #' @importFrom golem with_golem_options
-#' @importFrom magrittr "%>%"
+#' 
 run_app <- function(
   ...
 ) {

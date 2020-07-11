@@ -2,7 +2,7 @@
 #' 
 #' @param request Internal parameter for `{shiny}`. 
 #'     DO NOT REMOVE.
-#' @import shiny shinydashboard tidyverse
+#' @import shiny shinydashboard 
 #' @noRd
 app_ui <- function(request) {
   tagList(

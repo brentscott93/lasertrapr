@@ -3,8 +3,14 @@
 #' @param data A vector of trap data
 #' 
 #' @export
+#' @examples
+#' #Read in trap data something like:
+#' #data <- readr::read_tsv('Equi.txt', col_names = c('bead', 'trap'))
+#' todays_equi_cal <- equipartition(data$bead)
 #'
 equipartition <- function(data){
+  
+  if(!is.vector(data)) stop("'data' is not a vector. Did you forget to subset your dataframe with '$'?")
   
   kb <-  4.10 #boltzman constant
   
@@ -19,20 +25,22 @@ equipartition <- function(data){
 
 #' Performs Step Calibration of the Laser Trap
 #'
-#' @param vector A numeric vector of trap data
+#' @description This function applies \code{changepoint::cpt.mean()} to the supplied data (should be a Step.txt file) 
+#'     and calculates the mean of the of signal before and after the step. This will work only if the calibration was performed with one
+#'     step per file. Ideally the trace would look like this: ~~~¬____
+#'     
+#'     
+#' @param data A numeric vector of trap data
 #' @param step The known distance of each step in nanometers (i.e. how far did you move the stage)
 #' 
-#' @return A list containing 1) The mV difference between before/after step
-#'    2) the mv2nm_conversion of values from #1
-#'    3) a ggplot of the data trace
+#' @return A list containing the mV difference between before/after step, mv2nm_conversion, and a plot
 #'    
-#' @import ggplot
 #' 
 #' @export
-#' @example 
-#' #Read in raw trap data from step cal something like
+#' @examples 
+#' #Read in raw trap data from step cal something like:
 #' #data <- readr::read_tsv('Step.txt', col_names = c('bead', 'trap'))
-#' todays_step_cal <- (data$bead, 50)
+#' todays_step_cal <- step_cal(data$bead, 50)
 
 step_cal <- function(data, step){
   

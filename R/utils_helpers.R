@@ -17,6 +17,7 @@ ms_to_dp <- function(x){
 #' @param ... arguments to list.files function
 #'
 #' @return a 2 column tibble
+#' @noRd
 
 list_files <- function(...){
   tibble(name = list.files(full.names = FALSE, ...),
@@ -26,7 +27,7 @@ list_files <- function(...){
 #' List folders into tibble
 #'
 #' @param ... arguments to dir function
-#'
+#' @noRd
 
 list_dir <- function(...){
   tibble(name = dir(..., full.names = FALSE),
@@ -35,8 +36,8 @@ list_dir <- function(...){
 
 #' Extract date time from trap data files
 #'
-#' @param x a laser trap raw data file name
-#'
+#' @param x A laser trap raw data file name
+#' @noRd
 
 str_trap <- function(x){
   
@@ -52,6 +53,8 @@ str_trap <- function(x){
 #' @param x a number to round
 #' @param accuracy a number specifying what nearest digit or number to round to
 #' @param f function to use to round (defaults to round)
+#' 
+#' @export
 
 round_any <- function(x, accuracy, f=round){
   
@@ -66,7 +69,8 @@ round_any <- function(x, accuracy, f=round){
 #' @param x a dygraph object (usually piped in)
 #' @param events a vector x-axis markers
 #' @param ... additional arguments to dyEvent
-#'
+#' 
+#' @export
 
 add_labels <- function(x, events, ...){
   for(event in 1:length(events)){

@@ -9,11 +9,12 @@
 
 
 split_obs <- function(input_data, project, conditions, date, threshold){
+    
   golem::print_dev('starting split_obs')
   # for dev
-  # input_data <- tibble(name = list.files('~/rstats/play/raw-trap-data', full.names = F),
-  #                     datapath = list.files('~/rstats/play/raw-trap-data', full.names = T))
-  #  date <- '~/lasertrapr/project-test/some_conditions/2020-07-04'
+  input_data <- tibble::tibble(name = list.files('~/rstats/play/raw-trap-data', full.names = F),
+                      datapath = list.files('~/rstats/play/raw-trap-data', full.names = T))
+   date <- '~/Desktop'
   # threshold <- 20
 
   #convert to csv and move to box sync
@@ -24,15 +25,15 @@ split_obs <- function(input_data, project, conditions, date, threshold){
     input_data <- dplyr::arrange(input_data, name)
     
     #READ
-    trap_txts <- purrr::map(input_data$datapath, read_tsv, col_names = c("bead", "trap"))
+    trap_txts <- purrr::map(input_data$datapath, readr::read_tsv, col_names = c("bead", "trap"))
     
     incProgress(amount = .6, detail = "Moving to 'lasertrapr' folder")
     
-    new_csv_filename <-  purrr::map(input_data$name, str_replace, pattern = "txt", replacement = "csv")
+    new_csv_filename <-  purrr::map(input_data$name, stringr::str_replace, pattern = "txt", replacement = "csv")
     
     new_name <- paste0(date$path, "/", new_csv_filename)
-    
-    purrr::walk2(trap_txts, new_name, write_csv, col_names = TRUE)
+    #for dev new_name <- paste0(date, "/", new_csv_filename)
+    purrr::walk2(trap_txts, new_name, readr::write_csv, col_names = TRUE)
     
     incProgress(1, detail = "Done")
   })
@@ -43,7 +44,7 @@ split_obs <- function(input_data, project, conditions, date, threshold){
   withProgress(message = 'Making Observations', value = 0, max = 1, min = 0, {
     incProgress(amount = .25, detail = "Reading Data")
     
-    all_files <-  list_files(date$path) %>%
+    all_files <-  list_files(date) %>%
       arrange(name)
     
     
@@ -60,7 +61,8 @@ split_obs <- function(input_data, project, conditions, date, threshold){
     
     
     
-    
+    #for dev
+    threshold <- 20
     dif2 <- vector("list") #for troubleshooting
     diff_vector <- vector()
     for(i in seq_along(datetime[-length(datetime)])){
@@ -72,7 +74,7 @@ split_obs <- function(input_data, project, conditions, date, threshold){
       } else {
         diff_vector[[i]] <- "observing"
       }
-    }
+    }  
     
     #dif2 <- vector("list") #for troubleshooting
     # diff_vector <- vector()
@@ -98,33 +100,29 @@ split_obs <- function(input_data, project, conditions, date, threshold){
     incomplete_obs <- filter(diff_tibble2, observation == "end_observation" & lag(observation) == "end_observation") %>%
       pull(index)
     
-    if(identical(incomplete_obs, integer(0)) == TRUE){
-      diff_tibble2 <- diff_tibble2
-      
-    } else {
+    if(identical(incomplete_obs, integer(0)) == F){
       diff_tibble2 <- slice(diff_tibble2, -incomplete_obs)
     }
     
-    if(diff_tibble2$observation[[1]] == "end_observation"){
+    if(diff_tibble2$observation[[1]] != "end_observation"){
       diff_tibble2 <- slice(diff_tibble2, -1)
-    } else {
-      diff_tibble2 <- diff_tibble2
     }
   
     
     
     diff_tibble2$observation[[1]] <- "begin_observation"
     for(x in 2:(nrow(diff_tibble2)-1)){
-      if(diff_tibble2$observation[[x-1]] == "end_observation"){
+      if(diff_tibble2$observation[[(x-1)]] == "end_observation"){
         diff_tibble2$observation[[x]] <- "begin_observation"
       }
     }
     
     
     
-    diff_tibble2 <- filter(diff_tibble2, observation != "observing") %>%
-      group_split(observation) %>%
-      bind_cols()
+    diff_tibble2 <- diff_tibble2  %<>% 
+      filter(observation != "observing") %>% 
+      split(.$observation) %>% 
+      do.call('cbind', .)
     
     incProgress(.7, detail = "Arranging Folders")
     
@@ -133,13 +131,21 @@ split_obs <- function(input_data, project, conditions, date, threshold){
     for(r in 1:nrow(diff_tibble2)){
       
       if(r < 10){
-        dir.create(paste0(date$path, "/obs-0", r))
+        #dev
+        #dir.create(paste0(date, "/obs-0", r))
+       dir.create(paste0(date$path, "/obs-0", r))
       } else {
+        #dev
+       # dir.create(paste0(date,"/obs-", r))
         dir.create(paste0(date$path,"/obs-", r))
       }
-      obs_file_names[[r]] <- file_tibble$name[diff_tibble2$index[[r]]:diff_tibble2$index1[[r]]]
+      start <-  diff_tibble2$begin_observation.index[[r]] 
+      stop <- diff_tibble2$end_observation.index[[r]]
+      
+      obs_file_names[[r]] <- file_tibble$name[start:stop]
     }
     
+   
     
     #move files
     
@@ -148,9 +154,17 @@ split_obs <- function(input_data, project, conditions, date, threshold){
         if(o < 10){
           file.rename(from =  paste0(date$path, "/", obs_file_names[[o]][[file]]),
                       to = paste0(date$path, "/obs-0", o, "/", obs_file_names[[o]][[file]]))
+          
+          #dev
+          # file.rename(from =  paste0(date, "/", obs_file_names[[o]][[file]]),
+          #             to = paste0(date, "/obs-0", o, "/", obs_file_names[[o]][[file]]))
         } else {
           file.rename(from = paste0(date$path, "/", obs_file_names[[o]][[file]]),
                       to = paste0(date$path, "/obs-", o, "/", obs_file_names[[o]][[file]]))
+
+          #dev
+          # file.rename(from = paste0(date, "/", obs_file_names[[o]][[file]]),
+          #             to = paste0(date, "/obs-", o, "/", obs_file_names[[o]][[file]]))
         }
       }}
     
@@ -158,7 +172,9 @@ split_obs <- function(input_data, project, conditions, date, threshold){
     #create obs
     create_obs <- vector("list")
     for(row in 1:nrow(diff_tibble2)){
-      create_obs[[row]] <- dplyr::bind_rows(txts[diff_tibble2$index[[row]]:diff_tibble2$index1[[row]]])
+      go <- diff_tibble2$begin_observation.index[[row]]
+      halt <- diff_tibble2$end_observation.index[[row]]
+      create_obs[[row]] <- dplyr::bind_rows(txts[go:halt])
     }
     
     incProgress(.9, detail = "Saving Data")
@@ -209,3 +225,6 @@ split_obs <- function(input_data, project, conditions, date, threshold){
   
   showNotification("Obsevations created")
 }
+  
+  
+  
