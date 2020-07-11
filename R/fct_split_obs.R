@@ -3,7 +3,10 @@
 #' @param input_data the shiny path to the user uploaded data
 #' @param date a file path to the date folder where data should be moved
 #' @param threshold a numeric value specifying number of seconds to divide observations by
-#' @import tidyverse magrittr
+#' 
+#' @import tidyverse 
+#' @noRd
+
 
 split_obs <- function(input_data, project, conditions, date, threshold){
   golem::print_dev('starting split_obs')
@@ -18,18 +21,18 @@ split_obs <- function(input_data, project, conditions, date, threshold){
     
     incProgress(amount = .3, detail = "Reading Files")
     
-    input_data <- arrange(input_data, name)
+    input_data <- dplyr::arrange(input_data, name)
     
     #READ
-    trap_txts <- map(input_data$datapath, read_tsv, col_names = c("bead", "trap"))
+    trap_txts <- purrr::map(input_data$datapath, read_tsv, col_names = c("bead", "trap"))
     
     incProgress(amount = .6, detail = "Moving to 'lasertrapr' folder")
     
-    new_csv_filename <-  map(input_data$name, str_replace, pattern = "txt", replacement = "csv")
+    new_csv_filename <-  purrr::map(input_data$name, str_replace, pattern = "txt", replacement = "csv")
     
     new_name <- paste0(date$path, "/", new_csv_filename)
     
-    walk2(trap_txts, new_name, write_csv, col_names = TRUE)
+    pur::walk2(trap_txts, new_name, write_csv, col_names = TRUE)
     
     incProgress(1, detail = "Done")
   })
@@ -43,18 +46,6 @@ split_obs <- function(input_data, project, conditions, date, threshold){
     all_files <-  list_files(date$path) %>%
       arrange(name)
     
-    # if(cal_files == TRUE){
-    #   calibration_files <- all_files %>%
-    #     dplyr::filter(str_detect(name, "Equi") | str_detect(name, "Step"))
-    #   
-    #   cal_folder_name <- paste0(date, "/cal")
-    #   
-    #   dir.create(cal_folder_name)
-    #   
-    #   cal_new_files_path <- paste0(cal_folder_name,"/", calibration_files$name)
-    #   
-    #   map2(calibration_files$path, cal_new_files_path, file.rename)
-    # }
     
     
     file_tibble <- all_files %>%

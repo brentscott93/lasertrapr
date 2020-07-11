@@ -31,6 +31,7 @@ usethis::use_package( "changepoint" )
 usethis::use_package( "gridExtra" )
 usethis::use_package( "gt" )
 usethis::use_package( "shinycssloaders" )
+usethis::use_package( "lubridate" )
 ## Add modules ----
 ## Create a module infrastructure in R/
 golem::add_module( name = "mv" ) # Name of the module
