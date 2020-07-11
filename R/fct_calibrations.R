@@ -1,6 +1,6 @@
 #' Equipartition method for calibrating trap stiffness
 #'
-#' @param data a vector of trap data
+#' @param data A vector of trap data
 #' 
 #' @export
 #'
@@ -19,13 +19,22 @@ equipartition <- function(data){
 
 #' Performs Step Calibration of the Laser Trap
 #'
-#' @param vector a vector of trap data
-#' @import tidyverse magrittr 
+#' @param vector A numeric vector of trap data
+#' @param step The known distance of each step in nanometers (i.e. how far did you move the stage)
+#' 
+#' @return A list containing 1) The mV difference between before/after step
+#'    2) the mv2nm_conversion of values from #1
+#'    3) a ggplot of the data trace
+#'    
+#' @import ggplot
+#' 
 #' @export
+#' @example 
+#' #Read in raw trap data from step cal something like
+#' #data <- readr::read_tsv('Step.txt', col_names = c('bead', 'trap'))
+#' todays_step_cal <- (data$bead, 50)
 
-step_cal <- function(vector, step){
-  
-  data <- vector
+step_cal <- function(data, step){
   
   find_changepoint <- changepoint::cpt.mean(data)
   

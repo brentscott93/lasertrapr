@@ -32,7 +32,7 @@ split_obs <- function(input_data, project, conditions, date, threshold){
     
     new_name <- paste0(date$path, "/", new_csv_filename)
     
-    pur::walk2(trap_txts, new_name, write_csv, col_names = TRUE)
+    purrr::walk2(trap_txts, new_name, write_csv, col_names = TRUE)
     
     incProgress(1, detail = "Done")
   })
