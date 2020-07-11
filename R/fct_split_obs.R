@@ -44,7 +44,7 @@ split_obs <- function(input_data, project, conditions, date, threshold){
   withProgress(message = 'Making Observations', value = 0, max = 1, min = 0, {
     incProgress(amount = .25, detail = "Reading Data")
     
-    all_files <-  list_files(date) %>%
+    all_files <-  list_files(date$path) %>%
       arrange(name)
     
     
