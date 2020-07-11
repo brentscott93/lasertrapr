@@ -12,9 +12,9 @@ split_obs <- function(input_data, project, conditions, date, threshold){
     
   golem::print_dev('starting split_obs')
   # for dev
-  input_data <- tibble::tibble(name = list.files('~/rstats/play/raw-trap-data', full.names = F),
-                      datapath = list.files('~/rstats/play/raw-trap-data', full.names = T))
-   date <- '~/Desktop'
+  # input_data <- tibble::tibble(name = list.files('~/rstats/play/raw-trap-data', full.names = F),
+  #                     datapath = list.files('~/rstats/play/raw-trap-data', full.names = T))
+  #  date <- '~/Desktop'
   # threshold <- 20
 
   #convert to csv and move to box sync
@@ -62,7 +62,7 @@ split_obs <- function(input_data, project, conditions, date, threshold){
     
     
     #for dev
-    threshold <- 20
+    #threshold <- 20
     dif2 <- vector("list") #for troubleshooting
     diff_vector <- vector()
     for(i in seq_along(datetime[-length(datetime)])){
