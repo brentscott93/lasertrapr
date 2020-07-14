@@ -76,7 +76,8 @@ move_obs <- function(f, trap_selected_date, trap_obs, trap_selected_obs,  trap_f
                                    conditions = f$conditions$name,
                                    date = f$date$name, 
                                    obs = new_folder,
-                                   grouped = new_obs_files )
+                                   grouped = new_obs_files,
+                                   rds_file_path = file.path(new_folder_path, 'trap-data.rds') )
     
     saveRDS(t, file = file.path(new_folder_path, "trap-data.rds"))
     #regroup current observation after desired files moved out
@@ -92,7 +93,8 @@ move_obs <- function(f, trap_selected_date, trap_obs, trap_selected_obs,  trap_f
                                           conditions = f$conditions$name,
                                           date = f$date$name, 
                                           obs = f$obs$name, 
-                                          grouped = regroup )
+                                          grouped = regroup,
+                                          rds_file_path = file.path(trap_selected_obs, 'trap-data.rds'))
                                           
     
    # write_csv(regroup, path = paste0(trap_selected_obs, "/grouped.csv"), append = FALSE)
@@ -135,8 +137,8 @@ trim_obs <- function(trap_selected_obs, trim_from, trim_to, f){
                                    conditions = f$conditions$name,
                                    date = f$date$name, 
                                    obs = f$obs$name,
-                                   grouped = trimmed )
-                                   
+                                   grouped = trimmed,
+                                   rds_file_path = file.path(trap_selected_obs, "trap-data.rds") )
   
     saveRDS(t, file = file.path(trap_selected_obs, "trap-data.rds"))
     

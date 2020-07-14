@@ -297,7 +297,7 @@ hidden_markov_analysis <- function(trap_data_rds, f, em_random_start){
                         force = displacement_nm*nm2pn)
         
         
-        setProgress(0.65)
+        setProgress(0.6)
         #find better time on
         
         #played around with the numbers of where to 'chunk' out the data
@@ -330,7 +330,7 @@ hidden_markov_analysis <- function(trap_data_rds, f, em_random_start){
           is_positive <- ifelse(is_positive == TRUE, FALSE, TRUE)
         }
         
-        setProgress(0.7, detail = 'Forward Ensemble')
+        setProgress(0.65, detail = 'Forward Ensemble')
         #due to sliding windows there is a dead time of 15ms
         #so we can use that as our ensemble length and just take the first 75 datapoints (15 ms)
         #of each event to have equal length event. only maybe 1 running window long window events may have some
@@ -401,7 +401,7 @@ hidden_markov_analysis <- function(trap_data_rds, f, em_random_start){
         }
         
         
-        setProgress(0.75, detail = 'Backwards ensemble')
+        setProgress(0.7, detail = 'Backwards ensemble')
         ####backwards ensemble
         better_time_on_stops <- vector()
         backwards_ensemble_average_data <- vector("list")
@@ -479,7 +479,7 @@ hidden_markov_analysis <- function(trap_data_rds, f, em_random_start){
           
         }
         
-        setProgress(0.85)
+      
         
         better_time_on <- tibble(start = better_time_on_starts,
                                  stop = better_time_on_stops,
@@ -518,7 +518,7 @@ hidden_markov_analysis <- function(trap_data_rds, f, em_random_start){
         
         
         ## SAVE OUTPUT ##
-        setProgress(0.90, detail = "Saving Events")
+        setProgress(0.75)
         
         #save ensemble data
         forward_ensemble_df <- bind_rows(forward_ensemble_average_data)
@@ -566,7 +566,7 @@ hidden_markov_analysis <- function(trap_data_rds, f, em_random_start){
                                 stop = dygraph_periods$run_to)
         
         
-    
+  setProgress(0.75, detail = "Plotting something...")
   d <- data.frame(index = (1:length(overlay)/5000),
                   raw = flip_raw[1:length(overlay)],
                   model = overlay)
@@ -609,20 +609,9 @@ mv2 <- ggplot(mean_var_tib)+
 
 mv_state_plot <- gridExtra::grid.arrange(mv1, mv2, nrow = 1)
 
+setProgress(0.8, detail = "Calculating event frequency")
 
 
-dygraph_master_list <- list(raw_data = flip_raw,
-                            overlay = overlay,
-                            final_events = measured_events,
-                            periods = dygraph_periods,
-                            peak_nm_index = (peak_nm_index * conversion)/5000,
-                            hmm_identified_events = hmm_identified_events, 
-                            dy_rv = dy_rv, 
-                            dy_rm = dy_rm,
-                            shades_df = shades_df,
-                            c =  RColorBrewer::brewer.pal(8, 'Dark2'),
-                            raw_data_dygraph = d,
-                            raw_periods = periods_df)
         
       
         report_data <- "event_freq_fail"
@@ -631,14 +620,17 @@ dygraph_master_list <- list(raw_data = flip_raw,
                  
         
         results_data <- list(events = measured_events,
-                        s2n = var_signal_to_noise,
+                        #s2n = var_signal_to_noise,
                         ensemble_avg = ensemble_avg_df,
-                        event_freq = event_freq,
-                        dygraph_master_list = dygraph_master_list,
-                        mv_state_plot = mv_state_plot,
-                        hmm_fit = hmm_fit
+                        event_freq = event_freq$data
+                        #dygraph_master_list = dygraph_master_list,
+                        #mv_state_plot = mv_state_plot,
+                        #hmm_fit = hmm_fit
                         )
         
+    
+        setProgress(0.9, detail = "Saving Data")            
+          
         report_data <- "success"
         obs_trap_data <- trap_data_rds[folder, ] %>% 
           dplyr::mutate(results = list(results_data),
@@ -647,11 +639,34 @@ dygraph_master_list <- list(raw_data = flip_raw,
                         analyzer = 'hmm/changepoint')
         
         
-        saveRDS(obs_trap_data, file = trap_data_rds$rds_file_path[[folder]])
+       saveRDS(obs_trap_data, file = trap_data_rds$rds_file_path[[folder]])
+        
+       setProgress(0.95, detail = "Saving Viz")    
+        plot_data <- list(events = measured_events,
+                           periods = dygraph_periods,
+                           peak_nm_index = (peak_nm_index * conversion)/5000,
+                           dy_rv = dy_rv, 
+                           dy_rm = dy_rm,
+                           shades_df = shades_df,
+                           c =  RColorBrewer::brewer.pal(8, 'Dark2'),
+                           raw_data_dygraph = d,
+                           raw_periods = periods_df, 
+                           event_freq_plot = event_freq$plot,
+                           s2n = var_signal_to_noise,
+                           mv_state_plot = mv_state_plot,
+                           hmm_fit = hmm_fit)
+        
+                
+        viz <- trap_data_rds[folder, ] %>% 
+          dplyr::select(project, conditions, date, obs) %>%  
+          dplyr::mutate(plot = list(plot_data))
+        
+        viz_path <- str_replace(trap_data_rds$rds_file_path[[folder]], 'trap-data.rds', 'viz.rds')
+        saveRDS(viz, file = viz_path)
         #summary(hmm_fit) will gve hmm model == sum_fit object
         #measured events
         
-        setProgress(0.95, 'Done')
+        setProgress(0.97, 'Done with this one')
         
 
       }, error=function(e){

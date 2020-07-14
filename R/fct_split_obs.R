@@ -186,7 +186,8 @@ split_obs <- function(input_data, project, conditions, date, threshold){
                                        conditions = conditions$name,
                                        date = date$name, 
                                        obs = paste0('obs-0', c),
-                                       grouped = create_obs[[c]] )
+                                       grouped = create_obs[[c]],
+                                       rds_file_path =  paste0(date$path, "/obs-0", c, "/trap-data.rds"))
         
         saveRDS(t, file = paste0(date$path, "/obs-0", c, "/trap-data.rds"))
          # write_csv(create_obs[[c]],
@@ -199,7 +200,8 @@ split_obs <- function(input_data, project, conditions, date, threshold){
                                        conditions = conditions$name,
                                        date = date$name, 
                                        obs = paste0('obs-', c),
-                                       grouped = create_obs[[c]] )
+                                       grouped = create_obs[[c]],
+                                       rds_file_path =  paste0(date$path, "/obs-", c, "/trap-data.rds"))
         
         saveRDS(t, file = paste0(date$path, "/obs-", c, "/trap-data.rds"))
         # write_csv(create_obs[[c]],

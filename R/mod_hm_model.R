@@ -140,17 +140,23 @@ mod_hm_model_ui <- function(id){
 mod_hm_model_server <- function(input, output, session, f){
   ns <- session$ns
  
+
   observeEvent(input$analyze_trap, {
-    
-    trap_data_rds <- get_status_table(f$date, f$date_input)
-    rds_file_path_data <- list_files(f$date$path, pattern = 'trap-data.rds', recursive = T)
-    trap_data_rds %<>% mutate(rds_file_path = rds_file_path_data$path)
-    
+    if(is_empty(f$date_input)) showNotification('Select a date', type = 'error')
+    req(!is_empty(f$date_input))
     if(input$which_obs =='single'){
       if(is_empty(f$obs_input)) showNotification('Select an obs', type = 'error')
       req(!is_empty(f$obs_input))
-      trap_data_rds <- get_status_table(f$date, f$date_input) %>% 
-        dplyr::filter(obs == f$obs_input)
+    }
+    showNotification('Analysis will begin shortly...', type = 'message')
+    hm$analyze <-   hm$analyze + 1
+  })
+  
+  observeEvent(hm$analyze, ignoreInit = T, {
+    trap_data_rds <- get_status_table(f$date, f$date_input)
+    
+    if(input$which_obs =='single'){
+    trap_data_rds %<>% dplyr::filter(obs == f$obs_input)
     }
     
     if(is.null(input$em_random_start)){
@@ -158,7 +164,10 @@ mod_hm_model_server <- function(input, output, session, f){
     } else {
       em_start <- input$em_random_start
     }
+    
       trap_data_rds %<>% dplyr::filter(include == T)
+   
+   
       hidden_markov_analysis(trap_data_rds, f, em_random_start = em_start)
       
       shinyWidgets::sendSweetAlert(session = session,
@@ -168,29 +177,35 @@ mod_hm_model_server <- function(input, output, session, f){
     
   })
   
-  hm <- reactiveValues(go = 0)
+  hm <- reactiveValues(go = 0, analyze = 0)
+  
   observeEvent(input$view_results, {
-   if(is_empty(f$obs_input)) showNotification('Select an obs', type = 'error')
-   req(!is_empty(f$obs_input))
-   if(substring(f$obs_input, 1, 3) != 'obs') showNotification('Select an obs', type = 'error')
-   req(substring(f$obs_input, 1, 3) == 'obs')
-   showNotification('Loading results...This may take a second', type = 'warning')
-   hm$go <- hm$go + 1
+    if(is_empty(f$obs_input)) showNotification('Select an obs', type = 'error')
+    req(!is_empty(f$obs_input))
+    if(substring(f$obs_input, 1, 3) != 'obs') showNotification('Select an obs', type = 'error')
+    req(substring(f$obs_input, 1, 3) == 'obs')
+    showNotification('Hang tight, this will take a few seconds.', type = 'message')
+    hm$go <- hm$go + 1
   })
+
    observeEvent(hm$go, ignoreInit = T, {
      req(!is_empty(f$obs_input))
-     
-     p <- list_files(f$obs$path, pattern =  'trap-data.rds')
-     t <- readRDS(p$path)
-    hm$results <- t$results[[1]]
-     
+     withProgress(message = 'Loading', detail = 'This may take a while...', {
+       setProgress(0.3)
+     p <- list_files(f$obs$path, pattern =  'viz.rds')
+     setProgress(0.7)
+     viz <- readRDS(p$path)
+     setProgress(0.9)
+    hm$results <- viz$plot[[1]]
+    setProgress(1)
+     })
   })
    output$hm_model_dygraph1 <- dygraphs::renderDygraph({
      req(hm$results)
      showNotification('Loading run var graph', type = 'message')
-     dy_rv <- hm$results$dygraph_master_list$dy_rv
-     c <- hm$results$dygraph_master_list$c
-     shades_df <- hm$results$dygraph_master_list$shades_df
+     dy_rv <- hm$results$dy_rv
+     c <- hm$results$c
+     shades_df <- hm$results$shades_df
      shade_col <- '#E2E2E2'
      
      dygraphs::dygraph(dy_rv, group = 'group') %>%
@@ -203,9 +218,9 @@ mod_hm_model_server <- function(input, output, session, f){
   output$hm_model_dygraph2 <- dygraphs::renderDygraph({
     req(hm$results)
     showNotification('Loading run mean graph', type = 'message')
-    dy_rm <- hm$results$dygraph_master_list$dy_rm
-    c <- hm$results$dygraph_master_list$c
-    shades_df <- hm$results$dygraph_master_list$shades_df
+    dy_rm <- hm$results$dy_rm
+    c <- hm$results$c
+    shades_df <- hm$results$shades_df
     shade_col <- '#E2E2E2'
     
     dygraphs::dygraph(dy_rm, group = 'group') %>%
@@ -221,10 +236,10 @@ mod_hm_model_server <- function(input, output, session, f){
   output$overlay_dygraph <- dygraphs::renderDygraph({
     req(hm$results)
     showNotification('Loading raw data overlay', type= 'message')
-    d <- hm$results$dygraph_master_list$raw_data_dygraph
+    d <- hm$results$raw_data_dygraph
     events <- hm$results$events
-    periods_df <- hm$results$dygraph_master_list$raw_periods
-    pni <- hm$results$dygraph_master_list$peak_nm_index
+    periods_df <- hm$results$raw_periods
+    pni <- hm$results$peak_nm_index
     dygraphs::dygraph(d) %>% #raw_data_dygraph
       dygraphs::dySeries('raw', color = '#242424', strokeWidth = 2) %>%
       dygraphs::dySeries('model', color = '#ff41c8',  strokeWidth = 2) %>%
@@ -240,7 +255,7 @@ mod_hm_model_server <- function(input, output, session, f){
   output$event_freq <- renderPlot({
     req(hm$results)
     showNotification('Loading event frequency', type = 'message')
-    hm$results$event_freq$plot
+    hm$results$event_freq_plot
   })
   output$n_events <- renderValueBox({
     req(hm$results)
@@ -297,9 +312,9 @@ mod_hm_model_server <- function(input, output, session, f){
   status <- reactiveValues()
   
   observeEvent(input$status_table, {
+    showNotification('Refreshing table', type = 'message')
    status$df <-  get_status_table(f$date, f$date_input) %>% 
       dplyr::select(project, conditions, date, obs, processed_how, mv2nm, nm2pn, include, status, analyzer, report, quality_control)
-   showNotification('Status table refreshed', type = 'message')
   })
   
   output$table <- gt::render_gt(width = gt::pct(100),{

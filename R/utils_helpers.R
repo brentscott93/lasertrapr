@@ -115,7 +115,7 @@ add_shades <- function(x, periods, ...){
 #'
 #' @noRd
 #' 
-create_lasertrapr_tibble <- function(project, conditions, date, obs, grouped){
+create_lasertrapr_tibble <- function(project, conditions, date, obs, grouped, rds_file_path){
   tibble::tibble(project = project ,
                  conditions = conditions,
                  date = date, 
@@ -130,7 +130,8 @@ create_lasertrapr_tibble <- function(project, conditions, date, obs, grouped){
                  analyzer = NA,
                  results = NA,
                  report = NA,
-                 quality_control = NA)
+                 quality_control = NA, 
+                 rds_file_path = rds_file_path)
 }
 
 #' Read in all trap-data.rds files in an obs folder
