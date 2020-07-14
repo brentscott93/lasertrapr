@@ -181,7 +181,7 @@ mod_hm_model_server <- function(input, output, session, f){
      req(!is_empty(f$obs_input))
      
      p <- list_files(f$obs$path, pattern =  'trap-data.rds')
-     t <- shinyjs::delay(500, readRDS(p$path))
+     t <- readRDS(p$path)
     hm$results <- t$results[[1]]
      
   })
