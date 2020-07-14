@@ -30,12 +30,19 @@ usethis::use_package( "gridExtra" )
 usethis::use_package( "gt" )
 usethis::use_package( "shinycssloaders" )
 usethis::use_package( "lubridate" )
+usethis::use_package( "hexbin" )
+usethis::use_package( "depmixS4" )
+usethis::use_package( "RcppRoll" )
+usethis::use_package( "RColorBrewer" )
+usethis::use_package( "rmarkdown" )
+
 ## Add modules ----
 ## Create a module infrastructure in R/
 golem::add_module( name = "mv" ) # Name of the module
 golem::add_module( name = "split_obs" )
 golem::add_module( name = "clean_data" )
 golem::add_module( name = "folder_manager" )
+golem::add_module( name = "hm_model" )
 #golem::add_module( name = "name_of_module2" ) # Name of the module
 
 ## Add helper functions ----

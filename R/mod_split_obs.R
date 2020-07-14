@@ -84,13 +84,15 @@ mod_split_obs_ui <- function(id){
     fluidRow(
             box(title = 'Equipartition', width = 9, height = 325, 
                                 fluidRow(
-                                  column(3, fileInput(ns('equi_file'), 'Upload Equi File (.txt)', accept = '.txt'),
+                                  column(3, fileInput(ns('equi_file'), 
+                                                      'Upload Equi File (.txt)',
+                                                      placeholder = 'Equi.txt',
+                                                      accept = '.txt'),
                                   
                                    withMathJax(helpText("$$\\alpha_{trap}=\\frac{k_B*T_k}{\\sigma^2}$$")),
                                   actionButton(ns('equi_button'), 
                                                'Equi Cal', 
                                                width = '100%', 
-                                               placeholder = 'Equi.txt',
                                                style = 'margin-top: 25px;'),
                                 ),
                             column(9, 

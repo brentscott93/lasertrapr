@@ -4,7 +4,8 @@
 theme_lasertrapr <- function(){
   fresh::create_theme(
   fresh::adminlte_color(
-    light_blue = "#141313"
+    light_blue = "#141313",
+    aqua = "#ff41c8"
   ),
    fresh::adminlte_sidebar(
   #   width = "400px",
@@ -19,3 +20,5 @@ theme_lasertrapr <- function(){
   )
 )
 }
+
+  

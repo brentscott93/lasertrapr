@@ -15,10 +15,10 @@ app_ui <- function(request) {
                                       tags$li(class = "dropdown",
                                               shinyWidgets::dropMenu(
                                                 shinyWidgets::dropdownButton('Files',
-                                                                             icon = icon('folder'), 
-                                                                             style = 'background-color: #ff41c8'),
+                                                                             icon = icon('folder')),
                                                 mod_folder_manager_ui("folder_manager_ui"),
-                                              placement = 'left',
+                                              placement = 'left-start',
+                                              theme = 'translucent',
                                               padding = '1px') #dropMenu close
                                       ) #tags$li close
                       ),#header close
@@ -26,8 +26,10 @@ app_ui <- function(request) {
       dashboardSidebar(
        shinydashboard::sidebarMenu( 
           menuItem(text = 'Home', tabName =  'home', icon = icon('home')),
-          menuItem(text = 'Make Observations', tabName = 'obs',  icon = icon('eye')),
-          menuItem(text = 'Clean & Process', tabName = 'clean', icon = icon('broom'))
+          menuItem(text = 'Initialize Data', tabName = 'obs',  icon = icon('play-circle')),
+          menuItem(text = 'Clean & Process', tabName = 'clean', icon = icon('broom')),
+          menuItem(text = 'Analyzers', icon = icon('microscope'),
+           menuSubItem(text = 'HM-Model', tabName = 'hm_model'))
           #menuItem(text = 'Mean-Variance', tabName = 'mv')
         
         )
@@ -37,7 +39,8 @@ app_ui <- function(request) {
         tabItems(
           tabItem('home', fluidRow(img(src = 'www/lasertrapr-logo.gif'))),
           tabItem('obs', mod_split_obs_ui('split_obs')),
-          tabItem('clean', mod_clean_data_ui('clean_data_ui'))
+          tabItem('clean', mod_clean_data_ui('clean_data_ui')),
+          tabItem('hm_model', mod_hm_model_ui("hm_model_ui"))
         #tabItem(tabName = 'mv', mod_mv_ui('mv'))
         )#tab itens close
       )#body close

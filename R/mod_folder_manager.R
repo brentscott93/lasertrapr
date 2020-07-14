@@ -43,8 +43,10 @@ mod_folder_manager_ui <- function(id){
 #' @import tidyverse magrittr
 mod_folder_manager_server <- function(input, output, session, lasertrapr_folder, f){
   ns <- session$ns
+  f$ns <- session$ns
   observe({
     f$obs_input <- input$trap_obs_selectInput
+    f$date_input <- input$trap_date_selectInput
     })
   observe({golem::print_dev(input$trap_obs_selectInput)})
   #### CREATE NEW FOLDERS ####

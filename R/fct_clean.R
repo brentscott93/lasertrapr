@@ -9,7 +9,9 @@
 #' @param dygraph_clean_date_window_1 beginning index to move
 #' @param dygraph_clean_date_window_2 end index to move
 #' 
-#' @import tidyverse magrittr
+#' @import tidyverse 
+#' 
+#' @noRd
 
 move_obs <- function(f, trap_selected_date, trap_obs, trap_selected_obs,  trap_files, dygraph_clean_date_window_1, dygraph_clean_date_window_2){
   #make destination folder
@@ -70,12 +72,11 @@ move_obs <- function(f, trap_selected_date, trap_obs, trap_selected_obs,  trap_f
     
     new_obs_files <- bind_rows(map(new_paths, read_csv))
     
-    t <- tibble(project = f$project$name ,
-                conditions = f$conditions$name,
-                date = f$date$name, 
-                grouped = list(new_obs_files))
-    
-   
+    t <- create_lasertrapr_tibble( project = f$project$name,
+                                   conditions = f$conditions$name,
+                                   date = f$date$name, 
+                                   obs = new_folder,
+                                   grouped = new_obs_files )
     
     saveRDS(t, file = file.path(new_folder_path, "trap-data.rds"))
     #regroup current observation after desired files moved out
@@ -87,10 +88,12 @@ move_obs <- function(f, trap_selected_date, trap_obs, trap_selected_obs,  trap_f
     
     regroup <- bind_rows(map(existing_files$path, read_csv))
     
-    regroup_t <- tibble(project = f$project$name ,
-                        conditions = f$conditions$name,
-                        date = f$date$name, 
-                        grouped = list(regroup))
+    regroup_t <- create_lasertrapr_tibble(project = f$project$name,
+                                          conditions = f$conditions$name,
+                                          date = f$date$name, 
+                                          obs = f$obs$name, 
+                                          grouped = regroup )
+                                          
     
    # write_csv(regroup, path = paste0(trap_selected_obs, "/grouped.csv"), append = FALSE)
     saveRDS(regroup_t, file = file.path(trap_selected_obs, "trap-data.rds"))
@@ -106,30 +109,35 @@ move_obs <- function(f, trap_selected_date, trap_obs, trap_selected_obs,  trap_f
 #' Delete selected data from observation
 #'
 #' @param trap_selected_obs current selected observation
-#' @param trap_grouped_file grouped file of currently selected observation
 #' @param trim_from begin index to delete
 #' @param trim_to end index to delete
 #' @param f the reactiveValues list 'f' with all user selected folder info
 #'
+#' @noRd
 
-trim_obs <- function(trap_selected_obs, trap_grouped_file, trim_from, trim_to, f){
+trim_obs <- function(trap_selected_obs, trim_from, trim_to, f){
   
   #trap_grouped_file <- read.csv("/Users/brentscott/Desktop/myoV-WT_2ndConrtol _obs-01/grouped.csv")
   withProgress(message = "Trimming Data", min= 0, max = 1, value = 0.3, {
    
+    data <- list_files(trap_selected_obs, pattern = 'trap-data.rds')
+    
+    trap_grouped_file <- readRDS(data$path)$grouped[[1]]
+    
     from <- as.integer(trim_from*5000)
     to <- as.integer(trim_to*5000)
     trimmed <- trap_grouped_file[-c(from:to),]
     
     setProgress("Writing new 'grouped' file", value = 0.8)
     #write_csv(trimmed, path = paste0(trap_selected_obs, "/grouped.csv"), append = FALSE)
-    t <- tibble(project = f$project$name ,
-                conditions = f$conditions$name,
-                date = f$date$name, 
-                grouped = list(trimmed))
     
-    
-    
+    t <- create_lasertrapr_tibble( project = f$project$name,
+                                   conditions = f$conditions$name,
+                                   date = f$date$name, 
+                                   obs = f$obs$name,
+                                   grouped = trimmed )
+                                   
+  
     saveRDS(t, file = file.path(trap_selected_obs, "trap-data.rds"))
     
     

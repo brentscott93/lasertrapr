@@ -38,6 +38,8 @@ app_server <- function( input, output, session ) {
   
   callModule(mod_clean_data_server, "clean_data_ui", f = f)
   
+  callModule(mod_hm_model_server, "hm_model_ui", f = f)
+  
   
   
 }

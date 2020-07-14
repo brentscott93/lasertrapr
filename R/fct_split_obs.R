@@ -182,15 +182,11 @@ split_obs <- function(input_data, project, conditions, date, threshold){
     for(c in seq_along(create_obs)){
       if(c < 10){
         
-        t <- tibble(       project = project$name ,
-                           conditions = conditions$name,
-                           date = date$name, 
-                           folder = paste0('obs-0', c),
-                           grouped = list(create_obs[[c]]),
-                           include = NA,
-                           processed_how = NA,
-                           mv2nm = NA, 
-                           status = 'grouped')
+        t <- create_lasertrapr_tibble( project = project$name,
+                                       conditions = conditions$name,
+                                       date = date$name, 
+                                       obs = paste0('obs-0', c),
+                                       grouped = create_obs[[c]] )
         
         saveRDS(t, file = paste0(date$path, "/obs-0", c, "/trap-data.rds"))
          # write_csv(create_obs[[c]],
@@ -199,16 +195,11 @@ split_obs <- function(input_data, project, conditions, date, threshold){
         
       } else {
         
-        t <- tibble(project = project$name ,
-                    conditions = conditions$name,
-                    date = date$name, 
-                    folder = paste0('obs-', c),
-                    grouped = list(create_obs[[c]]),
-                    include = NA,
-                    processed_how = NA,
-                    mv2nm = NA,
-                    status = 'grouped'
-                    )
+        t <- create_lasertrapr_tibble( project = project$name,
+                                       conditions = conditions$name,
+                                       date = date$name, 
+                                       obs = paste0('obs-', c),
+                                       grouped = create_obs[[c]] )
         
         saveRDS(t, file = paste0(date$path, "/obs-", c, "/trap-data.rds"))
         # write_csv(create_obs[[c]],
