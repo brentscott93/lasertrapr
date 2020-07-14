@@ -43,7 +43,7 @@ mod_hm_model_ui <- function(id){
                                                             width = '100%')
                                                           
                  ),
-                 colourpicker::colourInput(ns("trap_color"), label = "Select color", showColour = "both"),
+                
                  actionButton(inputId = ns("analyze_trap"),
                               label = "Run Analysis",
                               icon = icon("running"),
