@@ -110,7 +110,7 @@ hidden_markov_analysis <- function(trap_data_rds, f, em_random_start){
             
             set.seed(seed)
             
-            hmm_fit <- depmixS4::fit(hmm, emcontrol = em.control(random.start = hm_emcontrol))
+            hmm_fit <- depmixS4::fit(hmm, emcontrol = depmixS4::em.control(random.start = hm_emcontrol))
             
             hmm_posterior <- depmixS4::posterior(hmm_fit)
             
