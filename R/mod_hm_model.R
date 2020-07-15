@@ -205,9 +205,12 @@ mod_hm_model_server <- function(input, output, session, f){
 
    observeEvent(hm$go, ignoreInit = T, {
      req(!is_empty(f$obs_input))
+    
      withProgress(message = 'Loading', detail = 'This may take a while...', {
        setProgress(0.3)
      p <- list_files(f$obs$path, pattern =  'viz.rds')
+     req(!is_empty(p$path))
+     req(p$name == 'viz.rds')
      setProgress(0.7)
      viz <- readRDS(p$path)
      setProgress(0.9)
