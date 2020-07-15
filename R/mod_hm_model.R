@@ -197,7 +197,6 @@ mod_hm_model_server <- function(input, output, session, f){
     p <- list_files(f$obs$path, pattern =  'viz.rds')
     if(is_empty(p$path)) showNotification('No results for this observation', type = 'error')
     req(!is_empty(p$path))
-    
     showNotification('Hang tight, this will take a few seconds.', type = 'message')
     hm$go <- hm$go + 1
   })
