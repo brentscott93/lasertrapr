@@ -20,7 +20,7 @@ mod_clean_data_ui <- function(id){
     ),
     
     fluidRow(
-      box(width = 9, title = "Graph Options", status = 'success',
+      box(width = 9, title = "Graph Options", 
           fluidRow(
             column(5,
                    
@@ -179,7 +179,7 @@ mod_clean_data_ui <- function(id){
                      ))),#tabPanel close
             tabPanel("MV", 
                      fluidRow(column(3,actionButton(ns('baseline_graph_mv'), 'Baseline MV', width = '100%'))),
-                     fluidRow(
+                     fluidRow(style =  "background-color:#000000;",
                      column(6, 
                            plotOutput(ns('mv'), brush = ns('mv_brush'))  %>% 
                               shinycssloaders::withSpinner(type = 8, color = "#373B38"),
@@ -688,16 +688,15 @@ mod_clean_data_server <- function(input, output, session, f){
     
     if(mean(base$mv_df$var) <= 5) showNotification('Convert your data to nm before calculating step size.', type = 'error')
     req(mean(base$mv_df$var) > 5)
-    
+   # colorz <- RColorBrewer::brewer.pal(8, 'RdPu')
     ggplot(base$mv_df)+
       geom_hex(aes(mean, var), bins = 75)+
       ggtitle('Select area on plot to set baseline population')+
       ylab('Variance')+
       xlab('Mean')+
-      scale_fill_gradient(low  = pink(), high= purple())+
-      theme_classic(base_size = 12)+
-      theme(panel.background = element_rect(fill = 'black'),
-            legend.position = 'none')
+      scale_fill_gradient2(low = trap_gray(), mid = purple(), high = pink())+
+      theme_black(base_size = 12)+
+      theme(legend.position = 'none')
     
     
   })
@@ -814,19 +813,19 @@ mod_clean_data_server <- function(input, output, session, f){
       
   output$range_mean <- renderPrint({
     validate(need(base$range, 'Press button to calculate mean of selected range'))
-    cat('The selected baseline range has a mean of ', base$range, ' mV')
+    cat('The selected baseline range has a mean of ', base$range, ' nm')
   })
       
   ggrange <- eventReactive(base$range_update_graph, {
     req(base$range_df)
     
     ggplot(isolate(base$range_df))+
-      geom_line(aes(x = seconds, y = bead))+
-      geom_hline(yintercept = isolate(base$range), color = 'red', size = 2)+
-      ylab('mV')+
+      geom_line(aes(x = seconds, y = bead), color = trap_gray())+
+      geom_hline(yintercept = isolate(base$range), color = pink(), size = 2)+
+      ylab('nm')+
       xlab('Seconds')+
       ggtitle('Baseline range selected with mean')+
-      theme_classic(base_size = 14)
+      theme_black(base_size = 14)
   })
   
   output$range <- renderPlot({
@@ -868,8 +867,21 @@ mod_clean_data_server <- function(input, output, session, f){
   output$baseline_histo <- renderPlot({
     req(not_null(base$baseline), not_null(base$baseline_fit))
     req(base$baseline_fit$estimate[1])
-    hist(base$baseline$mean, pch=20, breaks=25, prob=T, main="Baseline Population", xlab = 'Displacement (nm)')
-    curve(dnorm(x, base$baseline_fit$estimate[1], base$baseline_fit$estimate[2]), col="red", lwd=2, add=T)
+    
+    par(bg = 'black', fg = 'white')
+    hist(base$baseline$mean, 
+         pch=20, 
+         breaks=25,
+         prob=T, 
+         main="Baseline Population", xlab = 'Displacement (nm)',
+         col.axis = "white", 
+         col.lab = 'white',
+         col.main = 'white',
+         col =trap_gray(), 
+         border =  'black')
+    curve(dnorm(x, base$baseline_fit$estimate[1], base$baseline_fit$estimate[2]), col=pink(), lwd=2, add=T)
+    graphics::box()
+    
     
   })
   

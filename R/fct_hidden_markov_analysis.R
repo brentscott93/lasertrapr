@@ -622,9 +622,8 @@ hidden_markov_analysis <- function(trap_data_rds, f, em_random_start){
       ylab('Running Variance (nm)')+
       xlab('Running Mean (nm)')+
       theme_black(base_size = 18)+
-      theme(legend.position = 'none',
-            panel.grid.major = element_blank(),
-            panel.grid.minor = element_blank())
+      theme(legend.position = 'none')
+     
     mv2 <- ggplot(mean_var_tib)+
       geom_jitter(aes(x = rm, y = rv, color = state), size = 3, alpha = 0.5)+
       scale_color_manual(values = c(pink(), purple()))+
@@ -632,8 +631,7 @@ hidden_markov_analysis <- function(trap_data_rds, f, em_random_start){
       ggtitle('Mean-Variance (by state)')+
       ylab('')+
       xlab('Running Mean (nm)')+
-      theme_black(base_size = 18)+
-      theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+      theme_black(base_size = 18)
     
     mv_state_plot <- gridExtra::grid.arrange(mv1, mv2, nrow = 1)
     
@@ -790,39 +788,30 @@ event_frequency <- function(processed_data, rle_object, conversion){
     dplyr::mutate(second = as.numeric(second))
   
   
-  #plots - histogram and point/line
-  # ggplot(find_it)+
-  #   geom_histogram(aes(x = freq, y = stat(density)), binwidth = 1, color = 'black')
-  #
-  #'real-time' event frequency plot
+  
   g1 <- ggplot(find_it, aes(x = second, y = freq))+
     geom_line(aes(group = 1), color = pink())+
     geom_point(color = pink())+
     scale_x_continuous('', breaks = seq(0, nrow(find_it), by = 10))+
-    ylab('Events Starting')+
-   # ggtitle("Events starting each second")+
-    theme_black(base_size = 16)+
-    theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+    ylab('Events Start')+
+    theme_black(base_size = 16)
   
   g2 <- ggplot(find_it_end, aes(x = second, y = freq))+
     geom_line(aes(group = 1) , color = purple())+
     geom_point(color = purple())+
     scale_x_continuous('', breaks = seq(0, nrow(find_it_end), by = 10))+
-    ylab('Events Ending')+
-    #ggtitle("Events ending each second")+
-    theme_black(base_size = 16)+
-    theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+    ylab('Events End')+
+    theme_black(base_size = 16)
+    
   
-  find_it$diff<- find_it$freq - find_it_end$freq
+  find_it$diff <- find_it$freq - find_it_end$freq
   
   g3 <- ggplot(find_it, aes(x = second, y = diff))+
     geom_line(aes(group = 1), color = green() )+
     geom_point(color = green() )+
     scale_x_continuous('Seconds', breaks = seq(0, nrow(find_it), by = 10))+
     ylab('Diff')+
-    #ggtitle("Difference")+
-    theme_black(base_size = 16)+
-    theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+    theme_black(base_size = 16)
   
   
  g <- gridExtra::grid.arrange(g1, g2,g3, ncol = 1)

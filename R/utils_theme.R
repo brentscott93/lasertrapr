@@ -23,7 +23,13 @@ maroon <- function(){
 green <- function(){
   '#01FF70'
 }
-  
+
+#' The color gray
+#' @noRd
+
+trap_gray <- function(){
+'#484848'
+}
 
 #' Theme for app
 #' @noRd
@@ -46,10 +52,10 @@ theme_lasertrapr <- function(...){
     #box_bg =  '#a7a7a7',
     #box_bg = "#e0cee3"#,
     #info_box_bg = "#D8DEE9"
-  ),
-  fresh::adminlte_vars(
-    'box-default-border-top-color' = pink()
-  ), ...
+  )
+  # fresh::adminlte_vars(
+  #  # 'box-default-border-top-color' = pink()
+  # ), ...
 )
 }
 
@@ -57,6 +63,7 @@ theme_lasertrapr <- function(...){
 
 #' Dark theme - thanks (https://gist.github.com/jslefche/eff85ef06b4705e6efbc)
 #' @noRd
+#' @export
 
 theme_black <- function(base_size = 12, base_family = "") {
   
@@ -73,7 +80,7 @@ theme_black <- function(base_size = 12, base_family = "") {
       axis.ticks.length = unit(0.3, "lines"),   
       # Specify legend options
       legend.background = element_rect(color = NA, fill = "black"),  
-      legend.key = element_rect(color = "white",  fill = "black"),  
+      legend.key = element_rect(color = NA,  fill = "black"),  
       legend.key.size = unit(1.2, "lines"),  
       legend.key.height = NULL,  
       legend.key.width = NULL,      
@@ -87,11 +94,11 @@ theme_black <- function(base_size = 12, base_family = "") {
       # Specify panel options
       panel.background = element_rect(fill = "black", color  =  NA),  
       panel.border = element_rect(fill = NA, color = "white"),  
-      panel.grid.major = element_line(color = "grey35"),  
-      panel.grid.minor = element_line(color = "grey20"),  
+      panel.grid.major = element_blank(),  
+      panel.grid.minor = element_blank(),  
       panel.spacing = unit(0.5, "lines"),   
       # Specify facetting options
-      strip.background = element_rect(fill = "grey30", color = "grey10"),  
+      strip.background = element_rect(fill = "#323232", color = "grey10"),  
       strip.text.x = element_text(size = base_size*0.8, color = "white"),  
       strip.text.y = element_text(size = base_size*0.8, color = "white",angle = -90),  
       # Specify plot options
@@ -102,4 +109,4 @@ theme_black <- function(base_size = 12, base_family = "") {
     )
   
 }
-  
+
