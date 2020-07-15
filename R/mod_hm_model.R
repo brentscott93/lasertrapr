@@ -194,6 +194,9 @@ mod_hm_model_server <- function(input, output, session, f){
     req(!is_empty(f$obs_input))
     if(substring(f$obs_input, 1, 3) != 'obs') showNotification('Select an obs', type = 'error')
     req(substring(f$obs_input, 1, 3) == 'obs')
+    p <- list_files(f$obs$path, pattern =  'viz.rds')
+    if(is_empty(p)) showNotification('No results for this observation', type = 'error')
+    req(!is_empty(p))
     showNotification('Hang tight, this will take a few seconds.', type = 'message')
     hm$go <- hm$go + 1
   })
