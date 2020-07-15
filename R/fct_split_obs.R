@@ -27,11 +27,12 @@ split_obs <- function(input_data, project, conditions, date, threshold){
   #  
   #  s <- c( '~/Desktop/Data_2019_02_27_14_50_34.txt',
   #   '~/Desktop/Data_2019_02_27_14_50_37.csv')
-  #  
-  # try <-   purrr::map(s, data.table::fread, col.names = c('bead', 'trap'))
+  # 
+  # try <-   purrr::map(s, ~tibble::as_tibble(data.table::fread(.x, col.names = c('bead', 'trap'))))
     
+ # try2 <- purrr::map(try, tibble::as_tibble)
     #READ
-    trap_txts <- purrr::map(input_data$datapath, data.table::fread, col.names = c("bead", "trap"))
+    trap_txts <- purrr::map(input_data$datapath,  ~tibble::as_tibble(data.table::fread(.x, col.names = c("bead", "trap"))))
     
     incProgress(amount = .6, detail = "Moving to 'lasertrapr' folder")
     
