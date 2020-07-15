@@ -12,10 +12,10 @@ split_obs <- function(input_data, project, conditions, date, threshold){
     
   golem::print_dev('starting split_obs')
   # for dev
-  # input_data <- tibble::tibble(name = list.files('~/rstats/play/raw-trap-data', full.names = F),
-  #                     datapath = list.files('~/rstats/play/raw-trap-data', full.names = T))
-  #  date <- '~/Desktop'
-  # threshold <- 20
+   # input_data <- tibble::tibble(name = list.files('~/Desktop/03122020',full.names = F),
+   #                    datapath = list.files('~/Desktop/03122020', full.names = T))
+   # date <- '~/Desktop'
+   # threshold <- 20
 
   #convert to csv and move to box sync
   withProgress(message = 'Uploading trap data', value = 0, max = 1, min = 0, {
@@ -25,11 +25,11 @@ split_obs <- function(input_data, project, conditions, date, threshold){
     input_data <- dplyr::arrange(input_data, name)
     
   #  
-  #  s <- c( '~/Desktop/Data_2019_02_27_14_50_34.txt',
-  #   '~/Desktop/Data_2019_02_27_14_50_37.csv')
-  # 
-  # try <-   purrr::map(s, ~tibble::as_tibble(data.table::fread(.x, col.names = c('bead', 'trap'))))
-    
+   # s <- c( '~/Desktop/Data_2019_02_27_14_50_34.txt',
+   #  '~/Desktop/Data_2019_02_27_14_50_37.csv')
+
+  #try <-   purrr::map(s, ~tibble::as_tibble(data.table::fread(.x, col.names = c('bead', 'trap'))))
+
  # try2 <- purrr::map(try, tibble::as_tibble)
     #READ
     trap_txts <- purrr::map(input_data$datapath,  ~tibble::as_tibble(data.table::fread(.x, col.names = c("bead", "trap"))))
@@ -40,8 +40,10 @@ split_obs <- function(input_data, project, conditions, date, threshold){
     ss <- stringr::str_sub(input_data$name, 1, -4)
     new_csv_filename <- stringr::str_c(ss, 'csv')
     
+    
     new_name <- file.path(date$path, new_csv_filename)
     #for dev new_name <- paste0(date, "/", new_csv_filename)
+   # purrr::walk2(try, new_csv_filename, readr::write_csv, col_names = TRUE)
     purrr::walk2(trap_txts, new_name, readr::write_csv, col_names = TRUE)
     
     incProgress(1, detail = "Done")
@@ -57,14 +59,14 @@ split_obs <- function(input_data, project, conditions, date, threshold){
       arrange(name)
     
     
-    
     file_tibble <- all_files %>%
       dplyr::filter(str_detect(name, "Data"))
     
-    txts <- purrr::map(file_tibble$path, read_csv)
+    txts <- purrr::map(file_tibble$path, readr::read_csv, col_names = T)
     
     incProgress(amount = .4, detail = "Determining Observations")
 
+    
     extract_numbers <- purrr::map(file_tibble$name, str_trap)
     datetime <- purrr::map(extract_numbers, lubridate::ymd_hms, tz = "EST")
     
