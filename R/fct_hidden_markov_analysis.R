@@ -647,8 +647,7 @@ hidden_markov_analysis <- function(trap_data_rds, f, em_random_start){
         
         results_data <- list(events = measured_events,
                              ensemble_avg = ensemble_avg_df,
-                             event_freq = event_freq$data,
-                             hm_model_data = hmm_identified_events)
+                             event_freq = event_freq$data)
         
     
         setProgress(0.9, detail = "Saving Data")            
@@ -675,6 +674,7 @@ hidden_markov_analysis <- function(trap_data_rds, f, em_random_start){
                            hmm_fit = hmm_fit,
                            rv_dy = rv_dy,
                            rm_dy = rm_dy,
+                          hm_model_data = hmm_identified_events,
                            overlay_dy = overlay_dy )
         
                 
@@ -775,7 +775,7 @@ event_frequency <- function(processed_data, rle_object, conversion){
   find_it <- freq_df %>%
     dplyr::mutate(is_in = purrr::pmap_lgl(freq_df, ~dplyr::between(..1, ..2, ..3))) %>%
     dplyr::group_by(begin, end) %>%
-    dplyr::summarize(freq = sum(is_in)) %>%
+    dplyr::summarize(freq_start = sum(is_in)) %>%
     tibble::rownames_to_column('second') %>%
     dplyr::mutate(second = as.numeric(second))
   
@@ -783,20 +783,20 @@ event_frequency <- function(processed_data, rle_object, conversion){
   find_it_end <- end_freq_df %>%
     dplyr::mutate(is_in = purrr::pmap_lgl(end_freq_df, ~dplyr::between(..1, ..2, ..3))) %>%
     dplyr::group_by(begin, end) %>%
-    dplyr::summarize(freq = sum(is_in)) %>%
+    dplyr::summarize(freq_stop = sum(is_in)) %>%
     tibble::rownames_to_column('second') %>%
     dplyr::mutate(second = as.numeric(second))
   
   
   
-  g1 <- ggplot(find_it, aes(x = second, y = freq))+
+  g1 <- ggplot(find_it, aes(x = second, y = freq_start))+
     geom_line(aes(group = 1), color = pink())+
     geom_point(color = pink())+
     scale_x_continuous('', breaks = seq(0, nrow(find_it), by = 10))+
     ylab('Events Start')+
     theme_black(base_size = 16)
   
-  g2 <- ggplot(find_it_end, aes(x = second, y = freq))+
+  g2 <- ggplot(find_it_end, aes(x = second, y = freq_stop))+
     geom_line(aes(group = 1) , color = purple())+
     geom_point(color = purple())+
     scale_x_continuous('', breaks = seq(0, nrow(find_it_end), by = 10))+
@@ -804,7 +804,9 @@ event_frequency <- function(processed_data, rle_object, conversion){
     theme_black(base_size = 16)
     
   
+  find_it$freq_stop <- find_it_end$freq_stop
   find_it$diff <- find_it$freq - find_it_end$freq
+  
   
   g3 <- ggplot(find_it, aes(x = second, y = diff))+
     geom_line(aes(group = 1), color = green() )+
