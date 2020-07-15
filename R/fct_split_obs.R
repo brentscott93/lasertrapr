@@ -24,14 +24,22 @@ split_obs <- function(input_data, project, conditions, date, threshold){
     
     input_data <- dplyr::arrange(input_data, name)
     
+  #  
+  #  s <- c( '~/Desktop/Data_2019_02_27_14_50_34.txt',
+  #   '~/Desktop/Data_2019_02_27_14_50_37.csv')
+  #  
+  # try <-   purrr::map(s, data.table::fread, col.names = c('bead', 'trap'))
+    
     #READ
-    trap_txts <- purrr::map(input_data$datapath, readr::read_tsv, col_names = c("bead", "trap"))
+    trap_txts <- purrr::map(input_data$datapath, data.table::fread, col.names = c("bead", "trap"))
     
     incProgress(amount = .6, detail = "Moving to 'lasertrapr' folder")
     
-    new_csv_filename <-  purrr::map(input_data$name, stringr::str_replace, pattern = "txt", replacement = "csv")
+    #ss <- stringr::str_sub(s, 1, -4)
+    ss <- stringr::str_sub(input_data$name, 1, -4)
+    new_csv_filename <- stringr::str_c(ss, 'csv')
     
-    new_name <- paste0(date$path, "/", new_csv_filename)
+    new_name <- file.path(date$path, new_csv_filename)
     #for dev new_name <- paste0(date, "/", new_csv_filename)
     purrr::walk2(trap_txts, new_name, readr::write_csv, col_names = TRUE)
     

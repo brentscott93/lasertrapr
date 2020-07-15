@@ -35,6 +35,7 @@ usethis::use_package( "depmixS4" )
 usethis::use_package( "RcppRoll" )
 usethis::use_package( "RColorBrewer" )
 usethis::use_package( "rmarkdown" )
+usethis::use_package( "data.table" )
 
 ## Add modules ----
 ## Create a module infrastructure in R/

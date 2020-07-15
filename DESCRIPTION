@@ -28,7 +28,8 @@ Imports:
     hexbin,
     depmixS4,
     RColorBrewer,
-    rmarkdown
+    rmarkdown,
+    data.table
 Encoding: UTF-8
 LazyData: true
 RoxygenNote: 7.1.1
