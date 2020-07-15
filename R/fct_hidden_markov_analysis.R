@@ -18,8 +18,8 @@ hidden_markov_analysis <- function(trap_data_rds, f, em_random_start){
     #loaded in trap-data.rds thorugh file manager in RStudio
     #same code in the observer in app before this function call
     # trap_data_rds <- get_status_table(f$date, f$date_input)
-    
-    # trap_data_rds <- trap
+
+     #trap_data_rds <- trap
     # rds_file_path <- list_files('~/lasertrapr/project_new/new/2020-07-13/obs-01', pattern = 'trap-data.rds', recursive = T)
     # trap_data_rds %<>% mutate(rds_file_path = rds_file_path$path )
     # em_random_start <- FALSE
@@ -518,7 +518,7 @@ hidden_markov_analysis <- function(trap_data_rds, f, em_random_start){
         
         
         ## SAVE OUTPUT ##
-        setProgress(0.75)
+        setProgress(0.75, detail = 'Savings stuff')
         
         #save ensemble data
         forward_ensemble_df <- bind_rows(forward_ensemble_average_data)
@@ -558,58 +558,86 @@ hidden_markov_analysis <- function(trap_data_rds, f, em_random_start){
         
     overlay <- unlist(overlay)
         
-        dy_rv <- tibble(window = 1:nrow(hmm_identified_events),
+     dy_rv <- tibble(window = 1:nrow(hmm_identified_events),
                         rv = hmm_identified_events$run_var)
-        dy_rm <- tibble(Window = 1:nrow(hmm_identified_events),
+     dy_rm <- tibble(Window = 1:nrow(hmm_identified_events),
                         rm = hmm_identified_events$run_mean)
-        shades_df <- data.frame(start = dygraph_periods$run_from,
+     shades_df <- data.frame(start = dygraph_periods$run_from,
                                 stop = dygraph_periods$run_to)
         
-        
-  setProgress(0.75, detail = "Plotting something...")
-  d <- data.frame(index = (1:length(overlay)/5000),
-                  raw = flip_raw[1:length(overlay)],
-                  model = overlay)
+     shade_col <- '#E2E2E2'
+     
+     color <- c(pink(), purple())
+          
+     rv_dy <- dygraphs::dygraph(dy_rv, group = 'group') %>%
+                dygraphs::dySeries('rv', color = color[[1]], strokeWidth = 2) %>%
+                dygraphs::dyAxis('x', axisLineColor = '#FFFFFF', drawGrid = FALSE, axisLabelColor = '#FFFFFF') %>%
+                dygraphs::dyAxis('y', label = 'Running Variance', drawGrid = FALSE,) %>%
+                add_shades(periods = shades_df, color = shade_col) %>%
+                dygraphs::dyUnzoom()
+
+          
+     rm_dy <- dygraphs::dygraph(dy_rm, group = 'group') %>%
+                dygraphs::dySeries('rm', color = color[[2]],  strokeWidth = 2) %>%
+                dygraphs::dyAxis('x', label = 'Window', drawGrid = FALSE) %>%
+                dygraphs::dyAxis('y', label = 'Running Mean (nm)', drawGrid = FALSE) %>%
+                add_shades(periods = shades_df, color = shade_col) %>%
+                dygraphs::dyRangeSelector(fillColor ='white', strokeColor = color[[1]])
+     
+     setProgress(0.77, detail = "Plotting something...")
+     d <- data.frame(index = (1:length(overlay)/5000),
+                    raw = flip_raw[1:length(overlay)],
+                    model = overlay)
   
-  periods_df <- data.frame(start = dygraph_periods$state_2_start/5000,
-                           stop = dygraph_periods$state_2_stop/5000)
+    periods_df <- data.frame(start = dygraph_periods$state_2_start/5000,
+                             stop = dygraph_periods$state_2_stop/5000)
    
- 
+    pni <- (peak_nm_index * conversion)/5000
+      
+   overlay_dy <-  dygraphs::dygraph(d) %>% #raw_data_dygraph
+                    dygraphs::dySeries('raw', color = '#242424', strokeWidth = 2) %>%
+                    dygraphs::dySeries('model', color = pink(),  strokeWidth = 2) %>%
+                    dygraphs::dyRangeSelector(fillColor ='white', strokeColor = color[[1]]) %>%
+                    add_shades(periods_df, color = '#ffd2df') %>% #raw_periods
+                    add_labels_hmm(measured_events, peak_nm_index = pni, labelLoc = 'bottom') %>% #results$events
+                    dygraphs::dyAxis('x', label = 'seconds', drawGrid = FALSE) %>%
+                    dygraphs::dyAxis('y', label = 'nm') %>%
+                    dygraphs::dyUnzoom()
 
  
-#'
-#'
-#' Plots of the running mean vs. running variance.
-#' This provides insight into how the model divided data into either the baseline or event populations.
-#+ echo=FALSE, message = FALSE, fig.width = 16, fig.height = 6
-mean_var_tib <- tibble(rm = hmm_identified_events$run_mean,
-                       rv = hmm_identified_events$run_var,
-                       state = paste('State', hmm_identified_events$state))
-
-
-mv1 <- ggplot2::ggplot(mean_var_tib)+
-  geom_jitter(aes(x = rm, y = rv, color = state), size = 3, alpha = 0.5)+
-  scale_color_manual(values = RColorBrewer::brewer.pal(8, 'Dark2'))+
-  ggtitle('Mean-Variance (overlayed)')+
-  ylab('Running Variance (nm)')+
-  xlab('Running Mean (nm)')+
-  theme_linedraw(base_size = 18)+
-  theme(legend.position = 'none',
-        panel.grid.major = element_blank(),
-        panel.grid.minor = element_blank())
-mv2 <- ggplot(mean_var_tib)+
-  geom_jitter(aes(x = rm, y = rv, color = state), size = 3, alpha = 0.5)+
-  scale_color_manual(values = RColorBrewer::brewer.pal(8, 'Dark2'))+
-  facet_wrap(~state)+
-  ggtitle('Mean-Variance (separate by state)')+
-  ylab('')+
-  xlab('Running Mean (nm)')+
-  theme_linedraw(base_size = 18)+
-  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
-
-mv_state_plot <- gridExtra::grid.arrange(mv1, mv2, nrow = 1)
-
-setProgress(0.8, detail = "Calculating event frequency")
+    #
+    #
+    # Plots of the running mean vs. running variance.
+    # This provides insight into how the model divided data into either the baseline or event populations.
+    # echo=FALSE, message = FALSE, fig.width = 16, fig.height = 6
+    mean_var_tib <- tibble(rm = hmm_identified_events$run_mean,
+                           rv = hmm_identified_events$run_var,
+                           state = paste('State', hmm_identified_events$state))
+    
+    
+    mv1 <- ggplot2::ggplot(mean_var_tib)+
+      geom_jitter(aes(x = rm, y = rv, color = state), size = 3, alpha = 0.5)+
+      scale_color_manual(values = c(pink(), purple()))+
+      ggtitle('Mean-Variance (overlayed)')+
+      ylab('Running Variance (nm)')+
+      xlab('Running Mean (nm)')+
+      theme_black(base_size = 18)+
+      theme(legend.position = 'none',
+            panel.grid.major = element_blank(),
+            panel.grid.minor = element_blank())
+    mv2 <- ggplot(mean_var_tib)+
+      geom_jitter(aes(x = rm, y = rv, color = state), size = 3, alpha = 0.5)+
+      scale_color_manual(values = c(pink(), purple()))+
+      facet_wrap(~state)+
+      ggtitle('Mean-Variance (by state)')+
+      ylab('')+
+      xlab('Running Mean (nm)')+
+      theme_black(base_size = 18)+
+      theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+    
+    mv_state_plot <- gridExtra::grid.arrange(mv1, mv2, nrow = 1)
+    
+    setProgress(0.8, detail = "Calculating event frequency")
 
 
         
@@ -620,13 +648,9 @@ setProgress(0.8, detail = "Calculating event frequency")
                  
         
         results_data <- list(events = measured_events,
-                        #s2n = var_signal_to_noise,
-                        ensemble_avg = ensemble_avg_df,
-                        event_freq = event_freq$data
-                        #dygraph_master_list = dygraph_master_list,
-                        #mv_state_plot = mv_state_plot,
-                        #hmm_fit = hmm_fit
-                        )
+                             ensemble_avg = ensemble_avg_df,
+                             event_freq = event_freq$data,
+                             hm_model_data = hmm_identified_events)
         
     
         setProgress(0.9, detail = "Saving Data")            
@@ -642,19 +666,18 @@ setProgress(0.8, detail = "Calculating event frequency")
        saveRDS(obs_trap_data, file = trap_data_rds$rds_file_path[[folder]])
         
        setProgress(0.95, detail = "Saving Viz")    
-        plot_data <- list(events = measured_events,
-                           periods = dygraph_periods,
+        
+       plot_data <- list( events = measured_events,
                            peak_nm_index = (peak_nm_index * conversion)/5000,
-                           dy_rv = dy_rv, 
-                           dy_rm = dy_rm,
                            shades_df = shades_df,
-                           c =  RColorBrewer::brewer.pal(8, 'Dark2'),
-                           raw_data_dygraph = d,
                            raw_periods = periods_df, 
                            event_freq_plot = event_freq$plot,
                            s2n = var_signal_to_noise,
                            mv_state_plot = mv_state_plot,
-                           hmm_fit = hmm_fit)
+                           hmm_fit = hmm_fit,
+                           rv_dy = rv_dy,
+                           rm_dy = rm_dy,
+                           overlay_dy = overlay_dy )
         
                 
         viz <- trap_data_rds[folder, ] %>% 
@@ -677,7 +700,7 @@ setProgress(0.8, detail = "Calculating event frequency")
                                 " ",
                                 trap_data_rds$obs[[folder]],
                                 ". Error Message: ",
-                                as.character(e)), type = 'warning')
+                                as.character(e)), type = 'warning', duration = NULL)
         writeLines(paste0("Analysis error in ",
                           trap_data_rds$date[[folder]],
                           " ",
@@ -721,6 +744,8 @@ event_frequency <- function(processed_data, rle_object, conversion){
   
   #remove the last row if trace ends in state 1
   # because there is no event after the last state 1
+  
+  
   start_event <- rle_object %>%
     dplyr::mutate(cumsum = cumsum(lengths),
                   start_event = (cumsum + 1)*round(conversion)) %>%
@@ -728,6 +753,11 @@ event_frequency <- function(processed_data, rle_object, conversion){
     head(-1) %>%
     dplyr::pull(start_event)
   
+  end_event <-   rle_object %>%
+    dplyr::mutate(cumsum = cumsum(lengths),
+                  end_event = (cumsum + 1)*round(conversion)) %>%
+    dplyr::filter(values == 2) %>%
+    dplyr::pull(end_event)
   
   #make a df where each row has 3 columns:
   #1) event start index
@@ -737,9 +767,23 @@ event_frequency <- function(processed_data, rle_object, conversion){
                                                          begin = ((seq_len(seconds_in_trace)*5000)-4999),
                                                          end = seq_len(seconds_in_trace)*5000))
   
+  
+  end_freq_df <- purrr::map_dfr(end_event, ~tibble::tibble(end_event = .x,
+                                                         begin = ((seq_len(seconds_in_trace)*5000)-4999),
+                                                         end = seq_len(seconds_in_trace)*5000))
+  
+  
   #test to see if the event is 'between' or in what second interval
   find_it <- freq_df %>%
     dplyr::mutate(is_in = purrr::pmap_lgl(freq_df, ~dplyr::between(..1, ..2, ..3))) %>%
+    dplyr::group_by(begin, end) %>%
+    dplyr::summarize(freq = sum(is_in)) %>%
+    tibble::rownames_to_column('second') %>%
+    dplyr::mutate(second = as.numeric(second))
+  
+  
+  find_it_end <- end_freq_df %>%
+    dplyr::mutate(is_in = purrr::pmap_lgl(end_freq_df, ~dplyr::between(..1, ..2, ..3))) %>%
     dplyr::group_by(begin, end) %>%
     dplyr::summarize(freq = sum(is_in)) %>%
     tibble::rownames_to_column('second') %>%
@@ -751,15 +795,40 @@ event_frequency <- function(processed_data, rle_object, conversion){
   #   geom_histogram(aes(x = freq, y = stat(density)), binwidth = 1, color = 'black')
   #
   #'real-time' event frequency plot
-  g <- ggplot(find_it, aes(x = second, y = freq))+
-    geom_line(aes(group = 1))+
-    geom_point()+
+  g1 <- ggplot(find_it, aes(x = second, y = freq))+
+    geom_line(aes(group = 1), color = pink())+
+    geom_point(color = pink())+
+    scale_x_continuous('', breaks = seq(0, nrow(find_it), by = 10))+
+    ylab('Events Starting')+
+   # ggtitle("Events starting each second")+
+    theme_black(base_size = 16)+
+    theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+  
+  g2 <- ggplot(find_it_end, aes(x = second, y = freq))+
+    geom_line(aes(group = 1) , color = purple())+
+    geom_point(color = purple())+
+    scale_x_continuous('', breaks = seq(0, nrow(find_it_end), by = 10))+
+    ylab('Events Ending')+
+    #ggtitle("Events ending each second")+
+    theme_black(base_size = 16)+
+    theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+  
+  find_it$diff<- find_it$freq - find_it_end$freq
+  
+  g3 <- ggplot(find_it, aes(x = second, y = diff))+
+    geom_line(aes(group = 1), color = green() )+
+    geom_point(color = green() )+
     scale_x_continuous('Seconds', breaks = seq(0, nrow(find_it), by = 10))+
-    ylab('Events')+
-    ggtitle("'Real-time' Event Frequency")+
-    theme_classic(base_size = 18)
+    ylab('Diff')+
+    #ggtitle("Difference")+
+    theme_black(base_size = 16)+
+    theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
   
   
+ g <- gridExtra::grid.arrange(g1, g2,g3, ncol = 1)
+  
+  
+
   list(data = find_it,
        plot = g)
        

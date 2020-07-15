@@ -48,7 +48,7 @@ mod_hm_model_ui <- function(id){
                               label = "Run Analysis",
                               icon = icon("running"),
                               width = "100%",
-                              style = ' margin-top: 25px;')
+                              style = ' margin-top: 25px; color: #fff; background-color: #F012BE;')
              
     ), 
     
@@ -57,7 +57,7 @@ mod_hm_model_ui <- function(id){
         actionButton(ns('view_results'), 
                      'View Results',
                      width = '100%',
-                     icon = icon('line-graph'),
+                     icon = icon('area-chart'),
                      style = 'margin-bottom: 25px;'),
         shinyWidgets::radioGroupButtons(
           inputId = ns('quality_control'),
@@ -65,6 +65,7 @@ mod_hm_model_ui <- function(id){
           choices = c("No" = FALSE,
                       "Yes" = TRUE),
           justified = TRUE,
+          selected = FALSE,
           checkIcon = list(
             yes = tags$i(class = "fa fa-check-square",
                          style = "color: black"),
@@ -74,7 +75,7 @@ mod_hm_model_ui <- function(id){
         actionButton(ns('save_review'), 
                      'Save Review', 
                      width = '100%',
-                     style = "color: #fff; background-color: #b80f07; margin-top: 25px;")
+                     style = "color: #fff; background-color: #605ca8; margin-top: 25px;")
         
     )
       ), #col close
@@ -82,7 +83,7 @@ mod_hm_model_ui <- function(id){
     column(9,
     box(width = NULL, title = 'Status Table',
         actionButton(ns('status_table'), 'Refresh status table'),
-        gt::gt_output(ns('table'))
+        gt::gt_output(ns('table')) %>%  shinycssloaders::withSpinner(type = 8, color = "#373B38")
     ),
     ) # col close
     ),
@@ -94,6 +95,7 @@ mod_hm_model_ui <- function(id){
 
           fluidRow(
       column(2,
+             valueBoxOutput(ns('observation'), width = NULL),
              valueBoxOutput(ns('n_events'), width = NULL),
              valueBoxOutput(ns('s2n'), width = NULL)
       ),
@@ -106,13 +108,13 @@ mod_hm_model_ui <- function(id){
              box(width = 4, title = 'HM-Model Summary',
                  verbatimTextOutput(ns('hm_model_summary')) %>% shinycssloaders::withSpinner(type = 8, color = "#373B38")
              ),
-      box(width = 8, title = 'Event Frequency',
+      box(width = 8, title = 'Real Time Event Frequency',
           plotOutput(ns('event_freq')) %>% shinycssloaders::withSpinner(type = 8, color = "#373B38")
       )
       ), #rowclose
     
     fluidRow(
-      box(width = 12, title = 'HM-Model Data (Running Mean & Variance)',
+      box(width = 12, title = 'HM-Model Data (Running Mean & Variance)', collapsible = T, collapsed = T, 
           dygraphs::dygraphOutput(ns('hm_model_dygraph1'), height = "250px") %>% shinycssloaders::withSpinner(type = 8, color = "#373B38"),
           dygraphs::dygraphOutput(ns('hm_model_dygraph2'), height = "250px") %>% shinycssloaders::withSpinner(type = 8, color = "#373B38")
       ),
@@ -125,8 +127,8 @@ mod_hm_model_ui <- function(id){
       
     #),
     fluidRow(
-      box(width = 12, title = 'Raw Data + HM-Model Overlay',
-             dygraphs::dygraphOutput(ns('overlay_dygraph')) %>% shinycssloaders::withSpinner(type = 8, color = "#373B38")
+      box(width = 12, title = 'Raw Data + HM-Model Overlay', collapsible = T, collapsed = T, 
+             dygraphs::dygraphOutput(ns('overlay_dygraph'), height = '400px') %>% shinycssloaders::withSpinner(type = 8, color = "#373B38")
     )
     ) #rowclose
       ) #results box close
@@ -140,16 +142,24 @@ mod_hm_model_ui <- function(id){
 mod_hm_model_server <- function(input, output, session, f){
   ns <- session$ns
  
+  
 
   observeEvent(input$analyze_trap, {
+    golem::print_dev(input$which_obs)
     if(is_empty(f$date_input)) showNotification('Select a date', type = 'error')
     req(!is_empty(f$date_input))
-    if(input$which_obs =='single'){
+    if(input$which_obs == 'single'){
       if(is_empty(f$obs_input)) showNotification('Select an obs', type = 'error')
       req(!is_empty(f$obs_input))
+      if(substring(f$obs_input, 1, 3) != 'obs') showNotification('Select an obs', type = 'error')
+      req(substring(f$obs_input, 1, 3) == 'obs')
     }
-    showNotification('Analysis will begin shortly...', type = 'message')
-    hm$analyze <-   hm$analyze + 1
+      
+      showNotification('Analysis will begin shortly...', type = 'message')
+      
+    
+      hm$analyze <-   hm$analyze + 1
+      
   })
   
   observeEvent(hm$analyze, ignoreInit = T, {
@@ -174,7 +184,7 @@ mod_hm_model_server <- function(input, output, session, f){
                                    title =  "Hidden Markov Analysis Complete",
                                    text = "Results saved to 'lasertrapr' folder",
                                    type = "success")
-    
+     shinyjs::click('status_table')
   })
   
   hm <- reactiveValues(go = 0, analyze = 0)
@@ -196,66 +206,44 @@ mod_hm_model_server <- function(input, output, session, f){
      setProgress(0.7)
      viz <- readRDS(p$path)
      setProgress(0.9)
-    hm$results <- viz$plot[[1]]
-    setProgress(1)
+      hm$results <- viz$plot[[1]]
+      setProgress(1)
      })
   })
    output$hm_model_dygraph1 <- dygraphs::renderDygraph({
      req(hm$results)
      showNotification('Loading run var graph', type = 'message')
-     dy_rv <- hm$results$dy_rv
-     c <- hm$results$c
-     shades_df <- hm$results$shades_df
-     shade_col <- '#E2E2E2'
-     
-     dygraphs::dygraph(dy_rv, group = 'group') %>%
-       dygraphs::dySeries('rv', color = c[[1]], strokeWidth = 2) %>%
-       dygraphs::dyAxis('x', axisLineColor = '#FFFFFF', drawGrid = FALSE, axisLabelColor = '#FFFFFF') %>%
-       dygraphs::dyAxis('y', label = 'Running Variance', drawGrid = FALSE,) %>%
-       add_shades(periods = shades_df, color = shade_col) %>%
-       dygraphs::dyUnzoom()
+     hm$results$rv_dy
    })
   output$hm_model_dygraph2 <- dygraphs::renderDygraph({
     req(hm$results)
     showNotification('Loading run mean graph', type = 'message')
-    dy_rm <- hm$results$dy_rm
-    c <- hm$results$c
-    shades_df <- hm$results$shades_df
-    shade_col <- '#E2E2E2'
-    
-    dygraphs::dygraph(dy_rm, group = 'group') %>%
-      dygraphs::dySeries('rm', color = c[[2]],  strokeWidth = 2) %>%
-      dygraphs::dyAxis('x', label = 'Window', drawGrid = FALSE) %>%
-      dygraphs::dyAxis('y', label = 'Running Mean (nm)', drawGrid = FALSE) %>%
-      add_shades(periods = shades_df, color = shade_col) %>%
-      dygraphs::dyRangeSelector(fillColor =c[[3]], strokeColor = c[[8]])
-    
+    hm$results$rm_dy
   })
   
   
   output$overlay_dygraph <- dygraphs::renderDygraph({
     req(hm$results)
     showNotification('Loading raw data overlay', type= 'message')
-    d <- hm$results$raw_data_dygraph
-    events <- hm$results$events
-    periods_df <- hm$results$raw_periods
-    pni <- hm$results$peak_nm_index
-    dygraphs::dygraph(d) %>% #raw_data_dygraph
-      dygraphs::dySeries('raw', color = '#242424', strokeWidth = 2) %>%
-      dygraphs::dySeries('model', color = '#ff41c8',  strokeWidth = 2) %>%
-      dygraphs::dyRangeSelector() %>%
-      add_shades(periods_df, color = '#ffd2df') %>% #raw_periods
-      add_labels_hmm(events, peak_nm_index = pni, labelLoc = 'bottom') %>% #results$events
-      dygraphs::dyAxis('x', label = 'seconds', drawGrid = FALSE) %>%
-      dygraphs::dyAxis('y', label = 'nm') %>%
-      dygraphs::dyUnzoom()
+    hm$results$overlay_dy
     
   })
   
   output$event_freq <- renderPlot({
     req(hm$results)
     showNotification('Loading event frequency', type = 'message')
-    hm$results$event_freq_plot
+    plot(hm$results$event_freq_plot)
+  })
+  
+  output$observation <- renderValueBox({
+    req(hm$results)
+    valueBox(
+      f$obs_input,
+      paste(f$conditions$name, f$date_input),
+      icon = icon("folder-open"),
+      color = 'fuchsia'
+    )
+    
   })
   output$n_events <- renderValueBox({
     req(hm$results)
@@ -263,7 +251,7 @@ mod_hm_model_server <- function(input, output, session, f){
       nrow(hm$results$events),
       "Events",
       icon = icon("slack-hash"),
-      color = 'fuchsia'
+      color = 'purple'
     )
     
   })
@@ -274,7 +262,7 @@ mod_hm_model_server <- function(input, output, session, f){
       round(hm$results$s2n, 2),
       "Signal-to-noise",
       icon = icon("signal"),
-      color = 'purple'
+      color = 'fuchsia'
     )
     
   })
@@ -347,18 +335,19 @@ mod_hm_model_server <- function(input, output, session, f){
         columns = vars(Processor, `mV-to-nm`, `nm-to-pN`, Include, Status, Analyzer, Report, Review)
       ) %>% 
       gt::tab_style(
-        style = gt::cell_fill(color = "red"),
+        style = gt::cell_fill(color = purple()),
         locations = gt::cells_body(
           rows = Status %in% c('grouped', 'processed'))
       ) %>% 
       gt::tab_style(
-        style = gt::cell_fill(color = "green"),
+        style = gt::cell_fill(color = pink()),
         locations = gt::cells_body(
-          rows = Report == 'success')) %>% 
+          rows = Status == 'analyzed' & !is.na(Review))
+        ) %>% 
       gt::tab_style(
-        style = gt::cell_fill(color = "orange"),
+        style = gt::cell_fill(color = maroon()),
         locations = gt::cells_body(
-          rows = Report != 'success' & Status == 'analyzed'))
+          rows = Status == 'analyzed' & is.na(Review)))
       
     
   })
@@ -366,8 +355,28 @@ mod_hm_model_server <- function(input, output, session, f){
   
   
   
+  #### SAVE ####
   
+  observeEvent(input$save_review, {
+    if(is_empty(f$obs_input)) showNotification('Select an obs', type = 'error')
+    req(!is_empty(f$obs_input))
+    if(substring(f$obs_input, 1, 3) != 'obs') showNotification('Select an obs', type = 'error')
+    req(substring(f$obs_input, 1, 3) == 'obs')
   
+    withProgress(message = 'Saving Review', {
+      
+      td <- list_files(f$obs$path, pattern = 'trap-data.rds')
+      trap <- readRDS(td$path)
+      setProgress(0.7)
+      trap_reviewed <- trap %>% 
+        dplyr::mutate(quality_control = input$quality_control)
+      
+      saveRDS(trap_reviewed, file = trap$rds_file_path)
+      setProgress(1, detail = 'Done')
+    })
+     showNotification('Review saved' , type = 'message')
+     shinyjs::click('status_table')
+  })
   
   
   # output$obs_2_review <-  renderPrint({

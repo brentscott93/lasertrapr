@@ -20,7 +20,7 @@ mod_clean_data_ui <- function(id){
     ),
     
     fluidRow(
-      box(width = 9, title = "Graph Options",
+      box(width = 9, title = "Graph Options", status = 'success',
           fluidRow(
             column(5,
                    
@@ -78,14 +78,14 @@ mod_clean_data_ui <- function(id){
                    column(3,
                           
                           actionButton(ns('graph'), 'Graph', width = '100%',
-                                       style="color: #fff; background-color: #05a029; margin-top: 25px;")
+                                       style="color: #fff; background-color: #F012BE; margin-top: 25px;")
                    ),
                      
                   # ) #conditional close
           ),
           fluidRow(
             column(12, 
-                 
+                 shinyWidgets::setSliderColor("#F012BE", 1),
                 uiOutput(ns("trap_filter")),
             )
             # column(2, 
@@ -235,7 +235,7 @@ mod_clean_data_ui <- function(id){
                          placeholder = 'Equipartition Value'),
                verbatimTextOutput(ns('current_mv2nm')),
                actionButton(ns('save'), 'Save', width = '100%',  
-                            style="color: #fff; background-color: #b80f07; margin-top: 25px;")
+                            style="color: #fff; background-color: #605ca8; margin-top: 25px;")
        
         ) # col close
       ) # row close
@@ -694,7 +694,7 @@ mod_clean_data_server <- function(input, output, session, f){
       ggtitle('Select area on plot to set baseline population')+
       ylab('Variance')+
       xlab('Mean')+
-      scale_fill_gradient(low = 'green', high = 'red')+
+      scale_fill_gradient(low  = pink(), high= purple())+
       theme_classic(base_size = 12)+
       theme(panel.background = element_rect(fill = 'black'),
             legend.position = 'none')
@@ -1012,12 +1012,12 @@ mod_clean_data_server <- function(input, output, session, f){
         columns = vars(Processor, `mV-to-nm`, `nm-to-pN`, Include, Status)
       ) %>% 
       gt::tab_style(
-        style = gt::cell_fill(color = "red"),
+        style = gt::cell_fill(color = purple()),
         locations = gt::cells_body(
           rows = Status == 'grouped')
       ) %>% 
       gt::tab_style(
-        style = gt::cell_fill(color = "green"),
+        style = gt::cell_fill(color = pink()),
         locations = gt::cells_body(
           rows = Status == 'processed'))
       
