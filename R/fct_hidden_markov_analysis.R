@@ -805,7 +805,7 @@ event_frequency <- function(processed_data, rle_object, conversion){
     
   
   find_it$freq_stop <- find_it_end$freq_stop
-  find_it$diff <- find_it$freq - find_it_end$freq
+  find_it$diff <- find_it$freq_start - find_it_end$freq_stop
   
   
   g3 <- ggplot(find_it, aes(x = second, y = diff))+
