@@ -19,7 +19,7 @@ hidden_markov_analysis <- function(trap_data_rds, f, em_random_start){
     #same code in the observer in app before this function call
     # trap_data_rds <- get_status_table(f$date, f$date_input)
 
-     #trap_data_rds <- trap
+    # trap_data_rds <- trap
     # rds_file_path <- list_files('~/lasertrapr/project_new/new/2020-07-13/obs-01', pattern = 'trap-data.rds', recursive = T)
     # trap_data_rds %<>% mutate(rds_file_path = rds_file_path$path )
     # em_random_start <- FALSE
@@ -640,6 +640,7 @@ hidden_markov_analysis <- function(trap_data_rds, f, em_random_start){
 
         
       
+    
         report_data <- "event_freq_fail"
         #### EVENT FREQUENCY ####
         event_freq <- event_frequency(processed_data, rle_object, conversion)
