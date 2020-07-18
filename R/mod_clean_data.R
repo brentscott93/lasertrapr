@@ -686,8 +686,8 @@ mod_clean_data_server <- function(input, output, session, f){
     base$mv_df <- tibble(mean = RcppRoll::roll_mean(dg_data$data$bead, n = 30, align = 'left', fill = NULL),
                     var = RcppRoll::roll_var(dg_data$data$bead, n = 30, align = 'left', fill = NULL))
     
-    if(mean(base$mv_df$var) <= 5) showNotification('Convert your data to nm before calculating step size.', type = 'error')
-    req(mean(base$mv_df$var) > 5)
+    if(input$mv2nm <= 1) showNotification('Convert your data to nm before calculating step size.', type = 'error')
+    req(input$mv2nm > 1)
    # colorz <- RColorBrewer::brewer.pal(8, 'RdPu')
     ggplot(base$mv_df)+
       geom_hex(aes(mean, var), bins = 75)+
