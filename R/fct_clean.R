@@ -17,8 +17,10 @@ move_obs <- function(f, trap_selected_date, trap_obs, trap_selected_obs,  trap_f
   #make destination folder
   withProgress(message = 'Moving Files', value = 0, max = 1, min = 0, {
     
-   # number_obs <- nrow(trap_obs)
-    
+#for dev   # trap_selected_date <- '/Users/brentscott/Desktop/2020-01-07'
+#for dev    #trap_selected_obs <- "/Users/brentscott/Desktop/2020-01-07/obs-01"
+#for dev   # number_obs <- nrow(trap_obs)
+#for dev    #trap_obs <- length(list.files(trap_selected_date, pattern = 'obs-'))
     new_obs <- trap_obs + 1
     
     if(new_obs < 10){
@@ -31,6 +33,7 @@ move_obs <- function(f, trap_selected_date, trap_obs, trap_selected_obs,  trap_f
     incProgress(amount = .25, detail = "Creating new folder")
     dir.create(path = new_folder_path)
     
+    #for dev #trap_files <- list_files(trap_selected_obs, pattern = 'Data')
     #identify folders on drive and move
     start_of_file_indices <- seq(0,
                                  by = 5,
@@ -64,7 +67,7 @@ move_obs <- function(f, trap_selected_date, trap_obs, trap_selected_obs,  trap_f
     
     incProgress(amount = .75, detail = "Moving files")
     
-    purrr::map2(files_to_move_paths, new_files_names, file.rename)
+    purrr::walk2(files_to_move_paths, new_files_names, file.rename)
     
     new_paths <- list_files(new_folder_path) %>%
       dplyr::filter(str_detect(name, "Data")) %>%
