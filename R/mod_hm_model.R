@@ -177,8 +177,9 @@ mod_hm_model_server <- function(input, output, session, f){
     
       trap_data_rds %<>% dplyr::filter(include == T)
    
-   
-      hidden_markov_analysis(trap_data_rds, f, em_random_start = em_start)
+      withProgress(message = 'Analyzing trap data', value = 0, max = 1, min = 0, {
+       hidden_markov_analysis(trap_data_rds, f, em_random_start = em_start, is_shiny = T)
+       })
       
       shinyWidgets::sendSweetAlert(session = session,
                                    title =  "Hidden Markov Analysis Complete",

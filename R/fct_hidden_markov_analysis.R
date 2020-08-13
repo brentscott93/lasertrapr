@@ -6,8 +6,8 @@
 #' @param em_random_start A logical indicating if the EM-Algorithm should randomly start fitting gaussians.
 
 
-hidden_markov_analysis <- function(trap_data_rds, f, em_random_start){
-  withProgress(message = 'Analyzing trap data', value = 0, max = 1, min = 0, {
+hidden_markov_analysis <- function(trap_data_rds, f, em_random_start, is_shiny = F){
+ # withProgress(message = 'Analyzing trap data', value = 0, max = 1, min = 0, {
     # param trap_data_rds A dataframe containing the row-binded trap-data.rds files
     # aram f The f reactive value object containing all folder file paths and names
     # param em_random_start Logical. TRUE/FALSE
@@ -41,7 +41,9 @@ hidden_markov_analysis <- function(trap_data_rds, f, em_random_start){
                   
         report_data <- "failed_to_initialize"
     
-        setProgress(0.05, paste("Analyzing", trap_data_rds$conditions[[folder]], trap_data_rds$obs[[folder]]))
+        if(is_shiny == T) setProgress(0.05, paste("Analyzing", trap_data_rds$conditions[[folder]], trap_data_rds$obs[[folder]]))
+        
+        
         
         mv2nm <- trap_data_rds$mv2nm[[folder]]
         nm2pn <- trap_data_rds$nm2pn[[folder]]
@@ -50,10 +52,12 @@ hidden_markov_analysis <- function(trap_data_rds, f, em_random_start){
         
         #### RUNNING MEAN & VAR ####
         w_width <- 150
-        setProgress(0.1, detail = "Calculating Running Mean")
+        
+        if(is_shiny == T) setProgress(0.1, detail = "Calculating Running Mean")
+        
         run_mean <- na.omit(RcppRoll::roll_meanl(processed_data, n = w_width, by = w_width/2))
         
-        setProgress(0.15, detail = "Calculating Running Variance")
+        if(is_shiny == T) setProgress(0.15, detail = "Calculating Running Variance")
         run_var <- na.omit(RcppRoll::roll_varl(processed_data, n = w_width, by = w_width/2))
       
         running_table <- tibble(run_mean = run_mean,
@@ -134,7 +138,7 @@ hidden_markov_analysis <- function(trap_data_rds, f, em_random_start){
         
         var_signal_to_noise <- base_var/event_var
 
-        setProgress(0.25, detail = "HM-Model Complete")
+        if(is_shiny == T) setProgress(0.25, detail = "HM-Model Complete")
 
         
         
@@ -169,7 +173,7 @@ hidden_markov_analysis <- function(trap_data_rds, f, em_random_start){
         rle_object_4_duration <- rle_object %>%
           dplyr::filter(values == 2)
         
-        setProgress(0.4)
+        if(is_shiny == T) setProgress(0.4)
         
         if(hmm_posterior$state[[length(hmm_posterior$state)]] == 2){
           #make a copy of data for time off analysis
@@ -223,7 +227,7 @@ hidden_markov_analysis <- function(trap_data_rds, f, em_random_start){
         regroup_data <- bind_cols(state_1_end = split_data[[1]]$cumsum, state_2_end = split_data[[2]]$cumsum)
         
         
-        setProgress(0.5)
+        if(is_shiny == T) setProgress(0.5)
         #loop over regrouped data to find the mean of the events displacements
         step_sizes <- vector("list", length = nrow(regroup_data)) #allocate space for output storage of loop
         peak_nm_index <- vector()
@@ -299,7 +303,7 @@ hidden_markov_analysis <- function(trap_data_rds, f, em_random_start){
                         force = displacement_nm*nm2pn)
         
         
-        setProgress(0.6)
+        if(is_shiny == T) setProgress(0.6)
         #find better time on
         
        
@@ -323,7 +327,7 @@ hidden_markov_analysis <- function(trap_data_rds, f, em_random_start){
           is_positive <- ifelse(is_positive == TRUE, FALSE, TRUE)
         }
         
-        setProgress(0.65, detail = 'Forward Ensemble')
+        if(is_shiny == T) setProgress(0.65, detail = 'Forward Ensemble')
         #played around with the numbers of where to 'chunk' out the data
         #art of balancing just the right amount of data to capture the transition
         #without getting too much to increase chance of wrong changepoint being detected
@@ -577,7 +581,7 @@ hidden_markov_analysis <- function(trap_data_rds, f, em_random_start){
         
         
         ## SAVE OUTPUT ##
-        setProgress(0.75, detail = 'Savings stuff')
+        if(is_shiny == T) setProgress(0.75, detail = 'Savings stuff')
         
         #save ensemble data
         forward_ensemble_df <- bind_rows(forward_ensemble_average_data)
@@ -643,7 +647,7 @@ hidden_markov_analysis <- function(trap_data_rds, f, em_random_start){
                 add_shades(periods = shades_df, color = shade_col) %>%
                 dygraphs::dyRangeSelector(fillColor ='white', strokeColor = color[[1]])
      
-     setProgress(0.77, detail = "Plotting something...")
+     if(is_shiny == T) setProgress(0.77, detail = "Plotting something...")
      d <- data.frame(index = (1:length(overlay)/5000),
                     raw = flip_raw[1:length(overlay)],
                     model = overlay)
@@ -701,7 +705,7 @@ hidden_markov_analysis <- function(trap_data_rds, f, em_random_start){
     
     mv_state_plot <- gridExtra::grid.arrange(mv1, mv2, nrow = 1)
     
-    setProgress(0.8, detail = "Calculating event frequency")
+    if(is_shiny == T) setProgress(0.8, detail = "Calculating event frequency")
 
 
         
@@ -717,7 +721,7 @@ hidden_markov_analysis <- function(trap_data_rds, f, em_random_start){
                              event_freq = event_freq$data)
         
     
-        setProgress(0.9, detail = "Saving Data")            
+        if(is_shiny == T) setProgress(0.9, detail = "Saving Data")            
           
         report_data <- "success"
         obs_trap_data <- trap_data_rds[folder, ] %>% 
@@ -729,7 +733,7 @@ hidden_markov_analysis <- function(trap_data_rds, f, em_random_start){
         
        saveRDS(obs_trap_data, file = trap_data_rds$rds_file_path[[folder]])
         
-       setProgress(0.95, detail = "Saving Viz")    
+       if(is_shiny == T) setProgress(0.95, detail = "Saving Viz")    
         
        plot_data <- list( events = measured_events,
                            peak_nm_index = (peak_nm_index * conversion)/5000,
@@ -754,7 +758,7 @@ hidden_markov_analysis <- function(trap_data_rds, f, em_random_start){
         #summary(hmm_fit) will gve hmm model == sum_fit object
         #measured events
         
-        setProgress(0.97, 'Done with this one')
+        if(is_shiny == T) setProgress(0.97, 'Done with this one')
         
 
       }, error=function(e){
@@ -779,9 +783,7 @@ hidden_markov_analysis <- function(trap_data_rds, f, em_random_start){
     }
     
     close(error_file)
-    incProgress(1, detail = "Done!")
-    
-    })
+    if(is_shiny == T) setProgress(1, detail = "Done!")
     
 }
 
