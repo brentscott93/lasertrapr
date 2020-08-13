@@ -19,11 +19,11 @@ hidden_markov_analysis <- function(trap_data_rds, f, em_random_start, is_shiny =
     #same code in the observer in app before this function call
     # trap_data_rds <- get_status_table(f$date, f$date_input)
 
-    # trap_data_rds <- trap
-    # rds_file_path <- list_files('~/lasertrapr/project_new/new/2020-07-13/obs-01', pattern = 'trap-data.rds', recursive = T)
-    # trap_data_rds %<>% mutate(rds_file_path = rds_file_path$path )
-    # em_random_start <- FALSE
-    # trap_data_rds %<>% dplyr::filter(include == T)
+   # trap_data_rds <- trap
+    #rds_file_path <- list_files('~/lasertrapr/project_new/new/2020-07-13/obs-01', pattern = 'trap-data.rds', recursive = T)
+    #trap_data_rds %<>% mutate(rds_file_path = rds_file_path$path )
+    #em_random_start <- FALSE
+    #trap_data_rds %<>% dplyr::filter(include == T)
     
     hmm_initial_parameters <- c(0.98, 0.02,        #Initial state probabilities
                                 0.98, 0.02,         #transition probs s1 to s1/s2. These are guesses knowing they are stable states
@@ -35,7 +35,7 @@ hidden_markov_analysis <- function(trap_data_rds, f, em_random_start, is_shiny =
       tryCatch({
         not_ready <- is_empty(trap_data_rds$processed[[folder]])
         if(not_ready == T){
-          showNotification(paste0(trap_data_rds$obs[[folder]], ' not processed. Skipping...'), type = 'warning')
+          if(is_shiny == T) showNotification(paste0(trap_data_rds$obs[[folder]], ' not processed. Skipping...'), type = 'warning')
           next
           }
                   
@@ -64,7 +64,7 @@ hidden_markov_analysis <- function(trap_data_rds, f, em_random_start, is_shiny =
                                 run_var = run_var)
         
         #### HMM ####
-        
+        if(is_shiny == T) setProgress(0.18, detail = "HM-Model")
         report_data  <- "failed_HMM"
         
         seed <- floor(runif(1, 0, 1e6))
@@ -128,6 +128,7 @@ hidden_markov_analysis <- function(trap_data_rds, f, em_random_start, is_shiny =
           writeLines(c("Skipping",
                        trap_data_rds$obs[[folder]],
                        "HMM starts in State 2."), error_file);
+          if(is_shiny)showNotification('Skipping...HM-Model starts in state 2', type = 'warning')
           next
         } 
         
