@@ -354,6 +354,8 @@ hidden_markov_analysis <- function(trap_data_rds, f, em_random_start, is_shiny =
         bcp <- list()
         backwards_plots <- list()
         
+        better_displacements <- vector()
+        
         for(c in 1:nrow(forward_data)){
           #print(c)
           #get event data chunk
