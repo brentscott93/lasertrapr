@@ -429,7 +429,7 @@ hidden_markov_analysis <- function(trap_data_rds, f, em_random_start, is_shiny =
           
           
           #if no changepoint id'd skip
-          if(identical(cpts(forward_cpt_obj), numeric(0)) == TRUE){
+          if(identical(event_on, numeric(0)) == TRUE){
             better_time_on_starts[[c]] <- NA
             ensemble_keep1[[c]] <- FALSE
           } else {
@@ -441,7 +441,7 @@ hidden_markov_analysis <- function(trap_data_rds, f, em_random_start, is_shiny =
           }
           
           #do same for backwards
-          if(identical(cpts(backwards_cpt_obj), numeric(0)) == TRUE){
+          if(identical(event_off, numeric(0)) == TRUE){
             better_time_on_stops[[c]] <- NA
             ensemble_keep2[[c]] <- FALSE
             
@@ -454,7 +454,7 @@ hidden_markov_analysis <- function(trap_data_rds, f, em_random_start, is_shiny =
             bcp[[c]] <-  backwards_cpt_obj
             
           }
-          if(identical(cpts(forward_cpt_obj), numeric(0)) == TRUE | identical(cpts(backwards_cpt_obj), numeric(0)) == TRUE){
+          if(identical(event_on, numeric(0)) == TRUE | identical(event_off, numeric(0)) == TRUE){
             next
           }
           
@@ -489,9 +489,9 @@ hidden_markov_analysis <- function(trap_data_rds, f, em_random_start, is_shiny =
           
           
           forward_25 %<>% rbind(before_event) %>% 
-            mutate(is_positive = is_positive[[c]],
+            dplyr::mutate(is_positive = is_positive[[c]],
                    direction = 'forward') %>%
-            arrange(ensemble_index)
+            dplyr::arrange(ensemble_index)
           
           forward_ensemble_average_data[[c]] <- forward_25
           
@@ -515,12 +515,12 @@ hidden_markov_analysis <- function(trap_data_rds, f, em_random_start, is_shiny =
             
             extend_event_back <- c(rep(back_avg, time_diff), processed_data_tibble$data[ cp_start : (cp_off-1) ])
             
-            backwards_25 <- tibble(data = extend_event_back,
+            backwards_25 <- tibble::tibble(data = extend_event_back,
                                    ensemble_index = 100:199,
                                    event = c)
           }
           
-          after_event <- tibble(data = processed_data_tibble$data[ (cp_off) : (cp_off + 74) ],
+          after_event <- tibble::tibble(data = processed_data_tibble$data[ (cp_off) : (cp_off + 74) ],
                                 ensemble_index = 200:274,
                                 event = c)
           
