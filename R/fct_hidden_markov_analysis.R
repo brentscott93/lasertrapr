@@ -151,7 +151,9 @@ hidden_markov_analysis <- function(trap_data_rds, f, em_random_start){
         ## MEASURE EVENTS ##
         ## Calculate conversion between window length and data points
         #setup
-        conversion <- length(processed_data)/length(run_mean)
+       # conversion <- length(processed_data)/length(run_mean)
+        
+        conversion <- w_width/2
         
         #convert running mean object to tibble
         run_mean_tibble <- tibble::enframe(run_mean) %>%
@@ -300,16 +302,7 @@ hidden_markov_analysis <- function(trap_data_rds, f, em_random_start){
         setProgress(0.6)
         #find better time on
         
-        #played around with the numbers of where to 'chunk' out the data
-        #art of balancing just the right amount of data to capture the transition
-        #without getting too much to increase change of wrong changepoint being detected
-        #sometimes it seemed if event has a noisy spot the event start/end was detected
-        #resulting in negative time ons or poor time on estimates
-        forward_data <- tibble(s1_end = floor((regroup_data$state_1_end - 1.5)*conversion),
-                               s2_end = ceiling((regroup_data$state_1_end + 1)*conversion))
-        
-        backwards_data <- tibble(s2_end = floor((regroup_data$state_2_end - 0.5)*conversion),
-                                 s1_start = ceiling((regroup_data$state_2_end + 1.5)*conversion))
+       
         
         
         # event_length <- regroup_data %>%
@@ -321,8 +314,8 @@ hidden_markov_analysis <- function(trap_data_rds, f, em_random_start){
         
         #run_var_ensemble <-  running(processed_data_tibble$data, fun = var, width = 50, align = "left")
         #RcppRoll waaay faster
-        run_var_ensemble <- tibble(run_var_50 = na.omit(RcppRoll::roll_varl(processed_data_tibble$data, n = 50)),
-                                   index = 1:length(run_var_50))
+        run_var_ensemble <- tibble(run_var_5 = na.omit(RcppRoll::roll_varl(processed_data_tibble$data, n = 5)),
+                                   index = 1:length(run_var_5))
         
         did_it_flip <- negative_events > positive_events
         is_positive <- calculate_mean_differences$diff > 0
@@ -331,122 +324,122 @@ hidden_markov_analysis <- function(trap_data_rds, f, em_random_start){
         }
         
         setProgress(0.65, detail = 'Forward Ensemble')
-        #due to sliding windows there is a dead time of 15ms
-        #so we can use that as our ensemble length and just take the first 75 datapoints (15 ms)
-        #of each event to have equal length event. only maybe 1 running window long window events may have some
-        #non-event data, but these events should be rare and will be averaged out.
-        ensemble_length <- 75 #data points, 15ms, 0.015 seconds
+        #played around with the numbers of where to 'chunk' out the data
+        #art of balancing just the right amount of data to capture the transition
+        #without getting too much to increase chance of wrong changepoint being detected
+        #sometimes it seemed if event has a noisy spot the event start/end was detected
+        #resulting in negative time ons or poor time on estimates
+        
+        forward_data <- tibble(s1_end = (regroup_data$state_1_end - 1)*conversion,
+                               s2_end = (regroup_data$state_1_end + 1)*conversion)
+        
+        backwards_data <- tibble(s2_end = (regroup_data$state_2_end - 0)*conversion,
+                                 s1_start = (regroup_data$state_2_end + 2)*conversion)
+        
+        
+        ensemble_length <- 100 #data points, 25ms, 0.015 seconds
         better_time_on_starts <- vector()
         forward_ensemble_average_data <- vector("list")
         ensemble_keep1 <- vector()
+        fcp <- list()
+        forward_plots <- list()
+        
+        better_time_on_stops <- vector()
+        backwards_ensemble_average_data <- vector("list")
+        ensemble_keep2 <- vector()
+        bcp <- list()
+        backwards_plots <- list()
+        
         for(c in 1:nrow(forward_data)){
+          #print(c)
           #get event data chunk
           forward_chunk <- processed_data_tibble[forward_data$s1_end[[c]] : forward_data$s2_end[[c]],]
-          ensemble_chunk <- run_var_ensemble[forward_data$s1_end[[c]] : forward_data$s2_end[[c]],]
+          forward_ensemble_chunk <- run_var_ensemble[forward_data$s1_end[[c]] : forward_data$s2_end[[c]],]
+          
+          backwards_chunk <- processed_data_tibble[backwards_data$s2_end[[c]] : backwards_data$s1_start[[c]],]
+          backwards_ensemble_chunk <- run_var_ensemble[backwards_data$s2_end[[c]] : backwards_data$s1_start[[c]],]
+          
           #if chunk has na values skip
           #this should be rare
           #mostly if the last event does not have enough state1 data after it
           #doing this helped avoid errors
           has_na <- table(is.na(forward_chunk$data))
-          has_na2 <- table(is.na(ensemble_chunk$run_var_50))
+          has_na2 <- table(is.na(backwards_chunk$data))
           if(length(has_na) > 1 | length(has_na2) > 1){
             better_time_on_starts[[c]] <- NA
+            better_time_on_stops[[c]] <- NA
             ensemble_keep1[[c]] <- FALSE
+            ensemble_keep2[[c]] <- FALSE
             next
           }
           
-          forward_cpt_obj <- changepoint::cpt.mean(ensemble_chunk$run_var_50, method = "AMOC")
+          #changepoint on transition into events
+          forward_cpt_obj <- changepoint::cpt.mean(forward_ensemble_chunk$run_var_5, method = "AMOC")
           event_on <- changepoint::cpts(forward_cpt_obj)
           
-          #visualize the changepoint on raw data and running var
-          # a <- ggplot()+
+          #changepoint on transition out of events
+          backwards_cpt_obj <- changepoint::cpt.mean(backwards_ensemble_chunk$run_var_5, method = "AMOC")
+          event_off <- changepoint::cpts(backwards_cpt_obj)
+          
+          # visualize the changepoint on raw data and running var
+          # forward_plots[[c]] <- ggplot()+
+          #   geom_point(aes(x = 1:nrow(forward_chunk), y = forward_chunk$data), color = 'gold')+
           #   geom_line(aes(x = 1:nrow(forward_chunk), y = forward_chunk$data), color = 'gold')+
-          #    geom_vline(aes(xintercept = event_on))+
-          #    theme_dark()
-          #
-          # b <- ggplot()+
-          #   geom_point(aes(x = 1:nrow(ensemble_chunk), y = ensemble_chunk$run_var_50), color = 'red')+
-          #    geom_vline(aes(xintercept = event_on))
-          #
-          # gridExtra::grid.arrange(a, b)
+          #   geom_point(aes(x = event_on, y = forward_chunk$data[event_on]), color = 'lawngreen', shape = 1, size = 2, stroke = 2)+
+          #   ylab('nm')+
+          #   xlab('DPs')+
+          #   ggtitle('Forward')+
+          #   lasertrapr::theme_black()
+          # 
+          # fe <- ggplot()+
+          #   geom_point(aes(x = 1:nrow(forward_ensemble_chunk), y = forward_ensemble_chunk$run_var_5), color = 'gold')+
+          #   geom_point(aes(x = 1:nrow(forward_ensemble_chunk), y = forward_ensemble_chunk$run_var_5), color = 'gold')+
+          #   geom_point(aes(x = event_on, y = forward_ensemble_chunk$run_var_5[event_on]), color = 'lawngreen', shape = 1, size = 2, stroke = 2)+
+          #   ylab('nm')+
+          #   xlab('DPs')+
+          #   ggtitle('Forward')+
+          #   lasertrapr::theme_black()
+          # 
+          # backwards_plots[[c]] <- ggplot()+
+          #   geom_point(aes(x = 1:nrow(backwards_chunk), y = backwards_chunk$data), color = 'gold')+
+          #   geom_line(aes(x = 1:nrow(backwards_chunk), y = backwards_chunk$data), color = 'gold')+
+          #   geom_point(aes(x = event_off, y = backwards_chunk$data[event_off]), color = 'lawngreen', shape = 1, size = 2, stroke = 2)+
+          #   ylab('nm')+
+          #   xlab('DPs')+
+          #   ggtitle('Backwards')+
+          #   lasertrapr::theme_black()
+          # 
+          # 
+          # be <- ggplot()+
+          #   geom_point(aes(x = 1:nrow(backwards_ensemble_chunk), y = backwards_ensemble_chunk$run_var_5), color = 'gold')+
+          #   geom_point(aes(x = 1:nrow(backwards_ensemble_chunk), y = backwards_ensemble_chunk$run_var_5), color = 'gold')+
+          #   geom_point(aes(x = event_off, y = backwards_ensemble_chunk$run_var_5[event_off]), color = 'lawngreen', shape = 1, size = 2, stroke = 2)+
+          #   ylab('nm')+
+          #   xlab('DPs')+
+          #   ggtitle('Backwards')+
+          #   lasertrapr::theme_black()
+          # 
+          # 
+          # 
+          # gridExtra::grid.arrange(forward_plots[[c]], backwards_plots[[c]])
+          
           
           #if no changepoint id'd skip
-          if(identical(changepoint::cpts(forward_cpt_obj), numeric(0)) == TRUE){
+          if(identical(cpts(forward_cpt_obj), numeric(0)) == TRUE){
             better_time_on_starts[[c]] <- NA
             ensemble_keep1[[c]] <- FALSE
-            next
           } else {
             #or record change point index
             cp_start <- forward_chunk$index[event_on]
             better_time_on_starts[[c]] <- cp_start
             ensemble_keep1[[c]] <- TRUE
+            fcp[[c]] <- forward_cpt_obj
           }
           
-          #take first 15ms of event starting from the newly found start of event
-          forward_15 <- tibble(data = processed_data_tibble$data[ cp_start : (cp_start + 74) ],
-                               ensemble_index = 0:(length(data)-1),
-                               event = c)
-          
-          before_event <- tibble(data = processed_data_tibble$data[ (cp_start - 75) : (cp_start - 1) ],
-                                 ensemble_index = -length(data):-1,
-                                 event = c)
-          
-          
-          forward_15 %<>% rbind(before_event) %>%
-            mutate(is_positive = is_positive[[c]],
-                   direction = 'forward') %>%
-            arrange(ensemble_index)
-          
-          forward_ensemble_average_data[[c]] <- forward_15
-        }
-        
-        
-        setProgress(0.7, detail = 'Backwards ensemble')
-        ####backwards ensemble
-        better_time_on_stops <- vector()
-        backwards_ensemble_average_data <- vector("list")
-        ensemble_keep2 <- vector()
-        for(c in 1:nrow(backwards_data)){
-          
-          backwards_chunk <- processed_data_tibble[backwards_data$s2_end[[c]] : backwards_data$s1_start[[c]],]
-          back_ensemble_chunk <- run_var_ensemble[backwards_data$s2_end[[c]] : backwards_data$s1_start[[c]],]
-          
-          has_na <- table(is.na(backwards_chunk$data))
-          has_na2 <- table(is.na(back_ensemble_chunk$run_var_50))
-          if(length(has_na) > 1 | length(has_na2) > 1){
+          #do same for backwards
+          if(identical(cpts(backwards_cpt_obj), numeric(0)) == TRUE){
             better_time_on_stops[[c]] <- NA
             ensemble_keep2[[c]] <- FALSE
-            next
-          }
-          
-          #the first 49 values are NA in the running variance because 50 values are needed to calculate a window
-          #remove the first 49 to do changepoint
-          backwards_cpt_obj <- changepoint::cpt.mean(back_ensemble_chunk$run_var_50, method = "AMOC")
-          
-          #the changepoint index can be extracted
-          #but add the number of missing values back to it get the proper index
-          #back from the original chunk
-          event_off <- changepoint::cpts(backwards_cpt_obj)
-          
-          #check it out with a plot
-          # y <- ggplot()+
-          #    geom_line(aes(x = 1:nrow(backwards_chunk), y = backwards_chunk$data), color = 'gold')+
-          #    geom_vline(aes(xintercept = event_off))+
-          #    theme_dark()
-          #
-          # z <- ggplot()+
-          #    geom_point(aes(x = 1:length(back_ensemble_chunk$run_var_50), y = back_ensemble_chunk$run_var_50), color = 'red')+
-          #    geom_vline(aes(xintercept = event_off))
-          #
-          # gridExtra::grid.arrange(y, z)
-          
-          
-          #if no changepoint is found for a second time skip
-          if(identical(changepoint::cpts(backwards_cpt_obj), numeric(0)) == TRUE){
-            better_time_on_stops[[c]] <- NA
-            ensemble_keep2[[c]] <- FALSE
-            
-            next
             
           } else {
             
@@ -454,31 +447,93 @@ hidden_markov_analysis <- function(trap_data_rds, f, em_random_start){
             cp_off <- backwards_chunk$index[event_off]
             better_time_on_stops[[c]] <- cp_off
             ensemble_keep2[[c]] <- TRUE
+            bcp[[c]] <-  backwards_cpt_obj
             
           }
+          if(identical(cpts(forward_cpt_obj), numeric(0)) == TRUE | identical(cpts(backwards_cpt_obj), numeric(0)) == TRUE){
+            next
+          }
           
-          #take last 15ms of event starting from the newly found start of event
-          #start indexing at 75 so we can eventually rbind forward and backwards and have a
-          #0-149 indexed trace lining up 2 - 15ms forward and backward ensembles
           
-          backwards_15 <- tibble(data = processed_data_tibble$data[ (cp_off-74) : cp_off ],
-                                 ensemble_index = 75:(length(data)+74),
+          #find length of event
+          length_of_event <- nrow(processed_data_tibble[cp_start:(cp_off-1),])
+          
+          #take first 25ms for front and back ensemble
+          
+          if(length_of_event >= 100){
+            #take first 15ms of event starting from the newly found start of event
+            forward_25 <- tibble(data = processed_data_tibble$data[ cp_start : (cp_start + 99) ],
+                                 ensemble_index = 0:(length(data)-1),
+                                 event = c)
+          } else {
+            
+            #take average step size between 5-6ms into event. ignore first 5 to assume you are in an event.
+            front_avg <- mean(processed_data_tibble$data[(cp_start+25):(cp_start+30)])
+            
+            time_diff <- 100-length_of_event
+            extend_event <- c(processed_data_tibble$data[ cp_start : (cp_off-1) ], rep(front_avg, time_diff))
+            
+            forward_25 <- tibble(data = extend_event,
+                                 ensemble_index = 0:(length(data)-1),
+                                 event = c)
+          }
+          
+          
+          before_event <- tibble(data = processed_data_tibble$data[ (cp_start - 75) : (cp_start - 1) ],
+                                 ensemble_index = -length(data):-1,
                                  event = c)
           
           
-          after_event <- tibble(data = processed_data_tibble$data[ (cp_off + 1) : (cp_off + 75) ],
-                                ensemble_index = 150:(length(data)+149),
+          forward_25 %<>% rbind(before_event) %>% 
+            mutate(is_positive = is_positive[[c]],
+                   direction = 'forward') %>%
+            arrange(ensemble_index)
+          
+          forward_ensemble_average_data[[c]] <- forward_25
+          
+          
+          
+          
+          #take last 25ms of event starting from the newly found start of event
+          #start indexing at 100 so we can eventually rbind forward and backwards and have a
+          #0-149 indexed trace lining up two  25ms forward and backward ensembles
+          
+          if(length_of_event >= 100){
+            #take first 15ms of event starting from the newly found start of event
+            backwards_25 <- tibble(data = processed_data_tibble$data[ (cp_off-99) : cp_off ],
+                                   ensemble_index = 100:199,
+                                   event = c)
+          } else {
+            #take average step size between 5-6ms into event. ignore first 5 to assume you are in an event.
+            back_avg <- mean(processed_data_tibble$data[(cp_off-25):(cp_off-30)])
+            
+            time_diff <- 100-length_of_event
+            
+            extend_event_back <- c(rep(back_avg, time_diff), processed_data_tibble$data[ cp_start : (cp_off-1) ])
+            
+            backwards_25 <- tibble(data = extend_event_back,
+                                   ensemble_index = 100:199,
+                                   event = c)
+          }
+          
+          after_event <- tibble(data = processed_data_tibble$data[ (cp_off) : (cp_off + 74) ],
+                                ensemble_index = 200:274,
                                 event = c)
           
-          backwards_15 %<>% rbind(after_event) %>%
+          backwards_25 %<>% rbind(after_event) %>%
             mutate(is_positive = is_positive[[c]],
                    direction = 'backwards') %>%
             arrange(ensemble_index)
           
-          backwards_ensemble_average_data[[c]] <- backwards_15
+          backwards_ensemble_average_data[[c]] <- backwards_25
+          
+          #get better displacements 
+          exact_event_chunk <- processed_data_tibble$data[cp_start : cp_off]
+          percent10 <- length_of_event*0.1
+          better_displacements[[c]] <-  mean( processed_data_tibble$data[ (cp_start + percent10) : (cp_off - percent10) ])
+          
           
         }
-        
       
         
         better_time_on <- tibble(start = better_time_on_starts,
@@ -506,14 +561,18 @@ hidden_markov_analysis <- function(trap_data_rds, f, em_random_start){
         
         
         
-        ###add better on times to final table
+        ###add better on times & displacements to final table
         measured_events %<>% full_join(better_time_on) %>%
           mutate(final_time_ons_ms = ifelse(is.na(start) == TRUE | is.na(stop) == TRUE | better_time_on_dp <= 0,
                                             time_on_ms,
                                             better_time_on_ms),
+                 final_displacements = ifelse(is.na(start) == TRUE | is.na(stop) == TRUE | better_time_on_dp <= 0,
+                                              displacement_nm,
+                                              better_displacements),
                  analyzer = 'hm-model') %>%
-          dplyr::select(time_off_ms, final_time_ons_ms,  displacement_nm, force, analyzer) %>%
-          rename("time_on_ms" = final_time_ons_ms)
+          dplyr::select(time_off_ms, final_time_ons_ms,  final_displacements, force, analyzer) %>%
+          rename("time_on_ms" = final_time_ons_ms,
+                 "displacement_nm" = final_displacements)
         
         
         
@@ -545,14 +604,14 @@ hidden_markov_analysis <- function(trap_data_rds, f, em_random_start){
           for(i in seq_along(1:(nrow(hmm_overlay)-1))){
             
             overlay[[i]] <- rep(hmm_overlay$avg[i],
-                                (round(conversion)*rle_object$lengths[-length(rle_object$lengths)][i]))
+                                (conversion*rle_object$lengths[-length(rle_object$lengths)][i]))
           }
         } else {
           
           overlay <- vector('list')
           for(i in seq_along(1:nrow(hmm_overlay))){
             overlay[[i]] <- rep(hmm_overlay$avg[i],
-                                (round(conversion)*rle_object$lengths[-length(rle_object$lengths)][i]))
+                                (conversion*rle_object$lengths[-length(rle_object$lengths)][i]))
           }
         }
         
@@ -592,7 +651,7 @@ hidden_markov_analysis <- function(trap_data_rds, f, em_random_start){
     periods_df <- data.frame(start = dygraph_periods$state_2_start/5000,
                              stop = dygraph_periods$state_2_stop/5000)
    
-    pni <- (peak_nm_index * conversion)/5000
+    pni <- ((peak_nm_index * conversion) - 75)/5000
       
    overlay_dy <-  dygraphs::dygraph(d) %>% #raw_data_dygraph
                     dygraphs::dySeries('raw', color = '#242424', strokeWidth = 2) %>%
@@ -610,9 +669,16 @@ hidden_markov_analysis <- function(trap_data_rds, f, em_random_start){
     # Plots of the running mean vs. running variance.
     # This provides insight into how the model divided data into either the baseline or event populations.
     # echo=FALSE, message = FALSE, fig.width = 16, fig.height = 6
+   
+   if(did_it_flip == FALSE){
     mean_var_tib <- tibble(rm = hmm_identified_events$run_mean,
                            rv = hmm_identified_events$run_var,
                            state = paste('State', hmm_identified_events$state))
+   } else {
+     mean_var_tib <- tibble(rm = hmm_identified_events$run_mean*-1,
+                            rv = hmm_identified_events$run_var,
+                            state = paste('State', hmm_identified_events$state))
+   }
     
     
     mv1 <- ggplot2::ggplot(mean_var_tib)+

@@ -31,8 +31,8 @@ list_files <- function(...){
 #' @noRd
 
 list_dir <- function(...){
-  tibble(name = dir(..., full.names = FALSE),
-         path = dir(..., full.names = TRUE))
+  tibble(name = list.dirs(..., full.names = FALSE, recursive = F),
+         path = list.dir(..., full.names = TRUE, recursive = F))
 }
 
 #' Extract date time from trap data files
@@ -82,7 +82,10 @@ add_labels <- function(x, events, ...){
 
 add_labels_hmm <- function(x, events, peak_nm_index, ...){
   for(event in 1:length(peak_nm_index)){
-    x <- dygraphs::dyEvent(x, peak_nm_index[[event]], paste(round(events$time_on_ms[[event]], digits = 0), 'ms,', round(events$displacement_nm[[event]], digits = 1), 'nm'), ...)
+    x <- dygraphs::dyEvent(x, peak_nm_index[[event]], 
+                           paste0(round(events$time_on_ms[[event]], digits = 0), 'ms, ',
+                                  round(events$displacement_nm[[event]], digits = 1),
+                                  ' nm {', event, '}'), ...)
   }
   x
 }
