@@ -85,7 +85,7 @@ move_obs <- function(f, trap_selected_date, trap_obs, trap_selected_obs,  trap_f
     saveRDS(t, file = file.path(new_folder_path, "trap-data.rds"))
     #regroup current observation after desired files moved out
     
-    existing_files <- list_dir(trap_selected_obs) %>%
+    existing_files <- list_files(trap_selected_obs) %>%
       dplyr::filter(str_detect(name, "Data"))
     
    
