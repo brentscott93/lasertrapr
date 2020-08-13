@@ -360,7 +360,7 @@ mod_clean_data_server <- function(input, output, session, f){
   #files
   #tibble of file names
   trap_files <- reactive({
-    list_dir(f$obs$path) %>%
+    list_files(f$obs$path) %>%
       dplyr::filter(str_detect(name, "Data"))
   })
   
@@ -389,7 +389,10 @@ mod_clean_data_server <- function(input, output, session, f){
   observeEvent(input$confirm_trap_move_sheets_actionButton, {
     req(substring(f$obs_input, 1, 3) == 'obs')
     removeModal()
-    all_obs <- list_dir(f$date$path, pattern = 'obs') %>% nrow
+    all_obs <- list_dir(f$date$path) %>% 
+      dplyr::filter(str_detect(name, 'obs')) %>% 
+      nrow
+    
     move_obs(f = f,
              trap_selected_date = f$date$path,
              trap_obs = all_obs,

@@ -30,9 +30,9 @@ list_files <- function(...){
 #' @param ... arguments to dir function
 #' @noRd
 
-list_dir <- function(...){
-  tibble(name = list.dirs(..., full.names = FALSE, recursive = F),
-         path = list.dirs(..., full.names = TRUE, recursive = F))
+list_dir <- function(path){
+  tibble(name = list.dirs(path = path, full.names = FALSE, recursive = F),
+         path = list.dirs(path = path, full.names = TRUE, recursive = F))
 }
 
 #' Extract date time from trap data files
