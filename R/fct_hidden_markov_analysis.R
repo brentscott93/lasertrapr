@@ -129,6 +129,14 @@ hidden_markov_analysis <- function(trap_data_rds, f, em_random_start, is_shiny =
                        trap_data_rds$obs[[folder]],
                        "HMM starts in State 2."), error_file);
           if(is_shiny)showNotification('Skipping...HM-Model starts in state 2', type = 'warning')
+          obs_trap_data_exit <- trap_data_rds[folder, ] %>% 
+            dplyr::mutate(results = NA,
+                          report = report_data,
+                          status = 'analysis-error',
+                          analyzer = NA)
+          
+          
+          saveRDS(obs_trap_data_exit, file = trap_data_rds$rds_file_path[[folder]])
           next
         } 
         
