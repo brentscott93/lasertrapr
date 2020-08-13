@@ -32,7 +32,7 @@ list_files <- function(...){
 
 list_dir <- function(...){
   tibble(name = list.dirs(..., full.names = FALSE, recursive = F),
-         path = list.dir(..., full.names = TRUE, recursive = F))
+         path = list.dirs(..., full.names = TRUE, recursive = F))
 }
 
 #' Extract date time from trap data files
@@ -152,4 +152,98 @@ get_status_table <- function(f_date, f_date_input){
   if(is_empty(all_trap_paths)) showNotification("No trap-data.rds files in date folder yet. Start by loading date with 'Initialize Data'",  type = 'error')
   req(!is_empty(all_trap_paths))
   purrr::map_df(all_trap_paths$path, readRDS) 
+}
+
+
+
+#' Stops reactivity in shiny app if expression is TRUE
+#'
+#' @param .if An expression that returns TRUE/FALSE (to be passed to an internal if statement)
+#' @is_shiny TRUE/FALSE indicating whether using function inside a shiny app. Defaults to TRUE. Set to FALSE to practice using functions at the console. 
+#' @param ... Additional arguments passed to shinyShowNotification
+#'
+#' @return Nothing. Will either stop or allow shiny reactivity to continue
+#' @export
+#'
+#' @examples 
+#' # This will stop reactivity and showNotification in UI
+#' defend_if(TRUE, message = 'Oops!', type = 'error')
+#' 
+#' # This will allow reactivity to continue showing nothing in UI
+#' defend_if(TRUE, message = 'Oops!', type = 'error')
+#' 
+#' # Practice at consolse with is_shiny = F
+#' 
+#' defend_if(TRUE, is_shiny = F)
+defend_if <- function(.if, is_shiny = T, ...){
+  if(is_shiny){
+    if(.if) shiny::showNotification(...)
+    shiny::req(.if == FALSE)
+  } else {
+    if(.if){
+      cli::cli_alert_danger(crayon::red("Defended! - reactivity would stop in Shiny")) 
+    } else {
+      cli::cli_alert_success(crayon::green("Success! - reactivity would continue in Shiny"))
+    }
+  }
+}
+
+
+#' Allow reactivity to continue in shiny if expression is TRUE
+#'
+#' @param .if An expression that returns TRUE/FALSE (to be passed to an internal if statement)
+#' @param ... Additional arguments passed to shinyShowNotification
+#'
+#' @return Nothing. Will either stop or allow shiny reactivity to continue
+#' @export
+#'
+#' @examples 
+#' # This will stop reactivity and showNotification in UI
+#' allow_if(FALSE, message = 'Oops!', type = 'error')
+#' 
+#' # This will allow reactivity to continue showing nothing in UI
+#' allow_if(TRUE, message = 'Oops!', type = 'error')
+#' 
+#' # Practice at consolse with is_shiny = F
+#' 
+#' allow_if(TRUE, is_shiny = F)
+allow_if <- function(.if, is_shiny, ...){
+  if(is_shiny){
+      if(.if == FALSE) shiny::showNotification(...)
+      shiny::req(.if)
+  } else {
+      if(.if == FALSE){
+       cli::cli_alert_danger(crayon::red("Defended! - reactivity would stop in Shiny")) 
+      } else {
+       cli::cli_alert_success(crayon::green("Success! - reactivity would continue in Shiny"))
+    }
+  }
+}
+
+#' Defends shiny app if object is_empty(x)
+#' @noRd
+defend_if_empty <- function(x, ...){
+  if(rlang::is_empty(x)) showNotification(...)
+  req(!rlang::is_empty(x))
+}
+
+#' Defends shiny app if x != y
+#' @noRd
+defend_if_not_equal <- function(x, y, ...){
+  if(x != y) showNotification(...)
+  req(x == y)
+}
+
+#' Defends shiny app if x == ""
+#' @noRd
+defend_if_blank <- function(x, ...){
+  if(x == "") showNotification(...)
+  req(x)
+}
+
+#' Defends shiny app if is.null(x)
+#' @noRd
+defend_if_null <- function(x, y, ...){
+  if(is.null(x)) showNotification(...)
+  req(!is.null(x))
 }
