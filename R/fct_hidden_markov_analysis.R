@@ -607,7 +607,7 @@ hidden_markov_analysis <- function(trap_data_rds, f, em_random_start, is_shiny =
         
         
         s2_avg_4plot <- tibble(state_order = seq(from = 2, length.out = length(step_sizes), by = 2),
-                               avg = measmeasured_events$displacement_nm)
+                               avg = measured_events$displacement_nm)
         
         
         hmm_overlay <- bind_rows(s1_avg_4plot, s2_avg_4plot) %>%
