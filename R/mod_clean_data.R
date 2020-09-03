@@ -22,7 +22,7 @@ mod_clean_data_ui <- function(id){
     fluidRow(
       box(width = 9, title = "Graph Options", 
           fluidRow(
-            column(5,
+            column(6,
                    
                    shinyWidgets::radioGroupButtons(
                      inputId = ns("mode"),
@@ -42,24 +42,24 @@ mod_clean_data_ui <- function(id){
                    
             ), #col close
           
-            column(2, 
-                   textInput(ns('mv2nm'), 
+            column(3, 
+                   numericInput(ns('mv2nm'), 
                              'Step Cal (nm/mV)', 
                              value = 1,
                              #placeholder = 'Enter numeric conversion',
                              width = '100%')
             ),
-            column(2,
-                 
-                    # h5("File Markers"),
-                   div( style = 'margin-top: 30px;',
-                   shinyWidgets::materialSwitch(
-                     inputId = ns("hide_markers"),
-                     label = "Markers", 
-                     value = TRUE,
-                     status = "primary"
-                   )
-                   )
+            # column(2,
+            #      
+            #         # h5("File Markers"),
+            #        div( style = 'margin-top: 30px;',
+            #        shinyWidgets::materialSwitch(
+            #          inputId = ns("hide_markers"),
+            #          label = "Markers", 
+            #          value = TRUE,
+            #          status = "primary"
+            #        )
+            #        )
                      # shinyWidgets::radioGroupButtons(
                      #   inputId = ns("hide_markers"),
                      #   label = 'File Markers',
@@ -74,18 +74,18 @@ mod_clean_data_ui <- function(id){
                      #     no = tags$i(class = "fa fa-square-o",
                      #                 style = "color: black"))
                      # )
-                     ),
+                    # ),
                    column(3,
                           
                           actionButton(ns('graph'), 'Graph', width = '100%',
-                                       style="color: #fff; background-color: #F012BE; margin-top: 25px;")
+                                       style="color: #fff; background-color: #009BFF; margin-top: 25px;")
                    ),
                      
                   # ) #conditional close
           ),
           fluidRow(
             column(12, 
-                 shinyWidgets::setSliderColor("#F012BE", 1),
+                 #shinyWidgets::setSliderColor("#F012BE", 1),
                 uiOutput(ns("trap_filter")),
             )
             # column(2, 
@@ -124,6 +124,7 @@ mod_clean_data_ui <- function(id){
                    #   condition = " input.trap_obs_selectInput != null &&
                    #                  input.trap_obs_selectInput.length > 0 ", ns = ns,
                      
+                     #textOutput(ns("move_files")),
                      textOutput(ns("move_files")),
                      actionButton(ns("trap_move_sheets_actionButton"),
                                   "Move",
@@ -235,7 +236,7 @@ mod_clean_data_ui <- function(id){
                          placeholder = 'Equipartition Value'),
                verbatimTextOutput(ns('current_mv2nm')),
                actionButton(ns('save'), 'Save', width = '100%',  
-                            style="color: #fff; background-color: #605ca8; margin-top: 25px;")
+                            style="color: #fff; background-color: #50D400; margin-top: 25px;")
        
         ) # col close
       ) # row close
@@ -246,8 +247,8 @@ mod_clean_data_ui <- function(id){
    fluidRow( 
   box(width = 12, title = "Status Table",
       column(12,
-             actionButton(ns('status_graph'), 'Update status table'),
-     gt::gt_output(ns('status'))
+             actionButton(ns('status_graph'), 'Update Info table'),
+     DT::DTOutput(ns('info')) %>% shinycssloaders::withSpinner(type = 8, color = "#373B38")
       )
   ),
   )
@@ -275,8 +276,9 @@ mod_clean_data_server <- function(input, output, session, f){
   # })
   observeEvent(f$obs_input, ignoreNULL = T, ignoreInit = T, {
     req(input$graph > 0)
-    showNotification('Switched to new observation. Please update graph and baseline measures to proceed.', 
-                     type = 'warning')
+    showNotification('Switched obs', 
+                     type = 'message',
+                     duration = 2)
     
     shinyWidgets::updateRadioGroupButtons(
       session = session,
@@ -393,13 +395,16 @@ mod_clean_data_server <- function(input, output, session, f){
       dplyr::filter(str_detect(name, 'obs')) %>% 
       nrow
     
-    move_obs(f = f,
-             trap_selected_date = f$date$path,
-             trap_obs = all_obs,
-             trap_files = trap_files(),
+    move_obs(trap_selected_date = f$date$path,
              trap_selected_obs = f$obs$path,
-             dygraph_clean_date_window_1 = input$dygraph_clean_date_window[[1]],
-             dygraph_clean_date_window_2 = input$dygraph_clean_date_window[[2]])
+             trim_from = trim_from(),
+             trim_to = trim_to(),
+             f = f,
+             trap_obs = all_obs)
+             # trap_files = trap_files(),
+             # trap_selected_obs = f$obs$path,
+             # dygraph_clean_date_window_1 = input$dygraph_clean_date_window[[1]],
+             # dygraph_clean_date_window_2 = input$dygraph_clean_date_window[[2]])
     
     rv$update_filter <- rv$update_filter + 1
      f$current_obs <- f$obs$name
@@ -419,15 +424,15 @@ mod_clean_data_server <- function(input, output, session, f){
 
   observeEvent(f$obs_input, {
     req(substring(f$obs_input, 1, 3) == 'obs')
-    trap_path <- list_files(f$obs$path, pattern = 'trap-data.rds')
-   rv$filter_max <- nrow(readRDS(trap_path$path)$grouped[[1]])
+    trap_path <- list_files(f$obs$path, pattern = 'trap-data.csv')
+   rv$filter_max <- nrow(vroom::vroom(trap_path$path, delim = ","))
    
   })
   
   observeEvent(rv$update_filter, {
    
-    trap_path <- list_files(f$obs$path, pattern = 'trap-data.rds')
-    rv$filter_max <- nrow(readRDS(trap_path$path)$grouped[[1]])
+    trap_path <- list_files(f$obs$path, pattern = 'trap-data.csv')
+    rv$filter_max <- nrow(vroom::vroom(trap_path$path, delim = ","))
     
   })
  
@@ -466,25 +471,28 @@ mod_clean_data_server <- function(input, output, session, f){
   dg_data <- reactiveValues(make_graph = 0)
   observeEvent(input$graph,  {
     
-    if(is_empty(f$obs_input)) showNotification('No observation folder selected.', type = 'error')
-    req(!is_empty(f$obs_input))
-    if(substring(f$obs_input, 1, 3) != 'obs') showNotification('No observation folder selected.', type = 'error')
-    req(substring(f$obs_input, 1, 3) == 'obs')
+    defend_if_empty(f$obs_input,
+                    ui = 'No observation folder selected.', 
+                    type = 'error')
     
-    a <- attempt::attempt(as.numeric(input$mv2nm))
-    if(attempt::is_try_error(a)) showNotification('mv to nm converions not a number', type = 'error')
-    req(!attempt::is_try_error(a))
+    defend_if_not_equal(substring(f$obs_input, 1, 3), 'obs', 
+                        ui = 'No observation folder selected.', type = 'error')
+   
+    
+    # a <- attempt::attempt(as.numeric(input$mv2nm))
+    # if(attempt::is_try_error(a)) showNotification('mv to nm converions not a number', type = 'error')
+    # req(!attempt::is_try_error(a))
    
       current_obs <- f$obs$path
       #rv$current_graph_obs <- f$obs$name
       trap_data <- list_files(current_obs) %>%
-        dplyr::filter(str_detect(name, "trap-data")) %>%
+        dplyr::filter(str_detect(name, "trap-data.csv")) %>%
         dplyr::pull(path)
 
-      data <- readRDS(trap_data) %>%
-        tidyr::unnest(cols = c(grouped)) %>%
+      data <- vroom::vroom(trap_data, delim = ",") %>%
+        #tidyr::unnest(cols = c(grouped)) %>%
         dplyr::mutate(seconds = 1:nrow(.)/5000,
-                      bead = bead*as.numeric(input$mv2nm)) %>%
+                      bead = raw_bead*as.numeric(input$mv2nm)) %>%
         dplyr::select(seconds, bead)
 
       # if(input$filter_status == FALSE){
@@ -526,26 +534,28 @@ mod_clean_data_server <- function(input, output, session, f){
     }
     
     
-    number_files <- nrow(data)/25000
+    # number_files <- nrow(data)/25000
+    # 
+    # end_file <- seq(5, by = 5, length.out = number_files)
     
-    end_file <- seq(5, by = 5, length.out = number_files)
     
+    # if(isolate(input$hide_markers) == TRUE){
+    #   
+    # dg <-   dygraphs::dygraph(data,  ylab = "mV", xlab = "Seconds",  main = dg_data$title) %>%
+    #     dygraphs::dySeries("bead", color = "black") %>%
+    #     dygraphs::dyRangeSelector(fillColor ="", strokeColor = "black") %>%
+    #     add_labels(events = end_file, labelLoc = 'bottom', color = "black") %>%
+    #     dygraphs::dyUnzoom() %>%
+    #     dygraphs::dyOptions(axisLabelColor = "black",
+    #                         gridLineColor = "black",
+    #                         axisLineColor = "black",
+    #                         axisLineWidth = 3,
+    #                         axisLabelFontSize = 15,
+    #                         drawGrid = FALSE)
+    #   
+    # } else {
     
-    if(isolate(input$hide_markers) == TRUE){
-      
-    dg <-   dygraphs::dygraph(data,  ylab = "mV", xlab = "Seconds",  main = dg_data$title) %>%
-        dygraphs::dySeries("bead", color = "black") %>%
-        dygraphs::dyRangeSelector(fillColor ="", strokeColor = "black") %>%
-        add_labels(events = end_file, labelLoc = 'bottom', color = "black") %>%
-        dygraphs::dyUnzoom() %>%
-        dygraphs::dyOptions(axisLabelColor = "black",
-                            gridLineColor = "black",
-                            axisLineColor = "black",
-                            axisLineWidth = 3,
-                            axisLabelFontSize = 15,
-                            drawGrid = FALSE)
-      
-    } else {
+    if(isolate(input$mv2nm) <= 1){
       
       dg <- dygraphs::dygraph(data,  ylab = "mV", xlab = "Seconds",  main = dg_data$title) %>%
         dygraphs::dySeries("bead", color = "black") %>%
@@ -559,8 +569,23 @@ mod_clean_data_server <- function(input, output, session, f){
                             axisLabelFontSize = 15,
                             drawGrid = FALSE)
       
+    } else {
+      dg <- dygraphs::dygraph(data,  ylab = "nm", xlab = "Seconds",  main = dg_data$title) %>%
+        dygraphs::dySeries("bead", color = "black") %>%
+        dygraphs::dyRangeSelector(fillColor ="", strokeColor = "black") %>%
+        # add_labels(events = end_file, labelLoc = 'bottom', color = "black") %>%
+        dygraphs::dyUnzoom() %>%
+        dygraphs::dyOptions(axisLabelColor = "black",
+                            gridLineColor = "black",
+                            axisLineColor = "black",
+                            axisLineWidth = 3,
+                            axisLabelFontSize = 15,
+                            drawGrid = FALSE)
       
     }
+      
+      
+    #}
      
   })
 
@@ -572,45 +597,46 @@ mod_clean_data_server <- function(input, output, session, f){
 #
 #   #########
 #
-  move_from_index <- reactive({
-    req(trap_files())
-    start_of_file_indices <- seq(0,
-                                 by = 5,
-                                 length.out = nrow(trap_files()))
+  # move_from_index <- reactive({
+  #   req(trap_files())
+  #   start_of_file_indices <- seq(0,
+  #                                by = 5,
+  #                                length.out = nrow(trap_files()))
+  # 
+  #   move_files_from <- round_any(input$dygraph_clean_date_window[[1]],
+  #                                5,
+  #                                f = floor)
+  # 
+  #   from_index <- which(start_of_file_indices == move_files_from)
+  #   return(from_index)
+  # 
+  # })
 
-    move_files_from <- round_any(input$dygraph_clean_date_window[[1]],
-                                 5,
-                                 f = floor)
-
-    from_index <- which(start_of_file_indices == move_files_from)
-    return(from_index)
-
-  })
-
-  move_to_index <- reactive({
-    end_of_file_indices <- seq(5,
-                               by = 5,
-                               length.out = nrow(trap_files()))
-
-    move_files_to <- round_any(input$dygraph_clean_date_window[[2]],
-                               5,
-                               f = ceiling)
-
-    to_index <- which(end_of_file_indices == move_files_to)
-    return(to_index)
-  })
+  # move_to_index <- reactive({
+  #   end_of_file_indices <- seq(5,
+  #                              by = 5,
+  #                              length.out = nrow(trap_files()))
+  # 
+  #   move_files_to <- round_any(input$dygraph_clean_date_window[[2]],
+  #                              5,
+  #                              f = ceiling)
+  # 
+  #   to_index <- which(end_of_file_indices == move_files_to)
+  #   return(to_index)
+  # })
 
   #######
-  output$move_files <- renderText({
-    validate(need(input$dygraph_clean_date_window[[1]], 'Please load data to clean'))
-    paste0("Move Files ",
-           move_from_index(),
-           " to ",
-           move_to_index()
-    )
-
-  })
-# #   
+output$move_files <- renderText({
+  validate(need(trim_from(), 'Please load data to clean'))
+  paste0("Move data from ",
+         trim_from(),
+         "s",
+         " to ",
+         trim_to(),
+         "s"
+  )
+})
+#
   trim_from <- reactive({
     try(round_any(input$dygraph_clean_date_window[[1]], 0.0002, f = round))
   })
@@ -678,18 +704,21 @@ mod_clean_data_server <- function(input, output, session, f){
       #shinyjs::show('mv')
 })
   base_mv_graph <- eventReactive(input$baseline_graph_mv, {
-    if(is_empty(input$dygraph_clean_date_window[[1]])) showNotification('Graph/Upload data before calculating baseline', type = 'error')
-    req(!is_empty(input$dygraph_clean_date_window[[1]]))
-    if(substring(f$obs_input, 1, 3) != 'obs') showNotification('No obs selected', type = 'error')
-    req(substring(f$obs_input, 1, 3) == 'obs')
+    defend_if_empty(input$dygraph_clean_date_window[[1]],
+                    ui = 'Graph/Upload data before calculating baseline',
+                    type = 'error')
+    defend_if_not_equal(substring(f$obs_input, 1, 3),
+                         'obs',
+                       ui = 'No obs selected', 
+                       type = 'error' )
+   
+   defend_if_empty(dg_data$data, ui = 'Graph obs before continuing', type = 'error')
     
-    if(is_empty(dg_data$data)) showNotification('Graph obs before continuing', type = 'error')
-    req(dg_data$data)
-    
+  
     base$mv_df <- tibble(mean = RcppRoll::roll_mean(dg_data$data$bead, n = 30, align = 'left', fill = NULL),
                     var = RcppRoll::roll_var(dg_data$data$bead, n = 30, align = 'left', fill = NULL))
     
-    if(input$mv2nm <= 1) showNotification('Convert your data to nm before calculating step size.', type = 'error')
+    if(input$mv2nm <= 1) showNotification('Convert your data to nm before calculating MV.', type = 'error')
     req(input$mv2nm > 1)
    # colorz <- RColorBrewer::brewer.pal(8, 'RdPu')
     ggplot(base$mv_df)+
@@ -697,9 +726,10 @@ mod_clean_data_server <- function(input, output, session, f){
       ggtitle('Select area on plot to set baseline population')+
       ylab('Variance')+
       xlab('Mean')+
-      scale_fill_gradient2(low = trap_gray(), mid = purple(), high = pink())+
-      theme_black(base_size = 12)+
-      theme(legend.position = 'none')
+      scale_fill_gradient(low = 'green', high = 'red')+
+      theme_classic(base_size = 12)+
+      theme(legend.position = 'none',
+            panel.background = element_rect(colour = "black", size=2))
     
     
   })
@@ -708,11 +738,17 @@ mod_clean_data_server <- function(input, output, session, f){
   
 
   observeEvent(input$baseline_graph_range, {
-    if(is_empty(input$dygraph_clean_date_window[[1]])) showNotification('Graph/Upload data before calculating baseline', type = 'error')
-    req(!is_empty(input$dygraph_clean_date_window[[1]]))
+    defend_if_empty(input$dygraph_clean_date_window[[1]],
+                    ui = 'Graph/Upload data before calculating baseline',
+                    type = 'error')
+    defend_if_not_equal(substring(f$obs_input, 1, 3),
+                        'obs',
+                        ui = 'No obs selected', 
+                        type = 'error' )
+
     a <- attempt::attempt(is.numeric(input$dygraph_clean_date_window[[1]]))
-    if(attempt::is_try_error(a)) showNotification('Load data before calculating baseline range')
-    req(!attempt::is_try_error(a))
+    defend_if(attempt::is_try_error(a), ui =  showNotification('Load data before calculating baseline range'), type = 'error')
+  
     if(length(input$dygraph_clean_date_window[[1]]:input$dygraph_clean_date_window[[2]]) > 10){
       showNotification('Baseline range selection too long. Make a selection less than 10 seconds.', type = 'error')
     }
@@ -823,12 +859,13 @@ mod_clean_data_server <- function(input, output, session, f){
     req(base$range_df)
     
     ggplot(isolate(base$range_df))+
-      geom_line(aes(x = seconds, y = bead), color = trap_gray())+
-      geom_hline(yintercept = isolate(base$range), color = pink(), size = 2)+
+      geom_line(aes(x = seconds, y = bead), color = 'black')+
+      geom_hline(yintercept = isolate(base$range), color = 'firebrick', size = 2)+
       ylab('nm')+
       xlab('Seconds')+
       ggtitle('Baseline range selected with mean')+
-      theme_black(base_size = 14)
+      theme_classic(base_size = 14)+
+      theme(panel.background = element_rect(colour = "black", size=2))
   })
   
   output$range <- renderPlot({
@@ -876,15 +913,16 @@ mod_clean_data_server <- function(input, output, session, f){
          pch=20, 
          breaks=25,
          prob=T, 
-         main="Baseline Population", xlab = 'Displacement (nm)',
-         col.axis = "white", 
-         col.lab = 'white',
-         col.main = 'white',
-         col =trap_gray(), 
-         border =  'black')
-    curve(dnorm(x, base$baseline_fit$estimate[1], base$baseline_fit$estimate[2]), col=pink(), lwd=2, add=T)
-    graphics::box()
-    
+         main="Baseline Population", 
+         xlab = 'Nanometers')
+         # col.axis = "white", 
+         # col.lab = 'white',
+         # col.main = 'white',
+         # col =trap_gray(), 
+         # border =  'black')
+    curve(dnorm(x, base$baseline_fit$estimate[1], base$baseline_fit$estimate[2]), 
+          col='firebrick', lwd=2, add=T)
+    #graphics::box()
     
   })
   
@@ -896,19 +934,20 @@ mod_clean_data_server <- function(input, output, session, f){
   logger <- reactiveValues()
   status <- reactiveValues()
   observeEvent(input$save, ignoreInit = T, {
-    if(substring(f$obs_input, 1, 3) != 'obs') showNotification('No obs selected', type = 'error')
-    req(substring(f$obs_input, 1, 3) == 'obs')
+    defend_if_not_equal(substring(f$obs_input, 1, 3),
+                        'obs',
+                        'No obs selected', type = 'error')
     
     #test that mv to nm is a number
-    if(input$mv2nm == '') showNotification('Enter step cal', type = 'error')
-    req(input$mv2nm != '')
+    defend_if_blank(input$mv2nm, ui = 'Enter step cal', type = 'error')
+
     mv2nm_test <- attempt::attempt(as.numeric(input$mv2nm))
     if(attempt::is_try_error(mv2nm_test)) showNotification('nm to pN converion not a number', type = 'error')
     req(!attempt::is_try_error(mv2nm_test))
     
     #test that mv to nm is a number
-    if(input$nm2pn == '') showNotification('Enter trap stiffness', type = 'error')
-    req(input$nm2pn != '')
+    defend_if_blank(input$nm2pn, ui = 'Enter trap stiffness', type = 'error')
+   
     nm2pn_test <- attempt::attempt(as.numeric(input$nm2pn))
     if(attempt::is_try_error(nm2pn_test)) showNotification('nm to pN converion not a number', type = 'error')
     req(!attempt::is_try_error(nm2pn_test))
@@ -917,33 +956,33 @@ mod_clean_data_server <- function(input, output, session, f){
       current_obs <- f$obs$path
       
       trap_data <- list_files(current_obs) %>%
-        dplyr::filter(str_detect(name, "trap-data")) %>%
+        dplyr::filter(str_detect(name, "trap-data.csv")) %>%
         dplyr::pull(path)
       
-       data <- readRDS(trap_data)
+       data <- vroom::vroom(trap_data, delim = ",")
        
       
-       grouped <- data %>% 
-         tidyr::unnest(cols = c(grouped)) %>%
-         dplyr::select(bead, trap) %>% 
-         mutate(bead = bead*as.numeric(input$mv2nm))
+      # grouped <- data %>% 
+         #tidyr::unnest(cols = c(grouped)) %>%
+         #dplyr::select(bead, trap) %>% 
+        data %<>% mutate(processed_bead = raw_bead*as.numeric(input$mv2nm))
        
       setProgress(0.3)
       
      if(input$how_to_process == 'detrend'){
        
        break_pts <- seq(25000, nrow(dg_data$data), by = 25000)
-       processed_data <- grouped %>% 
-         mutate(bead = as.vector(pracma::detrend(bead, tt = "linear", bp = break_pts)))
+       
+          data %<>% dplyr::mutate(processed_bead = as.vector(pracma::detrend(raw_bead, tt = "linear", bp = break_pts)))
        
      } else if(input$how_to_process == 'remove_base'){
        
-       processed_data <- grouped %>% 
-         mutate(bead = bead - base$range)
+    
+         data %<>% mutate(processed_bead = raw_bead - base$range)
        
      } else if(input$how_to_process == 'remove_mv'){
-       processed_data <- grouped %>% 
-         mutate(bead = bead - base$baseline_fit$estimate[1])
+       
+        data %<>% mutate(processed_bead = raw_bead - base$baseline_fit$estimate[1])
      }
       
       if(input$include == 'No'){
@@ -952,16 +991,14 @@ mod_clean_data_server <- function(input, output, session, f){
          input_include <- TRUE
        }
       
-     data  %<>% mutate(processed = list(processed_data),
-                       processed_how = input$how_to_process, 
+     data  %<>% mutate(processor = input$how_to_process, 
                        mv2nm = as.numeric(input$mv2nm),
                        nm2pn = as.numeric(input$nm2pn),
-                       include = input_include,
-                       status = 'processed')
+                       include = input_include)
      
      setProgress(0.5)
      
-     saveRDS(data, file = file.path(f$obs$path, 'trap-data.rds'))
+     vroom::vroom_write(data, file = file.path(f$obs$path, 'trap-data.csv'), delim = ",")
      
      setProgress(0.75)
       # index <- input$save
@@ -971,14 +1008,13 @@ mod_clean_data_server <- function(input, output, session, f){
      #                          'Include:', input$include, '\n \n')
      
   
-       
      golem::print_dev( logger[[as.character(input$save)]] )
-     all_trap_paths <- list_files(f$date$path, pattern = 'trap-data.rds', recursive = T)
+     all_trap_paths <- list_files(f$date$path, pattern = 'trap-data.csv', recursive = T)
      
      setProgress(0.9)
     
-       status$df <- get_status_table(f$date, f$date_input) %>% 
-       dplyr::select(project, conditions, date, obs, processed_how, mv2nm, nm2pn, include, status)
+       status$df <- get_info_table(f$date, f$date_input) %>% 
+       dplyr::select(obs, processor, mv2nm, nm2pn, include)
      
      setProgress(1)
    
@@ -987,8 +1023,8 @@ mod_clean_data_server <- function(input, output, session, f){
   })
   
   observeEvent(input$status_graph, {
-    status$df <- get_status_table(f$date, f$date_input) %>% 
-      dplyr::select(project, conditions, date, obs, processed_how, mv2nm, nm2pn, include, status)
+    status$df <- get_info_table(f$date, f$date_input) %>% 
+      dplyr::select(obs, processor, mv2nm, nm2pn, include)
     showNotification('Status table refreshed', type = 'message')
   })
  # output$log <- renderPrint({
@@ -1000,41 +1036,48 @@ mod_clean_data_server <- function(input, output, session, f){
    cat('mV to nm conversion: ', input$mv2nm)
  })
  
-  output$status <- gt::render_gt(width = gt::pct(100),{
+  output$info <- DT::renderDT({
     req(status$df)
     status$df %>% 
-      rename('Project' = project, 
-             'Conditions' = conditions,
-             'Date' = date, 
-             'Obs' = obs,
-             'Processor' = processed_how,
+      rename('Obs' = obs,
+             'Processor' = processor,
              'mV-to-nm' = mv2nm,
              'nm-to-pN' = nm2pn,
-             'Include' = include, 
-             'Status' = status) %>% 
-      gt::gt(rowname_col = 'Obs') %>% 
-      gt::tab_stubhead('Obs') %>% 
-      gt::tab_header(
-        title = "Current Status of Observations",
-        subtitle = "Green indicates ready"
-      )  %>%
-      gt:: tab_spanner(
-        label = "Description",
-        columns = vars(Project, Conditions, Date)
-      ) %>% 
-      gt::tab_spanner(
-        label = "Progress Indicators",
-        columns = vars(Processor, `mV-to-nm`, `nm-to-pN`, Include, Status)
-      ) %>% 
-      gt::tab_style(
-        style = gt::cell_fill(color = purple()),
-        locations = gt::cells_body(
-          rows = Status == 'grouped')
-      ) %>% 
-      gt::tab_style(
-        style = gt::cell_fill(color = pink()),
-        locations = gt::cells_body(
-          rows = Status == 'processed'))
+             'Include' = include) %>% 
+      DT::datatable() %>% 
+      DT::formatStyle('Include', 
+                      color = DT::styleEqual(c(F, T), c('red', 'black'))
+      )
+      # ) %>%
+      # DT::formatStyle('Report', 
+      #                 color = DT::styleEqual(c('error', 'success'), c('red', 'black'))
+      # ) %>%
+      # DT::formatStyle('Review', 
+      #                 color = DT::styleEqual(c(NA, F, T), c('grey', 'red', 'green'))
+      # )
+      # gt::gt(rowname_col = 'Obs') %>% 
+      # gt::tab_stubhead('Obs') %>% 
+      # gt::tab_header(
+      #   title = "Current Status of Observations",
+      #   subtitle = "Green indicates ready"
+      # )  %>%
+      # gt:: tab_spanner(
+      #   label = "Description",
+      #   columns = vars(Project, Conditions, Date)
+      # ) %>% 
+      # gt::tab_spanner(
+      #   label = "Progress Indicators",
+      #   columns = vars(Processor, `mV-to-nm`, `nm-to-pN`, Include, Status)
+      # ) %>% 
+      # gt::tab_style(
+      #   style = gt::cell_fill(color = purple()),
+      #   locations = gt::cells_body(
+      #     rows = Status == 'grouped')
+      # ) %>% 
+      # gt::tab_style(
+      #   style = gt::cell_fill(color = pink()),
+      #   locations = gt::cells_body(
+      #     rows = Status == 'processed'))
       
   })
   #when obs folder switches reset all outputs  widgets

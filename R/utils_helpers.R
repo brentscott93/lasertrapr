@@ -3,15 +3,12 @@
 #' @param x a millisecond value
 #' @noRd
 #' 
-ms_to_dp <- function(x){
+ms_to_dp <- function(x, hz = 5000){
   sec <- x/1000 #to seconds
-  hz <- 1/5000 # datapoints per second
+  hz <- 1/hz # datapoints per second
   dp <- sec/hz
   return(dp)
 }
-
-
-
 
 #' Lists files into a tibble
 #'
@@ -118,40 +115,43 @@ add_shades <- function(x, periods, ...){
 #'
 #' @noRd
 #' 
-create_lasertrapr_tibble <- function(project, conditions, date, obs, grouped, rds_file_path){
-  tibble::tibble(project = project ,
+create_lasertrapr_tibble <- function(project, conditions, date, obs, raw_bead, trap_position, path){
+  tibble::tibble(project = project,
                  conditions = conditions,
                  date = date, 
                  obs = obs,
-                 grouped = list(grouped),
+                 raw_bead = raw_bead,
+                 trap_position = trap_position,
+                 processed_bead = NA,
+                 processor = NA,
                  include = NA,
-                 processed = NA,
-                 processed_how = NA,
                  mv2nm = NA, 
                  nm2pn = NA,
-                 status = 'grouped',
                  analyzer = NA,
-                 results = NA,
-                 report = NA,
-                 quality_control = NA, 
-                 rds_file_path = rds_file_path)
+                 report = 'not run',
+                 review = NA)
 }
 
-#' Read in all trap-data.rds files in an obs folder
+#' Read in all trap-data.csv files in an obs folder
 #' @param f_date A list_files/list_dir tibble from the user selected date, literally f$date
 #' @param f_date_input The date selectInput, literally f$date_input
 #' @noRd
-get_status_table <- function(f_date, f_date_input){
-  if(is.null(f_date_input)) showNotification('Whoops. You forgot to select a date folder.', type = 'error')
-  req(!is.null(f_date_input))
-  a <- attempt::attempt(f_date_input == '')
-  if(f_date_input == '') showNotification('Whoops. You forgot to select a date folder.', type = 'error')
-  req(f_date_input)
+get_info_table <- function(f_date, f_date_input){
+  
+  defend_if_null(f_date_input, ui = 'Whoops. You forgot to select a date folder.', type = 'error')
+  defend_if_blank(f_date_input, ui = 'Whoops. You forgot to select a date folder.', type = 'error')
 
-  all_trap_paths <- list_files(f_date$path, pattern = 'trap-data.rds', recursive = T)
-  if(is_empty(all_trap_paths)) showNotification("No trap-data.rds files in date folder yet. Start by loading date with 'Initialize Data'",  type = 'error')
-  req(!is_empty(all_trap_paths))
-  purrr::map_df(all_trap_paths$path, readRDS) 
+  all_trap_paths <- list_files(f_date$path, pattern = 'trap-data.csv', recursive = T)
+  defend_if_empty(all_trap_paths, ui = "No trap-data.rds files in date folder yet. Start by loading date with 'Initialize Data'",  type = 'error')
+ 
+  df <- vroom::vroom(all_trap_paths$path, delim = ",")
+  if('hm_overlay' %not_in% colnames(df)){
+    df %<>% tidyr::nest(data = c(raw_bead, processed_bead)) %>% 
+    dplyr::select(!data)
+  } else {
+    df %<>% tidyr::nest(data = c(raw_bead, processed_bead, hm_overlay)) %>% 
+      dplyr::select(!data)
+  }
 }
 
 
@@ -192,6 +192,7 @@ defend_if <- function(.if, is_shiny = T, ...){
 #' Allow reactivity to continue in shiny if expression is TRUE
 #'
 #' @param .if An expression that returns TRUE/FALSE (to be passed to an internal if statement)
+#' @param is_shiny A logical. Default is TRUE.
 #' @param ... Additional arguments passed to shinyShowNotification
 #'
 #' @return Nothing. Will either stop or allow shiny reactivity to continue
@@ -207,7 +208,7 @@ defend_if <- function(.if, is_shiny = T, ...){
 #' # Practice at consolse with is_shiny = F
 #' 
 #' allow_if(TRUE, is_shiny = F)
-allow_if <- function(.if, is_shiny, ...){
+allow_if <- function(.if, is_shiny = T, ...){
   if(is_shiny){
       if(.if == FALSE) shiny::showNotification(...)
       shiny::req(.if)
@@ -234,6 +235,13 @@ defend_if_not_equal <- function(x, y, ...){
   req(x == y)
 }
 
+#' Defends shiny app if x == y
+#' @noRd
+defend_if_equal <- function(x, y, ...){
+  if(x == y) showNotification(...)
+  req(x != y)
+}
+
 #' Defends shiny app if x == ""
 #' @noRd
 defend_if_blank <- function(x, ...){
@@ -243,7 +251,7 @@ defend_if_blank <- function(x, ...){
 
 #' Defends shiny app if is.null(x)
 #' @noRd
-defend_if_null <- function(x, y, ...){
+defend_if_null <- function(x, ...){
   if(is.null(x)) showNotification(...)
   req(!is.null(x))
 }

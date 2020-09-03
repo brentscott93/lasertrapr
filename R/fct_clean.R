@@ -1,28 +1,21 @@
 
-#' Create new observation with selected data
-#'
+#' Move selected data to new obs
+#' @param trap_selected_date current selected date folder
+#' @param trap_selected_obs current selected observation
+#' @param trim_from begin index to delete
+#' @param trim_to end index to delete
 #' @param f the reactiveValues list 'f' with all user selected folder info
-#' @param trap_selected_date path to current date folder
-#' @param trap_obs all trap observations
-#' @param trap_selected_obs selected observation
-#' @param trap_files all raw Data...csv files in selected obsrevation
-#' @param dygraph_clean_date_window_1 beginning index to move
-#' @param dygraph_clean_date_window_2 end index to move
-#' 
-#' @import tidyverse 
-#' 
+#' @param trap_obs obs folder numbers
+#'
 #' @noRd
 
-move_obs <- function(f, trap_selected_date, trap_obs, trap_selected_obs,  trap_files, dygraph_clean_date_window_1, dygraph_clean_date_window_2){
-  #make destination folder
-  withProgress(message = 'Moving Files', value = 0, max = 1, min = 0, {
-    
-#for dev   # trap_selected_date <- '/Users/brentscott/Desktop/2020-01-07'
-#for dev    #trap_selected_obs <- "/Users/brentscott/Desktop/2020-01-07/obs-01"
-#for dev   # number_obs <- nrow(trap_obs)
-#for dev    #trap_obs <- length(list.files(trap_selected_date, pattern = 'obs-'))
+move_obs <- function(trap_selected_date, trap_selected_obs, trim_from, trim_to, f, trap_obs){
+  withProgress(message = 'Moving Data', value = 0, max = 1, min = 0, {
+    #for dev   # trap_selected_date <- '/Users/brentscott/Desktop/2020-01-07'
+    #for dev    #trap_selected_obs <- "/Users/brentscott/Desktop/2020-01-07/obs-01"
+    #for dev   # number_obs <- nrow(trap_obs)
+    #for dev    #trap_obs <- length(list.files(trap_selected_date, pattern = 'obs-'))
     new_obs <- trap_obs + 1
-    
     if(new_obs < 10){
       new_folder <- paste0("obs-", 0, new_obs)
     } else {
@@ -33,81 +26,26 @@ move_obs <- function(f, trap_selected_date, trap_obs, trap_selected_obs,  trap_f
     incProgress(amount = .25, detail = "Creating new folder")
     dir.create(path = new_folder_path)
     
-    #for dev #trap_files <- list_files(trap_selected_obs, pattern = 'Data')
-    #identify folders on drive and move
-    start_of_file_indices <- seq(0,
-                                 by = 5,
-                                 length.out = nrow(trap_files))
+    setProgress(0.4)
     
-    move_files_from <- round_any(dygraph_clean_date_window_1,
-                                 5,
-                                 f = floor)
+    path <- list_files(trap_selected_obs, pattern = 'trap-data.csv')
+    data <- vroom::vroom(path$path, delim = ",")
     
-    from_index <- which(start_of_file_indices == move_files_from)
+    from <- as.integer(trim_from*5000)
+    to <- as.integer(trim_to*5000)
+    new_obs <- data[c(from:to),]
     
-    end_of_file_indices <- seq(5,
-                               by = 5,
-                               length.out = nrow(trap_files))
+    vroom::vroom_write(new_obs, path = file.path(new_folder_path, "trap-data.csv"), delim = ",")
     
-    move_files_to <- round_any(dygraph_clean_date_window_2,
-                               5,
-                               f = ceiling)
-    
-    to_index <- which(end_of_file_indices == move_files_to)
-    
-    files_to_move <- dplyr::slice(trap_files, from_index:to_index)
-    
-    files_to_move_paths <- files_to_move %>%
-      dplyr::pull(path)
-    
-    files_to_move_names <-  files_to_move %>%
-      dplyr::pull(name)
-    
-    new_files_names <- paste0(new_folder_path, "/", files_to_move_names)
-    
-    incProgress(amount = .75, detail = "Moving files")
-    
-    purrr::walk2(files_to_move_paths, new_files_names, file.rename)
-    
-    new_paths <- list_files(new_folder_path) %>%
-      dplyr::filter(str_detect(name, "Data")) %>%
-      dplyr::pull(path)
-    
-    new_obs_files <- bind_rows(map(new_paths, read_csv))
-    
-    t <- create_lasertrapr_tibble( project = f$project$name,
-                                   conditions = f$conditions$name,
-                                   date = f$date$name, 
-                                   obs = new_folder,
-                                   grouped = new_obs_files,
-                                   rds_file_path = file.path(new_folder_path, 'trap-data.rds') )
-    
-    saveRDS(t, file = file.path(new_folder_path, "trap-data.rds"))
     #regroup current observation after desired files moved out
-    
-    existing_files <- list_files(trap_selected_obs) %>%
-      dplyr::filter(str_detect(name, "Data"))
-    
-   
-    
-    regroup <- bind_rows(map(existing_files$path, read_csv))
-    
-    regroup_t <- create_lasertrapr_tibble(project = f$project$name,
-                                          conditions = f$conditions$name,
-                                          date = f$date$name, 
-                                          obs = f$obs$name, 
-                                          grouped = regroup,
-                                          rds_file_path = file.path(trap_selected_obs, 'trap-data.rds'))
-                                          
-    
-   # write_csv(regroup, path = paste0(trap_selected_obs, "/grouped.csv"), append = FALSE)
-    saveRDS(regroup_t, file = file.path(trap_selected_obs, "trap-data.rds"))
+    regroup <- data[-c(from:to),]
+  
+    # write_csv(regroup, path = paste0(trap_selected_obs, "/grouped.csv"), append = FALSE)
+    vroom::vroom_write(regroup_t, path = file.path(trap_selected_obs, "trap-data.csv"), delim = ",")
     incProgress(1, detail = "Done")
   })
   showNotification("Files moved to new obs.", type = "message")
-  
 }
-
 
 
 
@@ -125,25 +63,23 @@ trim_obs <- function(trap_selected_obs, trim_from, trim_to, f){
   #trap_grouped_file <- read.csv("/Users/brentscott/Desktop/myoV-WT_2ndConrtol _obs-01/grouped.csv")
   withProgress(message = "Trimming Data", min= 0, max = 1, value = 0.3, {
    
-    data <- list_files(trap_selected_obs, pattern = 'trap-data.rds')
-    
-    trap_grouped_file <- readRDS(data$path)$grouped[[1]]
+    path <- list_files(trap_selected_obs, pattern = 'trap-data.csv')
+    data <- vroom::vroom(path$path, delim = ",")
     
     from <- as.integer(trim_from*5000)
     to <- as.integer(trim_to*5000)
-    trimmed <- trap_grouped_file[-c(from:to),]
+    trimmed <- data[-c(from:to),]
     
     setProgress("Writing new 'grouped' file", value = 0.8)
     #write_csv(trimmed, path = paste0(trap_selected_obs, "/grouped.csv"), append = FALSE)
     
-    t <- create_lasertrapr_tibble( project = f$project$name,
-                                   conditions = f$conditions$name,
-                                   date = f$date$name, 
-                                   obs = f$obs$name,
-                                   grouped = trimmed,
-                                   rds_file_path = file.path(trap_selected_obs, "trap-data.rds") )
+    # t <- create_lasertrapr_tibble( project = f$project$name,
+    #                                conditions = f$conditions$name,
+    #                                date = f$date$name, 
+    #                                obs = f$obs$name,
+    #                                raw_bead = trimmed )
   
-    saveRDS(t, file = file.path(trap_selected_obs, "trap-data.rds"))
+    vroom::vroom(trimmed, path = file.path(trap_selected_obs, 'trap-data.csv'), delim = ",")
     
     
     setProgress("Done", value = 1)

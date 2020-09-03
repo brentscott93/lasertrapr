@@ -2,6 +2,9 @@
 
 export(add_labels)
 export(add_shades)
+export(allow_if)
+export(changepoint_and_ensemble)
+export(defend_if)
 export(equipartition)
 export(round_any)
 export(run_app)

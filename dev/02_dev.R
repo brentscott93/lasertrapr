@@ -36,6 +36,8 @@ usethis::use_package( "RcppRoll" )
 usethis::use_package( "RColorBrewer" )
 usethis::use_package( "rmarkdown" )
 usethis::use_package( "data.table" )
+usethis::use_package( "DT" )
+usethis::use_package( "vroom" )
 
 ## Add modules ----
 ## Create a module infrastructure in R/
@@ -44,6 +46,7 @@ golem::add_module( name = "split_obs" )
 golem::add_module( name = "clean_data" )
 golem::add_module( name = "folder_manager" )
 golem::add_module( name = "hm_model" )
+golem::add_module( name = "mini_ensemble" )
 #golem::add_module( name = "name_of_module2" ) # Name of the module
 
 ## Add helper functions ----
@@ -55,6 +58,7 @@ golem::add_utils( "clean_data" )
 golem::add_fct( "clean" ) 
 golem::add_utils( "theme" )
 golem::add_fct( "calibrations" ) 
+golem::add_fct( "mini_ensemble_analyzer" ) 
 
 ## External resources
 ## Creates .js and .css files at inst/app/www
