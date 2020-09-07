@@ -39,9 +39,9 @@ mod_mini_ensemble_ui <- function(id){
                                               status = 'primary'),
                  sliderInput(ns('w_width'), 
                              label = 'Running Mean Window Width (ms)',
-                             value = 50, 
-                             min = 10, 
-                             max = 300, 
+                             value = 10, 
+                             min = 1, 
+                             max = 50, 
                              step = 10),
                  
                  sliderInput(ns('displacement_threshold'), 
@@ -55,20 +55,19 @@ mod_mini_ensemble_ui <- function(id){
                              label = 'Set Minimum Time Threshold (ms)',
                              value = 10, 
                              min = 1, 
-                             max = 20, 
+                             max = 30, 
                              step = 1),
                  
                  numericInput(inputId = ns('hz'),
                               label = 'Sampling Frequency (Hz)', 
                               value = 5000),
                  
-    
-                 
+                
                  actionButton(inputId = ns("analyze_trap"),
                               label = "Run Analysis",
                               icon = icon("running"),
                               width = "100%",
-                              style = 'margin-top: 25px; color = #fff; background-color: #009BFF;')
+                              style = 'margin-top: 25px;')
                  
              ),
              
@@ -83,11 +82,11 @@ mod_mini_ensemble_ui <- function(id){
       ) # col close
     ),
     
-    fluidRow(
-      box(width = 12, title = 'Results', 
-          background = 'black',  
+   # fluidRow(
+     # box(width = 12, title = 'Results', 
+         # background = 'black',  
           
-          
+         tags$style(".small-box.bg-yellow { background-color: #1B9E77 !important; color: #f2f2f2 !important; }"),
           fluidRow(
             column(4, 
                    valueBoxOutput(ns('observation'), width = NULL)
@@ -100,17 +99,18 @@ mod_mini_ensemble_ui <- function(id){
             )), 
           fluidRow( 
             column(9, 
-                   box(width = NULL, title = 'View Analysis',
-                       plotOutput(ns('mini_dygraph')) %>% shinycssloaders::withSpinner(type = 8, color = "#373B38")
+                   box(width = NULL, title = 'Analyzed Data',
+                       dygraphs::dygraphOutput(ns('mini_dygraph')) %>% shinycssloaders::withSpinner(type = 8, color = "#373B38")
                    )
             ), 
             column(3, 
                    box(width = NULL, title = 'Review Analysis',
-                       actionButton(ns('view_results'), 
+                       actionButton(ns('view_results'),
                                     'View Results',
                                     width = '100%',
                                     icon = icon('area-chart'),
                                     style = 'margin-bottom: 25px;'),
+                      #shinyjs::inlineCSS(paste0("#", ns('quality_control'), " {color: #000000; }")),
                        shinyWidgets::radioGroupButtons(
                          inputId = ns('quality_control'),
                          label = "Should analysis be accepted?",
@@ -123,15 +123,17 @@ mod_mini_ensemble_ui <- function(id){
                                         style = "color: black"),
                            no = tags$i(class = "fa fa-square-o",
                                        style = "color: black"))
-                       ),
+                       ), 
                        actionButton(ns('save_review'), 
                                     'Save Review', 
+                                    icon = icon('save'),
                                     width = '100%',
-                                    style = "color: #fff; background-color: #50D400; margin-top: 25px;")
+                                    style = "margin-top: 25px;")
                        
                    )
-            ), #col close
-          )#,
+            )#col close
+            ) #row close
+        #  )#,
           # fluidRow(
           #        box(width = 4, title = 'HM-Model Summary',
           #            verbatimTextOutput(ns('hm_model_summary')) %>% shinycssloaders::withSpinner(type = 8, color = "#373B38")
@@ -161,19 +163,19 @@ mod_mini_ensemble_ui <- function(id){
           #          )
           #   )
           # ) #rowclose
-      ) #results box close
-    )
+      #) #results box close
+   # )
   )#taglist clost
 }
     
 #' mini_ensemble Server Function
-#'
+#' @param input,output,session,f module parameters
 #' @noRd 
-mod_mini_ensemble_server <- function(input, output, session){
+mod_mini_ensemble_server <- function(input, output, session, f){
   ns <- session$ns
   
   
-  hm <- reactiveValues(analyze = 0)
+  go <- reactiveValues(analyze = 0)
   
   observeEvent(input$analyze_trap, {
     golem::print_dev(input$which_obs)
@@ -185,18 +187,19 @@ mod_mini_ensemble_server <- function(input, output, session){
       defend_if_not_equal(substring(f$obs_input, 1, 3), 'obs', ui = 'Select an obs', type = 'error')
     }
     showNotification('Analysis will begin shortly...', type = 'message', duration = 2)
-    hm$analyze <-   hm$analyze + 1
+    go$analyze <-   go$analyze + 1
     
   })
   
-  observeEvent(hm$analyze, ignoreInit = T, {
-    
+  observeEvent(go$analyze, ignoreInit = T, {
+   # browser()
+    golem::print_dev('getting file ')
     if(input$which_obs =='single'){
       file <- list_files(f$obs$path, pattern = 'trap-data.csv')
-      trap_data <- vroom::vroom(file$path)
+      trap_data <- purrr::map(file$path, vroom::vroom, delim = ",")
     } else {
       files <- list_files(f$date$path, pattern = 'trap-data.csv', recursive = T)
-      trap_data <- purrr::map(files$path, vroom::vroom)
+      trap_data <- purrr::map(files$path, vroom::vroom, delim = ",")
     }
     
     # if(c('run_mean_overlay', 'rescaled_mini_data' %not_in% colnames(trap_data)){
@@ -207,7 +210,7 @@ mod_mini_ensemble_server <- function(input, output, session){
     #     tidyr::nest(data = c(raw_bead, processed_bead, run_mean_overlay)) 
     # }
     
-    
+    golem::print_dev('setting default parms ')
     if(is.null(input$hz)){
       hz <- 5000
     } else {
@@ -221,25 +224,27 @@ mod_mini_ensemble_server <- function(input, output, session){
     }
     
     if(is.null(input$displacement_threshold)){
-      displacement_threshold <- 50
+      displacement_threshold <- 8
     } else {
-      displacement_threshold <- input$w_width
+      displacement_threshold <- input$displacement_threshold
     }
     
     if(is.null(input$time_threshold_ms)){
-      time_threshold_ms <- 50
+      time_threshold_ms <- 10
     } else {
       time_threshold_ms <- input$time_threshold_ms
     }
+    golem::print_dev('starting mini')
     
-    withProgress(message = 'Analyzing trap data', value = 0, max = 1, min = 0, {
-      purrr::walk(trap_data, ~mini_ensemble_analyzer(trap_data = .x,
-                                                     w_width_ms = w_width,
-                                                     hz = hz, 
-                                                     displacement_threshold =  displacement_threshold , 
-                                                     time_threshold_ms = time_threshold_ms)
-      )
-    })
+   withProgress(message = 'Analyzing trap data', value = 0, max = 1, min = 0, {
+   purrr::walk(trap_data, ~mini_ensemble_analyzer(trap_data = .x,
+                                                  w_width_ms = w_width,
+                                                  hz = hz,
+                                                  displacement_threshold =  displacement_threshold ,
+                                                  time_threshold_ms = time_threshold_ms,
+                                                  f = f)
+   )
+   })
     
     shinyWidgets::sendSweetAlert(session = session,
                                  title =  "Mini-Ensemble Analysis Complete",
@@ -263,7 +268,7 @@ mod_mini_ensemble_server <- function(input, output, session){
       trap_reviewed <- trap %>% 
         dplyr::mutate(review = input$quality_control)
       
-      vroom::vroom_write(trap_reviewed, file = file.path(f$obs$path, 'trap-data.csv'))
+      vroom::vroom_write(trap_reviewed, path = file.path(f$obs$path, 'trap-data.csv'), delim = ",")
       setProgress(1, detail = 'Done')
     })
     showNotification('Review saved' , type = 'message')
@@ -273,9 +278,9 @@ mod_mini_ensemble_server <- function(input, output, session){
   info <- eventReactive(input$info_table, {
     defend_if_empty(f$date, ui = 'Please select a date folder', type = 'error')
     showNotification('Refreshing table', type = 'message')
-    path <- file.path('~','lasertrapr', f$project$name, f$conditions$name, f$date$name)
-    files <- list_files(path, pattern = 'trap-data.csv', recursive = T)
-    trap_data <- purrr::map(files$path, vroom::vroom)
+    #path <- file.path('~','lasertrapr', f$project$name, f$conditions$name, f$date$name)
+    files <- list_files(f$date$path, pattern = 'trap-data.csv', recursive = T)
+    trap_data <- purrr::map(files$path, vroom::vroom, delim = ",")
     # if('hm_overlay' %not_in% colnames(trap_data)){
     #   t <- trap_data  %>% 
     #     tidyr::nest(data = c(raw_bead, processed_bead)) 
@@ -284,7 +289,7 @@ mod_mini_ensemble_server <- function(input, output, session){
     #     tidyr::nest(data = c(raw_bead, processed_bead, hm_overlay)) 
     # }
     
-    purrr::map_dfr(trap_data, ~function(trap_data){
+    purrr::map_dfr(trap_data, function(trap_data){
                                    tibble::tibble(obs = unique(trap_data$obs), 
                                                   include = unique(trap_data$include),
                                                   analyzer = unique(trap_data$analyzer),
@@ -317,6 +322,47 @@ mod_mini_ensemble_server <- function(input, output, session){
   })
   
   
+  trap_data <- eventReactive(input$view_results, {
+    defend_if_empty(f$obs, ui = 'Please select an obs folder', type = 'error')
+    defend_if_blank(f$obs_input, ui = 'Please select an obs folder', type = 'error')
+    
+    filenames <- c('trap-data.csv', 'measured-events.csv')
+    paths <- map(filenames, ~list_files(f$obs$path, pattern = .x))
+    data <-  map(paths, ~vroom::vroom(.x$path))
+    names(data) <- c('trap', 'events')
+    data
+  })
+  
+  
+  
+  output$mini_dygraph <- dygraphs::renderDygraph({
+    req(trap_data())
+    
+    hz <- as.numeric(unique(trap_data()$trap$hz))
+    d <- data.frame(index = (1:nrow(trap_data()$trap)/hz),
+                    raw = trap_data()$trap$rescaled_mini_data,
+                    run_mean = trap_data()$trap$run_mean_overlay)
+    
+   
+    
+    periods_df <- data.frame(start = (trap_data()$events$event_start)/hz,
+                             stop = (trap_data()$events$event_stop)/hz)
+    
+    pni <-  trap_data()$events$peak_nm_index / hz
+    
+    colors <- RColorBrewer::brewer.pal(8, 'Dark2')
+    orange <-  RColorBrewer::brewer.pal(8, 'Oranges')
+    overlay_dy <-  dygraphs::dygraph(d) %>% #raw_data_dygraph
+      dygraphs::dySeries('raw', color = '#242424', strokeWidth = 2) %>%
+      dygraphs::dySeries('run_mean', color = colors[[1]],  strokeWidth = 2) %>%
+      dygraphs::dyRangeSelector(fillColor ='white', strokeColor = 'black') %>%
+      add_shades(periods_df, color = orange[[3]]) %>% #raw_periods
+      add_labels_hmm(trap_data()$events, peak_nm_index = pni, labelLoc = 'bottom') %>% #results$events
+      dygraphs::dyAxis('x', label = 'seconds', drawGrid = FALSE) %>%
+      dygraphs::dyAxis('y', label = 'nm') %>%
+      dygraphs::dyOptions(drawGrid = FALSE) %>% 
+      dygraphs::dyUnzoom()
+  })
   
   
   observe({
@@ -333,12 +379,59 @@ mod_mini_ensemble_server <- function(input, output, session){
       shinyjs::hide('time_threshold_ms')
     }
   })
+  
+  
+  
+  output$observation <- renderValueBox({
+    req(trap_data())
+    valueBox(
+      unique(trap_data()$trap$obs),
+      paste(f$conditions$name, f$date_input),
+      icon = icon("folder-open"),
+      color = 'yellow'
+    )
+    
+  })
+  output$n_events <- renderValueBox({
+    req(trap_data())
+    valueBox(
+      nrow(trap_data()$events),
+      "Events",
+      icon = icon("slack-hash"),
+      color = 'yellow'
+    )
+    
+  })
+  
+  output$seconds <- renderValueBox({
+    req(trap_data())
+    hz <- unique(trap_data()$trap$hz)
+    valueBox(
+      round(nrow(trap_data()$trap)/hz, 1),
+      "Seconds",
+      icon = icon("clock"),
+      color = 'yellow'
+    )
+    
+  })
+  
+  output$selected_folders <- renderPrint({
+    ob <- if(input$which_obs == 'single'){
+      validate(need(substring(f$obs_input, 1, 3) == 'obs', message = 'Please select an obs folder to analyze'))
+      f$obs$name 
+    } else {
+      validate(need(f$date_input, message = 'Please select date folder to analyze'))
+      'Analyze all'
+    }
+    cat('Project:', f$project$name, ' | Conditions:', f$conditions$name, ' | Date:', f$date$name, ' | Observation:', ob)
+  })
+  
  
 }
     
 ## To be copied in the UI
-# mod_mini_ensemble_ui("mini_ensemble_ui_1")
+# mod_mini_ensemble_ui("mini_ensemble")
     
 ## To be copied in the server
-# callModule(mod_mini_ensemble_server, "mini_ensemble_ui_1")
+# callModule(mod_mini_ensemble_server, "mini_ensemble")
  

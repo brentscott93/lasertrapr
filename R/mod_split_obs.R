@@ -30,9 +30,9 @@ mod_split_obs_ui <- function(id){
                                      label = 'Set Threshold to Split',
                                      value = 20,
                                      min = 10,
-                                     max = 30,
-                                     inputColor = '#ff41c8',
-                                     fgColor = '#ff41c8'),
+                                     max = 30),
+                                     # inputColor = '#ff41c8',
+                                     # fgColor = '#ff41c8'),
                            
                            
                            # h5("3) Trap Calibration Files?"),
@@ -62,7 +62,7 @@ mod_split_obs_ui <- function(id){
                                              multiple = T,
                                              width = '100%',
                                              placeholder = 'Step.txt'),
-                                shinyWidgets::setSliderColor('#ff41c8', c(1, 2)),
+                                #shinyWidgets::setSliderColor('#ff41c8', c(1, 2)),
                                    sliderInput(ns('step_cal_stepsize'), 
                                                'Step Cal Step Size', 
                                                min = 1, 
@@ -123,6 +123,7 @@ mod_split_obs_server <- function(input, output, session, f){
  
   #check if a date folder is properly selected
   observeEvent(input$split_obs_button, {
+    golem::print_dev("go")
     if(is_empty(f$date) == TRUE){
       showNotification("No 'Date' folder selected. Please select a folder with the folder chooser above.",
                        type = "error")

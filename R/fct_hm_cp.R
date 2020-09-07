@@ -30,7 +30,7 @@ hidden_markov_changepoint_analysis <- function(trap_data, f, hz = 5000, w_width 
           stop('Data not processed')
           }
                   
-        if(is_shiny) setProgress(0.05, paste("Analyzing", trap_data$conditions, trap_data$obs))
+        if(is_shiny) setProgress(0.05, paste("Analyzing", conditions, obs))
         
      
         if(is_shiny){
@@ -156,6 +156,7 @@ hidden_markov_changepoint_analysis <- function(trap_data, f, hz = 5000, w_width 
           dplyr::mutate(processed_bead =  measured_hm_events$flip_raw,
                         hm_overlay = overlay,
                         report = report_data,
+                        hz = hz, 
                         status = 'analyzed')
         
         if(is_shiny == T) setProgress(0.95, detail = 'Saving Data')
@@ -178,11 +179,11 @@ hidden_markov_changepoint_analysis <- function(trap_data, f, hz = 5000, w_width 
 
       }, error=function(e){
         showNotification(paste0("Analysis error in ",
-                                trap_data$date,
+                                date,
                                 " ",
-                                trap_data$conditions,
+                                conditions,
                                 " ",
-                                trap_data$obs,
+                                obs,
                                 ". Error Message: ",
                                 as.character(e)), type = 'warning', duration = NULL)
         writeLines(

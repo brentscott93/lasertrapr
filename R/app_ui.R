@@ -29,7 +29,8 @@ app_ui <- function(request) {
           menuItem(text = 'Initialize Data', tabName = 'obs',  icon = icon('play-circle')),
           menuItem(text = 'Clean & Process', tabName = 'clean', icon = icon('broom')),
           menuItem(text = 'Analyzers', icon = icon('microscope'),
-           menuSubItem(text = 'HM-Model', tabName = 'hm_model'))
+           menuSubItem(text = 'HM/CP', tabName = 'hm_model'),
+           menuSubItem(text = 'Mini-Ensemble', tabName = 'mini_ensemble'))
           #menuItem(text = 'Mean-Variance', tabName = 'mv')
         
         )
@@ -38,10 +39,13 @@ app_ui <- function(request) {
       dashboardBody(fresh::use_theme(theme_lasertrapr()),
                     
         tabItems(
-          tabItem('home', fluidRow(img(src = 'www/lasertrapr-logo.gif'))),
+          tabItem('home', fluidRow(HTML("<p align='center'>
+                                     <img src='www/lasertrapr-logo.gif'>
+                                     </p> "))),
           tabItem('obs', mod_split_obs_ui('split_obs')),
           tabItem('clean', mod_clean_data_ui('clean_data_ui')),
-          tabItem('hm_model', mod_hm_model_ui("hm_model_ui"))
+          tabItem('hm_model', mod_hm_model_ui("hm_model_ui")),
+          tabItem('mini_ensemble', mod_mini_ensemble_ui("mini_ensemble"))
         #tabItem(tabName = 'mv', mod_mv_ui('mv'))
         )#tab itens close
       )#body close

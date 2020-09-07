@@ -60,7 +60,7 @@ mod_hm_model_ui <- function(id){
                              label = "Run Analysis",
                              icon = icon("running"),
                              width = "100%",
-                             style = 'margin-top: 25px; color = #fff; background-color: #009BFF;')
+                             style = 'margin-top: 25px;')
                                                           
                  ),
              
@@ -75,11 +75,11 @@ mod_hm_model_ui <- function(id){
     ) # col close
     ),
     
-    fluidRow(
-      box(width = 12, title = 'Results', 
-      background = 'black',  
+    # fluidRow(
+    #   box(width = 12, title = 'Results', 
+    #   background = 'black',  
       
-
+    tags$style(".small-box.bg-yellow { background-color: #1B9E77 !important; color: #f2f2f2 !important; }"),
           fluidRow(
             column(4, 
              valueBoxOutput(ns('observation'), width = NULL)
@@ -119,7 +119,7 @@ mod_hm_model_ui <- function(id){
                    actionButton(ns('save_review'), 
                                 'Save Review', 
                                 width = '100%',
-                                style = "color: #fff; background-color: #50D400; margin-top: 25px;")
+                                style = "margin-top: 25px;")
                    
                )
         ), #col close
@@ -152,14 +152,15 @@ mod_hm_model_ui <- function(id){
              dygraphs::dygraphOutput(ns('overlay_dygraph'), height = '400px') %>% shinycssloaders::withSpinner(type = 8, color = "#373B38")
     )
       )
-    ) #rowclose
-      ) #results box close
+    # ) #rowclose
+    #   ) #results box close
     )
   )#taglist clost
 }
     
 #' hm_model Server Function
 #' @importFrom magrittr "%<>%"
+#' @param input,output,session,f module parameters
 #' @noRd 
 mod_hm_model_server <- function(input, output, session, f){
   ns <- session$ns
@@ -185,10 +186,10 @@ mod_hm_model_server <- function(input, output, session, f){
     
     if(input$which_obs =='single'){
       file <- list_files(f$obs$path, pattern = 'trap-data.csv')
-      trap_data <- vroom::vroom(file$path)
+      trap_data <- purrr::map(file$path, vroom::vroom, delim = ",")
     } else {
       files <- list_files(f$date$path, pattern = 'trap-data.csv', recursive = T)
-      trap_data <- purrr::map(files$path, vroom::vroom)
+      trap_data <- purrr::map(files$path, vroom::vroom, delim = ",")
     }
     
     # if('hm_overlay' %not_in% colnames(trap_data)){
@@ -263,7 +264,7 @@ mod_hm_model_server <- function(input, output, session, f){
 
       overlay_dy <-  dygraphs::dygraph(d) %>% #raw_data_dygraph
                         dygraphs::dySeries('raw', color = '#242424', strokeWidth = 2) %>%
-                        dygraphs::dySeries('model', color = 'red',  strokeWidth = 2) %>%
+                        dygraphs::dySeries('model', color = "#1B9E77",  strokeWidth = 2) %>%
                         dygraphs::dyRangeSelector(fillColor ='white', strokeColor = 'black') %>%
                         add_shades(periods_df, color = '#ffd2df') %>% #raw_periods
                         add_labels_hmm(trap_data()$events, peak_nm_index = pni, labelLoc = 'bottom') %>% #results$events
@@ -305,7 +306,7 @@ mod_hm_model_server <- function(input, output, session, f){
       unique(trap_data()$trap$obs),
       paste(f$conditions$name, f$date_input),
       icon = icon("folder-open"),
-      color = 'blue'
+      color = 'yellow'
     )
     
   })
@@ -315,7 +316,7 @@ mod_hm_model_server <- function(input, output, session, f){
       nrow(trap_data()$events),
       "Events",
       icon = icon("slack-hash"),
-      color = 'lime'
+      color = 'yellow'
     )
     
   })
@@ -326,7 +327,7 @@ mod_hm_model_server <- function(input, output, session, f){
       round(unique(trap_data()$running$var_signal_ratio), 2),
       "Signal-to-noise",
       icon = icon("signal"),
-      color = 'blue'
+      color = 'yellow'
     )
     
   })
@@ -347,9 +348,8 @@ mod_hm_model_server <- function(input, output, session, f){
   info <- eventReactive(input$info_table, {
     defend_if_empty(f$date, ui = 'Please select a date folder', type = 'error')
     showNotification('Refreshing table', type = 'message')
-    path <- file.path('~','lasertrapr', f$project$name, f$conditions$name, f$date$name)
-    files <- list_files(path, pattern = 'trap-data.csv', recursive = T)
-    trap_data <- purrr::map(files$path, vroom::vroom)
+    files <- list_files(f$date$path, pattern = 'trap-data.csv', recursive = T)
+    trap_data <- purrr::map(files$path, vroom::vroom, delim = ",")
     # if('hm_overlay' %not_in% colnames(trap_data)){
     #  t <- trap_data  %>% 
     #   tidyr::nest(data = c(raw_bead, processed_bead)) 
@@ -358,7 +358,7 @@ mod_hm_model_server <- function(input, output, session, f){
     #     tidyr::nest(data = c(raw_bead, processed_bead, hm_overlay)) 
     # }
     
-    purrr::map_dfr(trap_data, ~function(trap_data){
+    purrr::map_dfr(trap_data, function(trap_data){
       tibble::tibble(obs = unique(trap_data$obs), 
                      include = unique(trap_data$include),
                      analyzer = unique(trap_data$analyzer),

@@ -4,7 +4,17 @@
 \alias{fit_hm_model}
 \title{Convenient wrapper to fit Hidden-Markov Model to single molecule myosin data}
 \usage{
-fit_hm_model(trap_data, run_mean, run_var, em_random_start, is_shiny)
+fit_hm_model(
+  trap_data,
+  run_mean,
+  run_var,
+  em_random_start,
+  is_shiny,
+  project,
+  conditions,
+  date,
+  obs
+)
 }
 \arguments{
 \item{trap_data}{trap-data.csv}

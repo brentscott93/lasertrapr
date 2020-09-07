@@ -33,15 +33,17 @@ move_obs <- function(trap_selected_date, trap_selected_obs, trim_from, trim_to, 
     
     from <- as.integer(trim_from*5000)
     to <- as.integer(trim_to*5000)
-    new_obs <- data[c(from:to),]
+    to_move <- data[c(from:to),]
     
-    vroom::vroom_write(new_obs, path = file.path(new_folder_path, "trap-data.csv"), delim = ",")
+    to_move %<>% dplyr::mutate(obs = new_folder)
+    
+    vroom::vroom_write(to_move, path = file.path(new_folder_path, "trap-data.csv"), delim = ",")
     
     #regroup current observation after desired files moved out
     regroup <- data[-c(from:to),]
   
     # write_csv(regroup, path = paste0(trap_selected_obs, "/grouped.csv"), append = FALSE)
-    vroom::vroom_write(regroup_t, path = file.path(trap_selected_obs, "trap-data.csv"), delim = ",")
+    vroom::vroom_write(regroup, path = file.path(trap_selected_obs, "trap-data.csv"), delim = ",")
     incProgress(1, detail = "Done")
   })
   showNotification("Files moved to new obs.", type = "message")
@@ -79,7 +81,7 @@ trim_obs <- function(trap_selected_obs, trim_from, trim_to, f){
     #                                obs = f$obs$name,
     #                                raw_bead = trimmed )
   
-    vroom::vroom(trimmed, path = file.path(trap_selected_obs, 'trap-data.csv'), delim = ",")
+    vroom::vroom_write(trimmed, path = file.path(trap_selected_obs, 'trap-data.csv'), delim = ",")
     
     
     setProgress("Done", value = 1)

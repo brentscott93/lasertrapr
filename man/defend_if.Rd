@@ -9,6 +9,8 @@ defend_if(.if, is_shiny = T, ...)
 \arguments{
 \item{.if}{An expression that returns TRUE/FALSE (to be passed to an internal if statement)}
 
+\item{is_shiny}{TRUE/FALSE indicating whether using function inside a shiny app. Defaults to TRUE. Set to FALSE to practice using functions at the console.}
+
 \item{...}{Additional arguments passed to shinyShowNotification}
 }
 \value{

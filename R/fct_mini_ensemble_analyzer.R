@@ -1,36 +1,45 @@
 
-mini_ensemble_analyzer <- function(trap_data, w_width_ms = 10, hz = 5000, displacement_threshold = 8, time_threshold_ms = 50){
+mini_ensemble_analyzer <- function(trap_data, w_width_ms = 10, hz = 5000, displacement_threshold = 8, time_threshold_ms = 10, f){
   #for dev
   # trap_data <- read_tsv("/Users/brentscott/Documents/silver_flash/azo-TP_trapping_stuff/raw_data/mini_ensemble/6-28-19_100uMORTHAZTP_25ugMYO/observation_one/processed.txt",
   #                       col_names = "processed_bead")
-  # 
+   # trap_data <- list_files("~/lasertrapr/project_mini/mini/2020-08-04/obs-01", pattern = 'trap-data.csv')
+   # trap_data <- vroom::vroom(trap_data$path, delim = ",")
   # processed_data <- trap_data$processed_bead
   # conditions = 'conditions'
   # project = "project"
   # obs = 'obs'
   # date = 'date'
   #w_width_ms = 10; hz = 5000; displacement_threshold = 8; time_threshold_ms = 50
+  project <-  unique(trap_data$project)
+  conditions <- unique(trap_data$conditions)
+  date <- unique(trap_data$date)
+  obs <-  unique(trap_data$obs)
+  #browser()
   error_file <- file(file.path(f$date$path, "error-log.txt"), open = "a")
   tryCatch({
+    # files <- list_files("~/lasertrapr/project_mini/mini/2020-08-04", pattern = 'trap-data.csv', recursive = T)
+    # trap_data <- purrr::map(files$path, vroom::vroom)
+    # trap_data <- trap_data[[1]]
      report_data = 'error'
      w_width = ms_to_dp(w_width_ms, hz = hz)
      time_threshold <- ms_to_dp(time_threshold_ms, hz = hz)
      processed_data <- trap_data$processed_bead
      nm2pn <- unique(trap_data$nm2pn)
-     project <-  unique(trap_data$project)
-     conditions <- unique(trap_data$conditions)
-     date <- unique(trap_data$date)
-     obs <-  unique(trap_data$obs)
+   
     #calculate running mean
+    setProgress(0.25, detail = 'Calculating Running Mean')
     run_mean <- na.omit(RcppRoll::roll_meanl(processed_data, n = w_width))
     run_mean0 <- ifelse(run_mean < 0, 0, run_mean)
     
+    setProgress(0.4, detail = 'Identifying Events')
     id_events <- id_mini_events(run_mean = run_mean,
                                displacement_threshold = displacement_threshold, 
                                time_threshold = time_threshold)
     
     events <- id_events$events
     
+    setProgress(0.6, detail = 'Rescaling Data')
     scale_by_event_index <- data.frame(state_1_start = c(0, events$state_2_end[-length(events$state_2_end)] + 1),
                                        state_2_end = events$state_2_end)
     
@@ -66,9 +75,11 @@ mini_ensemble_analyzer <- function(trap_data, w_width_ms = 10, hz = 5000, displa
     rescaled_raw_data <- tibble(data = rescaled_raw_data, 
                                 index = 1:length(data))
     
+    setProgress(0.65, detail = 'Calculate Rescaled Running Mean')
     run_mean_rescaled <- na.omit(RcppRoll::roll_meanl(rescaled_raw_data$data, n =  w_width))
     run_mean_rescaled0 <- ifelse(run_mean_rescaled < 0 , 0, run_mean_rescaled)
     
+    setProgress(0.75, detail = 'Identifying rescaled events')
     id_rescaled_events <- id_mini_events(run_mean_rescaled,
                                          displacement_threshold = displacement_threshold, 
                                          time_threshold = time_threshold)
@@ -101,7 +112,7 @@ mini_ensemble_analyzer <- function(trap_data, w_width_ms = 10, hz = 5000, displa
     
     ##### COMBINE ALL EVENT DATA ####
     rescaled_events$force <-  peak_displacement*nm2pn
-
+   
     final_events <-  rescaled_events %>%
       mutate(off_time_prior_dp = c(NA, off_time_index$off_time_dp),
              off_time_prior_sec = off_time_prior_dp/hz,
@@ -115,11 +126,14 @@ mini_ensemble_analyzer <- function(trap_data, w_width_ms = 10, hz = 5000, displa
              conditions = conditions,
              date = date, 
              obs = obs,
+             hz = hz, 
+             event_start = state_1_end + 1,
+             peak_nm_index = peak_nm_index,
              index = 1:nrow(rescaled_events)) %>% 
-      rename("index_event_start" = state_1_end + 1,
-             "index_event_stop" = state_2_end) %>% 
-      dplyr::select(project, conditions, date, obs, time_on_ms, time_off_prior_ms, displacement_nm, force, index, end_s1, end_s2)
+      rename("event_stop" = state_2_end) %>% 
+      dplyr::select(project, conditions, date, obs, time_off_prior_ms, time_on_ms,displacement_nm, force, index, event_start, event_stop, peak_nm_index)
     
+    setProgress(0.85, detail = 'Calculating event frequency')
    event_freq <- mini_event_frequency(rescaled_raw_data$data,  
                                       id_rescaled_events$events, 
                                       conversion = 1,
@@ -128,15 +142,18 @@ mini_ensemble_analyzer <- function(trap_data, w_width_ms = 10, hz = 5000, displa
    
    times <- length(rescaled_raw_data$data) - length(run_mean_rescaled0)
    report_data = 'success'
+   
+   setProgress(0.95, detail = 'Saving Data')
    trap_data %<>% mutate(rescaled_mini_data = rescaled_raw_data$data,
                          run_mean_overlay = c(run_mean_rescaled0, rep(0, times)),
                          analyzer = "mini", 
+                         hz = hz, 
                          report = report_data)
    
     data_to_save <- list(final_events, event_freq, trap_data)
     filenames <- c('mini-measured-events.csv',
                    'mini-event-frequency.csv',
-                   'mini-trap-data.csv')
+                   'trap-data.csv')
     path <- file.path('~', 'lasertrapr', project, conditions, date, obs)
     #path <- '~/Desktop'
     purrr::walk2(data_to_save, filenames, ~vroom::vroom_write(.x, path = file.path(path, .y), delim = ","))
@@ -145,12 +162,12 @@ mini_ensemble_analyzer <- function(trap_data, w_width_ms = 10, hz = 5000, displa
     
     
      }, error=function(e){
-    showNotification(paste0("Analysis error in ",
-                            trap_data$date,
+    showNotification(ui = paste0("Analysis error in ",
+                            date,
                             " ",
-                            trap_data$conditions,
+                            conditions,
                             " ",
-                            trap_data$obs,
+                            obs,
                             ". Error Message: ",
                             as.character(e)), type = 'warning', duration = NULL)
     writeLines(
@@ -166,7 +183,7 @@ mini_ensemble_analyzer <- function(trap_data, w_width_ms = 10, hz = 5000, displa
   })
   
   close(error_file)
-  if(is_shiny == T) setProgress(1, detail = "Done!")
+  setProgress(1, detail = "Done!")
   
   return(invisible())
 }
@@ -191,8 +208,11 @@ id_mini_events <- function(run_mean, displacement_threshold, time_threshold){
       
       rle_object<- as_tibble(do.call("cbind", rle(on_off)))
       
+      if(length(unique(rle_object$values)) == 1){
+        stop('No events in trace. There is either on events or the thresholds are too stringent.')
+      }
       #if starts in state2/event get rid of it
-      if(head(rle_object, 1)$values == 2){
+      if(rle_object$values[[1]] == 2){
         rle_object %<>% slice(2:nrow(rle_object))
       }
       
@@ -226,7 +246,7 @@ id_mini_events <- function(run_mean, displacement_threshold, time_threshold){
              ends_in_state_1 = ends_in_s1))
 }
 
-#' Event Frequency
+#' Mini - Ensemble Event Frequency
 #' @noRd
 #' @param rescaled_raw_data A vector of rescaled mini ensemble trap data
 #' @param rle_object A run-length-encoding object

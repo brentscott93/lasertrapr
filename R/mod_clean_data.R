@@ -77,8 +77,11 @@ mod_clean_data_ui <- function(id){
                     # ),
                    column(3,
                           
-                          actionButton(ns('graph'), 'Graph', width = '100%',
-                                       style="color: #fff; background-color: #009BFF; margin-top: 25px;")
+                          actionButton(ns('graph'), 
+                                       'Graph',
+                                       width = '100%',
+                                       icon = icon('chart-line'),
+                                       style="margin-top: 25px;")
                    ),
                      
                   # ) #conditional close
@@ -180,7 +183,7 @@ mod_clean_data_ui <- function(id){
                      ))),#tabPanel close
             tabPanel("MV", 
                      fluidRow(column(3,actionButton(ns('baseline_graph_mv'), 'Baseline MV', width = '100%'))),
-                     fluidRow(style =  "background-color:#000000;",
+                     fluidRow(
                      column(6, 
                            plotOutput(ns('mv'), brush = ns('mv_brush'))  %>% 
                               shinycssloaders::withSpinner(type = 8, color = "#373B38"),
@@ -235,8 +238,11 @@ mod_clean_data_ui <- function(id){
                          'Trap Stiffness (pN/nm)',
                          placeholder = 'Equipartition Value'),
                verbatimTextOutput(ns('current_mv2nm')),
-               actionButton(ns('save'), 'Save', width = '100%',  
-                            style="color: #fff; background-color: #50D400; margin-top: 25px;")
+               actionButton(ns('save'), 
+                            'Save',
+                            width = '100%',   
+                            icon = icon('save'),
+                            style="margin-top: 25px;")
        
         ) # col close
       ) # row close
@@ -425,7 +431,7 @@ mod_clean_data_server <- function(input, output, session, f){
   observeEvent(f$obs_input, {
     req(substring(f$obs_input, 1, 3) == 'obs')
     trap_path <- list_files(f$obs$path, pattern = 'trap-data.csv')
-   rv$filter_max <- nrow(vroom::vroom(trap_path$path, delim = ","))
+   rv$filter_max <- nrow(readr::read_csv(trap_path$path, col_types = cols_only('raw_bead' = col_double())))
    
   })
   
@@ -864,8 +870,8 @@ output$move_files <- renderText({
       ylab('nm')+
       xlab('Seconds')+
       ggtitle('Baseline range selected with mean')+
-      theme_classic(base_size = 14)+
-      theme(panel.background = element_rect(colour = "black", size=2))
+      theme_classic(base_size = 16)#+
+      #theme(panel.background = element_rect(colour = "black", size=2))
   })
   
   output$range <- renderPlot({
@@ -908,7 +914,6 @@ output$move_files <- renderText({
     req(not_null(base$baseline), not_null(base$baseline_fit))
     req(base$baseline_fit$estimate[1])
     
-    par(bg = 'black', fg = 'white')
     hist(base$baseline$mean, 
          pch=20, 
          breaks=25,
@@ -965,7 +970,7 @@ output$move_files <- renderText({
       # grouped <- data %>% 
          #tidyr::unnest(cols = c(grouped)) %>%
          #dplyr::select(bead, trap) %>% 
-        data %<>% mutate(processed_bead = raw_bead*as.numeric(input$mv2nm))
+        data %<>% dplyr::mutate(processed_bead = raw_bead*as.numeric(input$mv2nm))
        
       setProgress(0.3)
       
@@ -973,16 +978,16 @@ output$move_files <- renderText({
        
        break_pts <- seq(25000, nrow(dg_data$data), by = 25000)
        
-          data %<>% dplyr::mutate(processed_bead = as.vector(pracma::detrend(raw_bead, tt = "linear", bp = break_pts)))
+          data %<>% dplyr::mutate(processed_bead = as.vector(pracma::detrend(processed_bead, tt = "linear", bp = break_pts)))
        
      } else if(input$how_to_process == 'remove_base'){
        
     
-         data %<>% mutate(processed_bead = raw_bead - base$range)
+         data %<>% dplyr::mutate(processed_bead = processed_bead - base$range)
        
      } else if(input$how_to_process == 'remove_mv'){
        
-        data %<>% mutate(processed_bead = raw_bead - base$baseline_fit$estimate[1])
+        data %<>% dplyr::mutate(processed_bead = processed_bead - base$baseline_fit$estimate[1])
      }
       
       if(input$include == 'No'){
@@ -991,14 +996,14 @@ output$move_files <- renderText({
          input_include <- TRUE
        }
       
-     data  %<>% mutate(processor = input$how_to_process, 
+     data  %<>% dplyr::mutate(processor = input$how_to_process, 
                        mv2nm = as.numeric(input$mv2nm),
                        nm2pn = as.numeric(input$nm2pn),
                        include = input_include)
      
      setProgress(0.5)
      
-     vroom::vroom_write(data, file = file.path(f$obs$path, 'trap-data.csv'), delim = ",")
+     vroom::vroom_write(data, path = file.path(f$obs$path, 'trap-data.csv'), delim = ",")
      
      setProgress(0.75)
       # index <- input$save

@@ -6,6 +6,9 @@
 \usage{
 mod_hm_model_server(input, output, session, f)
 }
+\arguments{
+\item{input, output, session, f}{module parameters}
+}
 \description{
 hm_model Server Function
 }

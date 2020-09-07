@@ -553,12 +553,6 @@ changepoint_and_ensemble <- function(measured_hm_events,  hz,  conversion){
 #' @param conversion The conversion between running window time and 5kHz
 
 event_frequency <- function(processed_data, rle_object, conversion, hz = 5000, ends_in_state_1){
-  #mini-ensemble dev
-   processed_data <- rescaled_raw_data$data 
-   rle_object <- id_rescaled_events$rle_object 
-   conversion = 1
-   hz = hz
-   ends_in_state_1 =  id_rescaled_events$ends_in_state_1
   #return a dataframe of event frequencies per each second
   #get the number of seconds in the trace
   seconds_in_trace <- length(processed_data)/hz

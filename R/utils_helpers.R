@@ -159,7 +159,7 @@ get_info_table <- function(f_date, f_date_input){
 #' Stops reactivity in shiny app if expression is TRUE
 #'
 #' @param .if An expression that returns TRUE/FALSE (to be passed to an internal if statement)
-#' @is_shiny TRUE/FALSE indicating whether using function inside a shiny app. Defaults to TRUE. Set to FALSE to practice using functions at the console. 
+#' @param is_shiny TRUE/FALSE indicating whether using function inside a shiny app. Defaults to TRUE. Set to FALSE to practice using functions at the console. 
 #' @param ... Additional arguments passed to shinyShowNotification
 #'
 #' @return Nothing. Will either stop or allow shiny reactivity to continue
