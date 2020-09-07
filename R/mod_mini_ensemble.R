@@ -42,7 +42,7 @@ mod_mini_ensemble_ui <- function(id){
                              value = 10, 
                              min = 1, 
                              max = 50, 
-                             step = 10),
+                             step = 1),
                  
                  sliderInput(ns('displacement_threshold'), 
                              label = 'Set Displacement Threshold (ms)',

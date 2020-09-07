@@ -101,8 +101,8 @@ mod_split_obs_ui <- function(id){
                             )
             ),
          
-                   
-                    valueBoxOutput(ns("step_cal_valueBox"), width = 3),
+            tags$style(".small-box.bg-yellow { background-color: #1B9E77 !important; color: #f2f2f2 !important; }"), 
+            valueBoxOutput(ns("step_cal_valueBox"), width = 3),
             valueBoxOutput(ns("equipartition_valueBox"), width = 3)
                           
             )
@@ -188,7 +188,7 @@ mod_split_obs_server <- function(input, output, session, f){
       subtitle = "Trap Stiffness (pN/nm)",
       icon = icon("ruler-vertical"),
       width = "100%",
-      color = 'purple'
+      color = 'yellow'
     )
   })
   
@@ -226,7 +226,7 @@ mod_split_obs_server <- function(input, output, session, f){
       subtitle = "Step Calibration (nm/mV)",
       icon = icon("ruler-horizontal"),
       width = "100%",
-      color = "fuchsia"
+      color = "yellow"
     )
   })
   
