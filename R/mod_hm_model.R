@@ -403,7 +403,7 @@ mod_hm_model_server <- function(input, output, session, f){
       trap_reviewed <- trap %>% 
         dplyr::mutate(review = input$quality_control)
       
-      vroom::vroom_write(trap_reviewed, file = file.path(f$obs$path, 'trap-data.csv'))
+      vroom::vroom_write(trap_reviewed, path = file.path(f$obs$path, 'trap-data.csv'))
       setProgress(1, detail = 'Done')
     })
      showNotification('Review saved' , type = 'message')
