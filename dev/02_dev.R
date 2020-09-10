@@ -38,6 +38,7 @@ usethis::use_package( "rmarkdown" )
 usethis::use_package( "data.table" )
 usethis::use_package( "DT" )
 usethis::use_package( "vroom" )
+usethis::use_package( "glue" )
 
 ## Add modules ----
 ## Create a module infrastructure in R/
