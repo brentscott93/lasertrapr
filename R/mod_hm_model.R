@@ -68,7 +68,7 @@ mod_hm_model_ui <- function(id){
       
   
     column(8,
-    box(width = NULL, title = 'Info',
+    box(width = NULL, title = 'Info Table',
         actionButton(ns('info_table'), 'Refresh Info'),
         DT::DTOutput(ns('table')) %>%  shinycssloaders::withSpinner(type = 8, color = "#373B38")
     ),
@@ -119,6 +119,7 @@ mod_hm_model_ui <- function(id){
                    actionButton(ns('save_review'), 
                                 'Save Review', 
                                 width = '100%',
+                                icon = icon('save'),
                                 style = "margin-top: 25px;")
                    
                )
