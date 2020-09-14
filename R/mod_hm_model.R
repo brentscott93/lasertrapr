@@ -219,16 +219,18 @@ mod_hm_model_server <- function(input, output, session, f){
       w_width <- input$w_width
     }
     
-    #trap_data <- split(trap_data, trap_data$obs)
+    # keep <- purrr::map_lgl(trap_data, ~unique(.$include) == T)
+    # 
+    # trap_data %<>% trap_data[keep]
     
     withProgress(message = 'Analyzing trap data', value = 0, max = 1, min = 0, {
-    purrr::walk(trap_data, ~hidden_markov_changepoint_analysis(
+    purrr::walk(trap_data, ~purrr::possibly(hidden_markov_changepoint_analysis(
                                     trap_data = .x,
                                      f = f,
                                      hz = hz,
                                      w_width = w_width,
                                      em_random_start = em_start, 
-                                     is_shiny = T)
+                                     is_shiny = T), NULL)
               )
        })
       
