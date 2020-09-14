@@ -256,6 +256,7 @@ mod_hm_model_server <- function(input, output, session, f){
 
   output$overlay_dygraph <- dygraphs::renderDygraph({
     req(trap_data())
+
     d <- data.frame(index = (1:nrow(trap_data()$trap)/5000),
                     raw = trap_data()$trap$processed_bead,
                     model = trap_data()$trap$hm_overlay)
@@ -263,23 +264,40 @@ mod_hm_model_server <- function(input, output, session, f){
     periods_df <- data.frame(start = trap_data()$events$cp_event_start_dp/5000,
                              stop = trap_data()$events$cp_event_stop_dp/5000,
                              keep = trap_data()$events$keep) 
-    periods_df %<>% dplyr::filter(keep == T)
     
-    excluded_events <-  periods_df %>% dplyr::filter(keep == F)
-
+    events <- periods_df %>%  dplyr::filter(keep == T)
+    
+    excluded_events <- periods_df %>% dplyr::filter(keep == F)
+   # d <- vroom::vroom('~/lasertrapr/project_myoV-phosphate/myoV-S217A_pH-7.0_30mM-Pi/2019-02-27/obs-01/measured-events.csv')
+   # excluded_events <-  d %>% dplyr::filter(keep == F)
      pni <-  trap_data()$events$peak_nm_index
-      dark2 <- RColorBrewer::brewer.pal(8, 'Dark2')
-      grey <-RColorBrewer::brewer.pal(8, 'Greys')
+    
+      golem::print_dev('overlay')
+      if(nrow(excluded_events) == 0 ){
       overlay_dy <-  dygraphs::dygraph(d) %>% #raw_data_dygraph
                         dygraphs::dySeries('raw', color = 'black', strokeWidth = 2) %>%
-                        dygraphs::dySeries('model', color = dark2[[1]],  strokeWidth = 2) %>%
+                        dygraphs::dySeries('model', color = "#1B9E77",  strokeWidth = 2) %>%
                         dygraphs::dyRangeSelector(fillColor ='white', strokeColor = 'black') %>%
-                        add_shades(periods_df, color = dark2[[2]]) %>% #raw_periods
-                        add_shades(excluded_events, color = grey[[4]]) %>%
+                        add_shades(events, color = scales::alpha("#D95F02", 0.6)) %>% #raw_periods
+                        #add_shades(excluded_events, color = "grey60") %>%
                         add_labels_hmm(trap_data()$events, peak_nm_index = pni, labelLoc = 'bottom') %>% #results$events
                         dygraphs::dyAxis('x', label = 'seconds', drawGrid = FALSE) %>%
                         dygraphs::dyAxis('y', label = 'nm', drawGrid = FALSE) %>%
                         dygraphs::dyUnzoom()
+      } else {
+        
+        overlay_dy <-  dygraphs::dygraph(d) %>% #raw_data_dygraph
+                        dygraphs::dySeries('raw', color = 'black', strokeWidth = 2) %>%
+                        dygraphs::dySeries('model', color = "#1B9E77",  strokeWidth = 2) %>%
+                        dygraphs::dyRangeSelector(fillColor ='white', strokeColor = 'black') %>%
+                        add_shades(events, color = scales::alpha("#D95F02", 0.6)) %>% #raw_periods
+                        add_shades(excluded_events, color = "grey60") %>%
+                        add_labels_hmm(trap_data()$events, peak_nm_index = pni, labelLoc = 'bottom') %>% #results$events
+                        dygraphs::dyAxis('x', label = 'seconds', drawGrid = FALSE) %>%
+                        dygraphs::dyAxis('y', label = 'nm', drawGrid = FALSE) %>%
+                        dygraphs::dyUnzoom()
+      }
+        
   })
   
   output$mv_by_state <- renderPlot({
@@ -290,7 +308,7 @@ mod_hm_model_server <- function(input, output, session, f){
     
     mv1 <- ggplot2::ggplot(mv_data)+
               geom_point(aes(x = run_mean, y = run_var, color = state), size = 3, alpha = 0.5)+
-              scale_color_manual(values = c("#01BBD1", "#37D62D"))+
+              scale_color_manual(values = c("#1B9E77", "#D95F02"))+
               ggtitle('Mean-Variance (overlayed)')+
               ylab('Variance')+
               xlab('Mean (nm)')+
@@ -299,7 +317,7 @@ mod_hm_model_server <- function(input, output, session, f){
 
     mv2 <- ggplot(mv_data)+
               geom_point(aes(x = run_mean, y = run_var, color = state), size = 3, alpha = 0.5)+
-              scale_color_manual(values = c("#01BBD1", "#37D62D"))+
+              scale_color_manual(values = c("#1B9E77", "#D95F02"))+
               facet_wrap(~state)+
               ggtitle('Mean-Variance (by state)')+
               ylab('')+
