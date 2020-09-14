@@ -157,6 +157,7 @@ hidden_markov_changepoint_analysis <- function(trap_data, f, hz = 5000, w_width 
                         hm_overlay = overlay,
                         report = report_data,
                         hz = hz, 
+                        analyzer = 'hm/cp',
                         status = 'analyzed')
         
         if(is_shiny == T) setProgress(0.95, detail = 'Saving Data')
