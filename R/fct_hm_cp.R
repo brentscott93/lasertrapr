@@ -99,7 +99,7 @@ hidden_markov_changepoint_analysis <- function(trap_data, f, hz = 5000, w_width 
                                             cp_time_on_ms),
                  final_displacements = ifelse(is.na(start)  | is.na(stop)  | cp_time_on_dp <= 0,
                                               displacement_nm,
-                                              displacements),
+                                              cp_displacements),
                  analyzer = 'hm-model/cp',
                  hm_event_start = measured_hm_events$hm_event_transitions$state_1_end + 1,
                  hm_event_stop = measured_hm_events$hm_event_transitions$state_2_end,

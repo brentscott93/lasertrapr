@@ -303,34 +303,34 @@ changepoint_and_ensemble <- function(measured_hm_events,  hz,  conversion){
   
   better_time_on_starts <- vector()
   forward_ensemble_average_data <- vector("list")
-  ensemble_keep1 <- vector()
+  cp_found_start <- vector()
   #forward_plots <- list()
   
   better_time_on_stops <- vector()
   backwards_ensemble_average_data <- vector("list")
-  ensemble_keep2 <- vector()
+  cp_found_stop <- vector()
   #backwards_plots <- list()
-  
+  keep_event <- vector()
   better_displacements <- vector()
   absolute_better_displacements <- vector()
  
   ensemble_length <- hz
   
-  for(c in 1:nrow(hm_event_transitions)){
-    print(c)
+  for(i in 1:nrow(hm_event_transitions)){
+    print(i)
     #get event data chunk
-    # forward_chunk <- processed_data_tibble[forward_data$s1_end[[c]] : forward_data$s2_end[[c]],]
-    # forward_ensemble_chunk <- run_var_ensemble[forward_data$s1_end[[c]] : forward_data$s2_end[[c]],]
+    # forward_chunk <- processed_data_tibble[forward_data$s1_end[[i]] : forward_data$s2_end[[i]],]
+    # forward_ensemble_chunk <- run_var_ensemble[forward_data$s1_end[[i]] : forward_data$s2_end[[i]],]
     # 
-    # backwards_chunk <- processed_data_tibble[backwards_data$s2_end[[c]] : backwards_data$s1_start[[c]],]
-    # backwards_ensemble_chunk <- run_var_ensemble[backwards_data$s2_end[[c]] : backwards_data$s1_start[[c]],]
+    # backwards_chunk <- processed_data_tibble[backwards_data$s2_end[[i]] : backwards_data$s1_start[[i]],]
+    # backwards_ensemble_chunk <- run_var_ensemble[backwards_data$s2_end[[i]] : backwards_data$s1_start[[i]],]
     
-    #event_chunk <- processed_data_tibble[forward_data$s1_end[[c]] :  backwards_data$s1_start[[c]],]
+    #event_chunk <- processed_data_tibble[forward_data$s1_end[[i]] :  backwards_data$s1_start[[i]],]
   
     #find how many windows around event we can index out
     #smallest value of time befor/after event and the event duration
-    length_of_hm_event <- hm_time_ons$lengths[[c]] #* conversion
-    length_of_prior_baseline <- time_prior$lengths[[c]] #* conversion
+    length_of_hm_event <- hm_time_ons$lengths[[i]] #* conversion
+    length_of_prior_baseline <- time_prior$lengths[[i]] #* conversion
     length_of_after_baseline <- try(time_prior$lengths[[(c+1)]]) #* conversion)
     
     # if(class(length_of_after_baseline) == "try-error"){
@@ -340,8 +340,8 @@ changepoint_and_ensemble <- function(measured_hm_events,  hz,  conversion){
     # }
     
     #estimated window index that the event starts and ends at from window time
-    estimated_start <- (hm_event_transitions$state_1_end[[c]] + 1 ) 
-    estimated_stop <-  hm_event_transitions$state_2_end[[c]] 
+    estimated_start <- (hm_event_transitions$state_1_end[[i]] + 1 ) 
+    estimated_stop <-  hm_event_transitions$state_2_end[[i]] 
     #be a little more aggresive with the estimated start/stop if the cp_window_legnth is small to try and give it as much data as possible
     #this hopefully will be bare minimum needed to capture the transition plus the small amount it will get extra
     # forward_cp_window_start <- (estimated_start - 2) * conversion
@@ -381,10 +381,10 @@ changepoint_and_ensemble <- function(measured_hm_events,  hz,  conversion){
     has_na <- table(is.na(forward_event_chunk$data))
     has_na2 <- table(is.na(backwards_event_chunk$data))
     if(length(has_na) > 1){
-      better_time_on_starts[[c]] <- NA
-      ensemble_keep1[[c]] <- FALSE
-      better_displacements[[c]] <- NA
-      absolute_better_displacements[[c]] <- NA
+      better_time_on_starts[[i]] <- NA
+      cp_found_start[[i]] <- FALSE
+      better_displacements[[i]] <- NA
+      absolute_better_displacements[[i]] <- NA
     } else {
       forward_cpt_object <- changepoint::cpt.meanvar(forward_event_chunk$data,
                                         penalty = "MBIC",
@@ -393,8 +393,8 @@ changepoint_and_ensemble <- function(measured_hm_events,  hz,  conversion){
     }
     
     if(length(has_na2) > 1){
-      better_time_on_stops[[c]] <- NA
-      ensemble_keep2[[c]] <- FALSE
+      better_time_on_stops[[i]] <- NA
+      cp_found_stop[[i]] <- FALSE
     } else {
       backwards_cpt_object <- changepoint::cpt.meanvar(backwards_event_chunk$data,
                                           penalty = "MBIC",
@@ -411,25 +411,25 @@ changepoint_and_ensemble <- function(measured_hm_events,  hz,  conversion){
     
     #if no changepoint id'd skip
     if(identical(event_on, numeric(0))  | class(event_on) == 'try-error'){
-      better_time_on_starts[[c]] <- NA
-      ensemble_keep1[[c]] <- FALSE
+      better_time_on_starts[[i]] <- NA
+      cp_found_start[[i]] <- FALSE
     } else {
       #or record change point index
       cp_start <- forward_event_chunk$index[event_on]
-      better_time_on_starts[[c]] <- cp_start
-      ensemble_keep1[[c]] <- TRUE
+      better_time_on_starts[[i]] <- cp_start
+      cp_found_start[[i]] <- TRUE
      
     }
   
     #do same for backwards
     if(identical(event_off, numeric(0))  | class(event_off) == 'try-error'){
-      better_time_on_stops[[c]] <- NA
-      ensemble_keep2[[c]] <- FALSE
+      better_time_on_stops[[i]] <- NA
+      cp_found_stop[[i]] <- FALSE
     } else {
       #or record the index where this occurred in the previous attempt
       cp_off <- backwards_event_chunk$index[event_off]
-      better_time_on_stops[[c]] <- cp_off
-      ensemble_keep2[[c]] <- TRUE
+      better_time_on_stops[[i]] <- cp_off
+      cp_found_stop[[i]] <- TRUE
     }
     
     if(identical(event_on, numeric(0)) | identical(event_off, numeric(0)) | class(event_off) == 'try-error' |  class(event_on) == 'try-error'){
@@ -440,11 +440,22 @@ changepoint_and_ensemble <- function(measured_hm_events,  hz,  conversion){
     #find length of event
     length_of_event <- nrow(trap_data[cp_start:cp_off,])
     
+    #get a logical if event duration is less than 1 or if either of the changepoints were not found
+    #this indicates something unusual about the event and we probably do not want it in the analysis
+    if(length_of_event <= 0 |  cp_found_start[[i]] == F | cp_found_stop[[i]] == F){
+      keep <- F
+      keep_event[[i]] <- F
+    } else {
+      keep <- T
+      keep_event[[i]] <- T
+    }
+    
     if(length_of_event >= ensemble_length){
       #if event longer than 1sec take first 5000ms of event starting from the newly found start of event
       forward_5000 <- tibble(data = trap_data$data[ cp_start : (cp_start + (ensemble_length - 1)) ],
                              ensemble_index = 0:(length(data)-1),
-                             event = c)
+                             event = i,
+                             keep = keep)
     } else {
       
       #take average of last 5ms to extend events shorter than 1 second to 1 second
@@ -457,31 +468,34 @@ changepoint_and_ensemble <- function(measured_hm_events,  hz,  conversion){
       
       forward_5000 <- tibble(data = extend_event,
                              ensemble_index = 0:(length(data)-1),
-                             event = c)
+                             event = i,
+                             keep = keep)
     }
     
     
     before_event <- tibble(data = trap_data$data[ (cp_start - 75) : (cp_start - 1) ],
                            ensemble_index = -length(data):-1,
-                           event = c)
+                           event = i,
+                           keep = keep)
     
     #get baseline mean prior to event from changepoint object and subtract mean from all values to center at 0
     # baseline_mean_prior <- forward_cpt_obj@param.est$mean[[1]]
     
     forward_5000 %<>% rbind(before_event) %>% 
-      dplyr::mutate(is_positive = is_positive[[c]],
+      dplyr::mutate(is_positive = is_positive[[i]],
                     direction = 'forward') %>% 
       # data = data - baseline_mean_prior) %>%
       dplyr::arrange(ensemble_index)
     
-    forward_ensemble_average_data[[c]] <- forward_5000
+    forward_ensemble_average_data[[i]] <- forward_5000
     
     
     if(length_of_event >= ensemble_length){
       
       backwards_5000 <- tibble(data = trap_data$data[ (cp_off - (ensemble_length-1)) : cp_off ],
                                ensemble_index = length(data):(2*length(data) - 1),
-                               event = c)
+                               event = i, 
+                               keep = keep)
     } else {
       #get average of first 3ms to extend backwards in time to 1 second
       back_avg <- mean(trap_data$data[cp_start:(cp_start+15)])
@@ -493,21 +507,23 @@ changepoint_and_ensemble <- function(measured_hm_events,  hz,  conversion){
       
       backwards_5000 <- tibble::tibble(data = extend_event_back,
                                        ensemble_index = length(data):(2*length(data)-1),
-                                       event = c)
+                                       event = c,
+                                       keep = keep)
     }
     
     after_event <- tibble::tibble(data = trap_data$data[ (cp_off+ 1) : (cp_off + 75) ],
                                   ensemble_index = 10000:(10000 + (length(data) -1)),
-                                  event = c)
+                                  event = c,
+                                  keep = keep)
     
     
     backwards_5000 %<>% rbind(after_event) %>%
-      mutate(is_positive = is_positive[[c]],
+      mutate(is_positive = is_positive[[i]],
              direction = 'backwards') %>% 
       # data = data - baseline_mean_after) %>%
       arrange(ensemble_index)
     
-    backwards_ensemble_average_data[[c]] <- backwards_5000
+    backwards_ensemble_average_data[[i]] <- backwards_5000
     
     #get better displacements 
     exact_event_chunk <- trap_data$data[cp_start : cp_off]
@@ -515,10 +531,10 @@ changepoint_and_ensemble <- function(measured_hm_events,  hz,  conversion){
     mean_event_step <-  mean( trap_data$data[ (cp_start + 5) : (cp_off - 5) ])
     
     #difference in step sizes nad baseline for table
-    better_displacements[[c]] <- mean_event_step - state_1_avg[[c]]
+    better_displacements[[i]] <- mean_event_step - state_1_avg[[i]]
     
     #absolute postion for graph overlay
-    absolute_better_displacements[[c]] <- mean_event_step
+    absolute_better_displacements[[i]] <- mean_event_step
   }
   
   forward_ensemble_df <- dplyr::bind_rows(forward_ensemble_average_data)
@@ -531,11 +547,12 @@ changepoint_and_ensemble <- function(measured_hm_events,  hz,  conversion){
 
   cp_transitions <- tibble(start = better_time_on_starts,
                            stop = better_time_on_stops,
-                           keep1 = ensemble_keep1,
-                           keep2 = ensemble_keep2,
+                           cp_found_start = cp_found_start,
+                           cp_found_stop = cp_found_stop,
                            index = 1:length(start),
                            is_positive = is_positive,
-                           displacements = better_displacements) %>%
+                           keep = keep_event,
+                           cp_displacements = better_displacements) %>%
     mutate(cp_time_on_dp = (stop - start) + 1,
            cp_time_on_ms = (cp_time_on_dp/hz)*1000)
   
