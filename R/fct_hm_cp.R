@@ -20,7 +20,7 @@ hidden_markov_changepoint_analysis <- function(trap_data, f, hz = 5000, w_width 
   conditions <- unique(trap_data$conditions)
   date <- unique(trap_data$date)
   obs <- unique(trap_data$obs)
-  include <- unique(trap_data$obs)
+  include <- unique(trap_data$include)
   if(!include){
     obs_trap_data_exit <- trap_data  %>%
       dplyr::mutate(report = 'user-excluded',
