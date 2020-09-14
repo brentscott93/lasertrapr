@@ -442,7 +442,7 @@ changepoint_and_ensemble <- function(measured_hm_events,  hz,  conversion){
     
     #get a logical if event duration is less than 1 or if either of the changepoints were not found
     #this indicates something unusual about the event and we probably do not want it in the analysis
-    if(length_of_event <= 0 |  cp_found_start[[i]] == F | cp_found_stop[[i]] == F){
+    if(length_of_event <= 0 |  cp_found_start[[i]] == F | cp_found_stop[[i]] == F | cp_start > cp_off){
       keep <- F
       keep_event[[i]] <- F
     } else {

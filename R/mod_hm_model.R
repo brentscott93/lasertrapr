@@ -291,7 +291,7 @@ mod_hm_model_server <- function(input, output, session, f){
                         dygraphs::dySeries('model', color = "#1B9E77",  strokeWidth = 2) %>%
                         dygraphs::dyRangeSelector(fillColor ='white', strokeColor = 'black') %>%
                         add_shades(events, color = scales::alpha("#D95F02", 0.6)) %>% #raw_periods
-                        add_shades(excluded_events, color = "grey60") %>%
+                        add_shades(excluded_events, color = "#BDBDBD") %>%
                         add_labels_hmm(trap_data()$events, peak_nm_index = pni, labelLoc = 'bottom') %>% #results$events
                         dygraphs::dyAxis('x', label = 'seconds', drawGrid = FALSE) %>%
                         dygraphs::dyAxis('y', label = 'nm', drawGrid = FALSE) %>%
