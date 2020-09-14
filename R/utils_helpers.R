@@ -99,7 +99,7 @@ add_labels_hmm <- function(x, events, peak_nm_index, ...){
 
 add_shades <- function(x, periods, ...){
   for(p in 1:nrow(periods)){
-    x <- dygraphs::dyShading(x, from = periods$start[[p]], to = periods$stop[[p]], ...)
+    x <- dygraphs::dyShading(x, from = periods$start[[p]], to = periods$stop[[p]], color = periods$color[[p]], ...)
   }
   x
 }
