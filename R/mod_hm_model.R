@@ -269,13 +269,13 @@ mod_hm_model_server <- function(input, output, session, f){
 
      pni <-  trap_data()$events$peak_nm_index
       dark2 <- RColorBrewer::brewer.pal(8, 'Dark2')
-      grey <- RColorBrewer::brewer.pal(4, 'Greys')[[4]]
+      grey <-RColorBrewer::brewer.pal(8, 'Greys')
       overlay_dy <-  dygraphs::dygraph(d) %>% #raw_data_dygraph
                         dygraphs::dySeries('raw', color = 'black', strokeWidth = 2) %>%
                         dygraphs::dySeries('model', color = dark2[[1]],  strokeWidth = 2) %>%
                         dygraphs::dyRangeSelector(fillColor ='white', strokeColor = 'black') %>%
                         add_shades(periods_df, color = dark2[[2]]) %>% #raw_periods
-                        add_shades(excluded_events, color = grey) %>%
+                        add_shades(excluded_events, color = grey[[4]]) %>%
                         add_labels_hmm(trap_data()$events, peak_nm_index = pni, labelLoc = 'bottom') %>% #results$events
                         dygraphs::dyAxis('x', label = 'seconds', drawGrid = FALSE) %>%
                         dygraphs::dyAxis('y', label = 'nm', drawGrid = FALSE) %>%
