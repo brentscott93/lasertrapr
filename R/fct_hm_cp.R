@@ -21,18 +21,19 @@ hidden_markov_changepoint_analysis <- function(trap_data, f, hz = 5000, w_width 
   date <- unique(trap_data$date)
   obs <- unique(trap_data$obs)
   include <- unique(trap_data$include)
-  if(!include){
-    obs_trap_data_exit <- trap_data  %>%
-      dplyr::mutate(report = 'user-excluded',
-                    analyzer = 'none',
-                    review = F)
-
-    vroom::vroom_write(obs_trap_data_exit, path = file.path('~', 'lasertrapr', project, conditions, date, obs, 'trap-data.csv'), delim = ",")
-    stop("User Excluded")
-  }
+  
  report_data  <- "error"
   error_file <- file(file.path(f$date$path, "error-log.txt"), open = "a")
       tryCatch({
+        if(!include){
+          obs_trap_data_exit <- trap_data  %>%
+            dplyr::mutate(report = 'user-excluded',
+                          analyzer = 'none',
+                          review = F)
+          
+          vroom::vroom_write(obs_trap_data_exit, path = file.path('~', 'lasertrapr', project, conditions, date, obs, 'trap-data.csv'), delim = ",")
+          stop("User Excluded")
+        }
         
         not_ready <- is_empty(trap_data$processed_bead)
         if(not_ready){
@@ -189,6 +190,9 @@ hidden_markov_changepoint_analysis <- function(trap_data, f, hz = 5000, w_width 
         
 
       }, error=function(e){
+        if(!include){
+          showNotification(paste0("Skipping ", obs, ' user excluded'), type = 'message', duration = 2)
+        } else {
         showNotification(paste0("Analysis error in ",
                                 date,
                                 " ",
@@ -207,6 +211,7 @@ hidden_markov_changepoint_analysis <- function(trap_data, f, hz = 5000, w_width 
                           ". Error Message: ",
                           as.character(e)), 
           error_file)
+        }
       })
     
     close(error_file)
