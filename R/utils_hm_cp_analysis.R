@@ -331,7 +331,7 @@ changepoint_and_ensemble <- function(measured_hm_events,  hz,  conversion){
     #smallest value of time befor/after event and the event duration
     length_of_hm_event <- hm_time_ons$lengths[[i]] #* conversion
     length_of_prior_baseline <- time_prior$lengths[[i]] #* conversion
-    length_of_after_baseline <- try(time_prior$lengths[[(c+1)]]) #* conversion)
+    length_of_after_baseline <- try(time_prior$lengths[[(i+1)]]) #* conversion)
     
     # if(class(length_of_after_baseline) == "try-error"){
     #   cp_window_length <-  length_of_prior_baseline 
