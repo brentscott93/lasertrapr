@@ -507,13 +507,13 @@ changepoint_and_ensemble <- function(measured_hm_events,  hz,  conversion){
       
       backwards_5000 <- tibble::tibble(data = extend_event_back,
                                        ensemble_index = length(data):(2*length(data)-1),
-                                       event = c,
+                                       event = i,
                                        keep = keep)
     }
     
     after_event <- tibble::tibble(data = trap_data$data[ (cp_off+ 1) : (cp_off + 75) ],
                                   ensemble_index = 10000:(10000 + (length(data) -1)),
-                                  event = c,
+                                  event = i,
                                   keep = keep)
     
     
