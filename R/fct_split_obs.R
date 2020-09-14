@@ -65,7 +65,7 @@ split_obs <- function(input_data, project, conditions, date, threshold){
     
   
     #trap_txts <- purrr::map(input_data$datapath,  ~tibble::as_tibble(data.table::fread(.x, col.names = c("bead", "trap"))))
-   
+   #head(data.table::fread('/Users/brentscott/Desktop/mutant-pi/Data_2019_12_17_15_03_11.csv', col.names = c('raw_bead', 'trap_position')))
     
     #txts <- purrr::map(file_tibble$path, readr::read_csv, col_names = T)
     setProgress(0.3, detail = "Reading Files")
@@ -73,7 +73,7 @@ split_obs <- function(input_data, project, conditions, date, threshold){
     #input_data <- dplyr::arrange(input_data, path)
     input_data <- dplyr::arrange(input_data, name)
     #txts <- purrr::map(input_data$path,  ~vroom::vroom(.x, col_names = T))
-    txts <- purrr::map(input_data$datapath,  ~vroom::vroom(.x, col_names = c("raw_bead", "trap_position")))
+    txts <- purrr::map(input_data$datapath,  ~tibble::as_tibble(data.table::fread(.x, col.names = c("raw_bead", "trap_position"))))
     incProgress(0.5, detail = "Determining Observations")
     extract_numbers <- purrr::map(input_data$name, str_trap)
     datetime <- purrr::map(extract_numbers, lubridate::ymd_hms, tz = "EST")
