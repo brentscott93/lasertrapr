@@ -1028,8 +1028,21 @@ output$move_files <- renderText({
   })
   
   observeEvent(input$status_graph, {
-    status$df <- get_info_table(f$date, f$date_input) %>% 
-      dplyr::select(obs, processor, mv2nm, nm2pn, include)
+    defend_if_null(f$date_input, ui = 'Whoops. You forgot to select a date folder.', type = 'error')
+    defend_if_blank(f$date_input, ui = 'Whoops. You forgot to select a date folder.', type = 'error')
+    
+    all_trap_paths <- list_files(f$date$path, pattern = 'trap-data.csv', recursive = T)
+    defend_if_empty(all_trap_paths, ui = "No trap-data.rds files in date folder yet. Start by loading date with 'Initialize Data'",  type = 'error')
+    golem::print_dev(all_trap_paths$path)
+    status$df <- map_df(all_trap_paths$path, ~vroom::vroom(., delim = ",",
+                                                        col_select = c(obs, processor, mv2nm, nm2pn, include),
+                                                        n_max = 1))
+    
+    # df %<>% map(~summarize(., obs = unique(obs),
+    #                           processor = unique(processor), mv2nm, nm2pn, include))
+
+                                  
+      #dplyr::select(obs, processor, mv2nm, nm2pn, include)
     showNotification('Status table refreshed', type = 'message')
   })
  # output$log <- renderPrint({
