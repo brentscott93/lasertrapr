@@ -1018,8 +1018,10 @@ output$move_files <- renderText({
      
      setProgress(0.9)
     
-       status$df <- get_info_table(f$date, f$date_input) %>% 
-       dplyr::select(obs, processor, mv2nm, nm2pn, include)
+     status$df <- map_df(all_trap_paths$path, ~vroom::vroom(., delim = ",",
+                                                            col_select = c(obs, processor, mv2nm, nm2pn, include),
+                                                            n_max = 1))
+     
      
      setProgress(1)
    
