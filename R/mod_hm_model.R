@@ -394,7 +394,7 @@ mod_hm_model_server <- function(input, output, session, f){
     #                  report = unique(trap_data$report),
     #                  review = unique(trap_data$review))
     #}
-    )
+    #)
   })
   
   output$table <- DT::renderDT({
