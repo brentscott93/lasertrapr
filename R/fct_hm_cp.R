@@ -109,6 +109,7 @@ hidden_markov_changepoint_analysis <- function(trap_data, f, hz = 5000, w_width 
                  cp_event_stop_dp = ifelse(is.na(start) == TRUE | is.na(stop) == TRUE,
                                        hm_event_stop*conversion,
                                        stop),
+                 keep = ifelse(final_time_ons_ms <= 1, FALSE, keep),
                  project = project,
                  conditions = conditions,
                  date = date, 
