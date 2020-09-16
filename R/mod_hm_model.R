@@ -377,24 +377,6 @@ mod_hm_model_server <- function(input, output, session, f){
     map_df(files$path, ~vroom::vroom(., delim = ",",
                                      col_select = c(obs, include, analyzer, report, review),
                                      n_max = 1))
-    
-   #  trap_data <- purrr::map(files$path, vroom::vroom, delim = ",")
-    # if('hm_overlay' %not_in% colnames(trap_data)){
-    #  t <- trap_data  %>% 
-    #   tidyr::nest(data = c(raw_bead, processed_bead)) 
-    # } else {
-    #   t <- trap_data  %>% 
-    #     tidyr::nest(data = c(raw_bead, processed_bead, hm_overlay)) 
-    # }
-    # 
-    # purrr::map_dfr(trap_data, function(trap_data){
-    #   tibble::tibble(obs = unique(trap_data$obs), 
-    #                  include = unique(trap_data$include),
-    #                  analyzer = unique(trap_data$analyzer),
-    #                  report = unique(trap_data$report),
-    #                  review = unique(trap_data$review))
-    #}
-    #)
   })
   
   output$table <- DT::renderDT({
