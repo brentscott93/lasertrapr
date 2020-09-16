@@ -264,16 +264,12 @@ mod_hm_model_server <- function(input, output, session, f){
     periods_df <- data.frame(start = trap_data()$events$cp_event_start_dp/5000,
                              stop = trap_data()$events$cp_event_stop_dp/5000,
                              keep = trap_data()$events$keep,
-                             color = ifelse(trap_data()$events$keep == T, scales::alpha("#D95F02", 0.6), "#DEDEDE" )) 
+                             color = "#dad6d6")
     
-    # events <- periods_df %>%  dplyr::filter(keep == T)
-    # 
-    # excluded_events <- periods_df %>% dplyr::filter(keep == F)
-   # d <- vroom::vroom('~/lasertrapr/project_myoV-phosphate/myoV-S217A_pH-7.0_30mM-Pi/2019-02-27/obs-01/measured-events.csv')
-   # excluded_events <-  d %>% dplyr::filter(keep == F)
-     pni <-  trap_data()$events$peak_nm_index
+   periods_df %<>%  dplyr::filter(keep == T)
+
+   pni <-  trap_data()$events$peak_nm_index
     
-      golem::print_dev('overlay')
       # if(nrow(excluded_events) == 0 ){
       # overlay_dy <-  dygraphs::dygraph(d) %>% #raw_data_dygraph
       #                   dygraphs::dySeries('raw', color = 'black', strokeWidth = 2) %>%
