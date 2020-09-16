@@ -264,12 +264,13 @@ mod_hm_model_server <- function(input, output, session, f){
     periods_df <- data.frame(start = trap_data()$events$cp_event_start_dp/5000,
                              stop = trap_data()$events$cp_event_stop_dp/5000,
                              keep = trap_data()$events$keep,
-                             color = "#dad6d6")
+                             color = scales::alpha("#D95F02" , 0.4))
     
    periods_df %<>%  dplyr::filter(keep == T)
 
    pni <-  trap_data()$events$peak_nm_index
-    
+   labels <- trap_data()$events %>% filter(keep == T)
+  
       # if(nrow(excluded_events) == 0 ){
       # overlay_dy <-  dygraphs::dygraph(d) %>% #raw_data_dygraph
       #                   dygraphs::dySeries('raw', color = 'black', strokeWidth = 2) %>%
@@ -289,7 +290,7 @@ mod_hm_model_server <- function(input, output, session, f){
                         dygraphs::dyRangeSelector(fillColor ='white', strokeColor = 'black') %>%
                         add_shades(periods_df) %>% #raw_periods
                         #add_shades(excluded_events, color = "#BDBDBD") %>%
-                        add_labels_hmm(trap_data()$events, peak_nm_index = pni, labelLoc = 'bottom') %>% #results$events
+                        add_labels_hmm(labels, labelLoc = 'bottom') %>% #results$events
                         dygraphs::dyAxis('x', label = 'seconds', drawGrid = FALSE) %>%
                         dygraphs::dyAxis('y', label = 'nm', drawGrid = FALSE) %>%
                         dygraphs::dyUnzoom()

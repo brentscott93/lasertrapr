@@ -78,7 +78,7 @@ add_labels <- function(x, events, ...){
 }
 
 add_labels_hmm <- function(x, events, ...){
-  for(event in 1:length(peak_nm_index)){
+  for(event in 1:length(events$peak_nm_index)){
     x <- dygraphs::dyEvent(x, events$peak_nm_index[[event]], 
                            paste0(round(events$time_on_ms[[event]], digits = 0), 'ms, ',
                                   round(events$displacement_nm[[event]], digits = 1),
