@@ -278,25 +278,10 @@ mod_mini_ensemble_server <- function(input, output, session, f){
   info <- eventReactive(input$info_table, {
     defend_if_empty(f$date, ui = 'Please select a date folder', type = 'error')
     showNotification('Refreshing table', type = 'message')
-    #path <- file.path('~','lasertrapr', f$project$name, f$conditions$name, f$date$name)
     files <- list_files(f$date$path, pattern = 'trap-data.csv', recursive = T)
-    trap_data <- purrr::map(files$path, vroom::vroom, delim = ",")
-    # if('hm_overlay' %not_in% colnames(trap_data)){
-    #   t <- trap_data  %>% 
-    #     tidyr::nest(data = c(raw_bead, processed_bead)) 
-    # } else {
-    #   t <- trap_data  %>% 
-    #     tidyr::nest(data = c(raw_bead, processed_bead, hm_overlay)) 
-    # }
-    
-    purrr::map_dfr(trap_data, function(trap_data){
-                                   tibble::tibble(obs = unique(trap_data$obs), 
-                                                  include = unique(trap_data$include),
-                                                  analyzer = unique(trap_data$analyzer),
-                                                  report = unique(trap_data$report),
-                                                  review = unique(trap_data$review))
-                                  }
-    )
+    map_df(files$path, ~vroom::vroom(., delim = ",",
+                                     col_select = c(obs, include, analyzer, report, review),
+                                     n_max = 1))
   
   })
   
@@ -343,21 +328,20 @@ mod_mini_ensemble_server <- function(input, output, session, f){
                     raw = trap_data()$trap$rescaled_mini_data,
                     run_mean = trap_data()$trap$run_mean_overlay)
     
-   
-    
     periods_df <- data.frame(start = (trap_data()$events$event_start)/hz,
-                             stop = (trap_data()$events$event_stop)/hz)
+                             stop = (trap_data()$events$event_stop)/hz,
+                             color = scales::alpha("#D95F02" , 0.4))
     
     pni <-  trap_data()$events$peak_nm_index / hz
     
-    colors <- RColorBrewer::brewer.pal(8, 'Dark2')
-    orange <-  RColorBrewer::brewer.pal(8, 'Oranges')
+    colz <- RColorBrewer::brewer.pal(8, 'Dark2')
+   #orange <-  RColorBrewer::brewer.pal(8, 'Oranges')
     overlay_dy <-  dygraphs::dygraph(d) %>% #raw_data_dygraph
       dygraphs::dySeries('raw', color = '#242424', strokeWidth = 2) %>%
-      dygraphs::dySeries('run_mean', color = colors[[1]],  strokeWidth = 2) %>%
+      dygraphs::dySeries('run_mean', color = colz[[1]],  strokeWidth = 2) %>%
       dygraphs::dyRangeSelector(fillColor ='white', strokeColor = 'black') %>%
-      add_shades(periods_df, color = orange[[3]]) %>% #raw_periods
-      add_labels_hmm(trap_data()$events, peak_nm_index = pni, labelLoc = 'bottom') %>% #results$events
+      add_shades(periods_df) %>% #raw_periods
+      add_labels_mini(trap_data()$events, hz = hz, labelLoc = 'bottom') %>% #results$events
       dygraphs::dyAxis('x', label = 'seconds', drawGrid = FALSE) %>%
       dygraphs::dyAxis('y', label = 'nm') %>%
       dygraphs::dyOptions(drawGrid = FALSE) %>% 

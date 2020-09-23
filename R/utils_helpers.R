@@ -87,6 +87,16 @@ add_labels_hmm <- function(x, events, ...){
   x
 }
 
+add_labels_mini <- function(x, events, hz, ...){
+  for(event in 1:length(events$peak_nm_index)){
+    x <- dygraphs::dyEvent(x, events$peak_nm_index[[event]]/hz, 
+                           paste0(round(events$time_on_ms[[event]], digits = 0), 'ms, ',
+                                  round(events$displacement_nm[[event]], digits = 1),
+                                  ' nm {', event, '}'), ...)
+  }
+  x
+}
+
 
 #' Add many shaing areas to a dygraph
 #'

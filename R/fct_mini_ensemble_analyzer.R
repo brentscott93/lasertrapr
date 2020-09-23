@@ -15,12 +15,30 @@ mini_ensemble_analyzer <- function(trap_data, w_width_ms = 10, hz = 5000, displa
   conditions <- unique(trap_data$conditions)
   date <- unique(trap_data$date)
   obs <-  unique(trap_data$obs)
+  include <- unique(trap_data$include)
+  nm2pn <- unique(trap_data$nm2pn)
   #browser()
   error_file <- file(file.path(f$date$path, "error-log.txt"), open = "a")
   tryCatch({
     # files <- list_files("~/lasertrapr/project_mini/mini/2020-08-04", pattern = 'trap-data.csv', recursive = T)
     # trap_data <- purrr::map(files$path, vroom::vroom)
     # trap_data <- trap_data[[1]]
+    if(!include){
+      obs_trap_data_exit <- trap_data  %>%
+        dplyr::mutate(report = 'user-excluded',
+                      analyzer = 'none',
+                      review = F)
+      
+      vroom::vroom_write(obs_trap_data_exit, path = file.path('~', 'lasertrapr', project, conditions, date, obs, 'trap-data.csv'), delim = ",")
+      stop("User Excluded")
+    }
+    
+    not_ready <- is_empty(trap_data$processed_bead)
+    if(not_ready){
+      if(is_shiny) showNotification(paste0(trap_data$obs, ' not processed. Skipping...'), type = 'warning')
+      stop('Data not processed')
+    }
+    
      report_data = 'error'
      w_width = ms_to_dp(w_width_ms, hz = hz)
      time_threshold <- ms_to_dp(time_threshold_ms, hz = hz)
@@ -162,6 +180,9 @@ mini_ensemble_analyzer <- function(trap_data, w_width_ms = 10, hz = 5000, displa
     
     
      }, error=function(e){
+       if(!include){
+         showNotification(paste0("Skipping ", obs, ' user excluded'), type = 'message', duration = 2)
+       } else {
     showNotification(ui = paste0("Analysis error in ",
                             date,
                             " ",
@@ -180,6 +201,7 @@ mini_ensemble_analyzer <- function(trap_data, w_width_ms = 10, hz = 5000, displa
              ". Error Message: ",
              as.character(e)), 
       error_file)
+       }
   })
   
   close(error_file)
