@@ -37,7 +37,7 @@ move_obs <- function(trap_selected_date, trap_selected_obs, trim_from, trim_to, 
     
     to_move %<>% dplyr::mutate(obs = new_folder)
     
-    vroom::vroom_write(to_move, path = file.path(new_folder_path, "trap-data.csv"), delim = ",")
+    readr::write_csv(to_move, path = file.path(new_folder_path, "trap-data.csv"))
     
     #regroup current observation after desired files moved out
     regroup <- data[-c(from:to),]
