@@ -43,7 +43,8 @@ move_obs <- function(trap_selected_date, trap_selected_obs, trim_from, trim_to, 
     regroup <- data[-c(from:to),]
   
     # write_csv(regroup, path = paste0(trap_selected_obs, "/grouped.csv"), append = FALSE)
-    vroom::vroom_write(regroup, path = file.path(trap_selected_obs, "trap-data.csv"), delim = ",")
+    #vroom::vroom_write(regroup, path = file.path(trap_selected_obs, "trap-data.csv"), delim = ",")
+    readr::write_csv(regroup, path = file.path(trap_selected_obs, "trap-data.csv"))
     incProgress(1, detail = "Done")
   })
   showNotification("Files moved to new obs.", type = "message")
