@@ -29,22 +29,22 @@ move_obs <- function(trap_selected_date, trap_selected_obs, trim_from, trim_to, 
     setProgress(0.4)
     
     path <- list_files(trap_selected_obs, pattern = 'trap-data.csv')
-    data <- vroom::vroom(path$path, delim = ",")
+    data <- data.table::fread(path$path, sep = ",")
     
     from <- as.integer(trim_from*5000)
     to <- as.integer(trim_to*5000)
     to_move <- data[c(from:to),]
     
     to_move %<>% dplyr::mutate(obs = new_folder)
-    
-    readr::write_csv(to_move, path = file.path(new_folder_path, "trap-data.csv"))
+
+    data.table::fwrite(to_move, file = file.path(new_folder_path, "trap-data.csv"), sep = ',')
     
     #regroup current observation after desired files moved out
     regroup <- data[-c(from:to),]
   
     # write_csv(regroup, path = paste0(trap_selected_obs, "/grouped.csv"), append = FALSE)
     #vroom::vroom_write(regroup, path = file.path(trap_selected_obs, "trap-data.csv"), delim = ",")
-    readr::write_csv(regroup, path = file.path(trap_selected_obs, "trap-data.csv"))
+    data.table::fread(regroup, file = file.path(trap_selected_obs, "trap-data.csv"), sep = ',')
     incProgress(1, detail = "Done")
   })
   showNotification("Files moved to new obs.", type = "message")
@@ -67,7 +67,7 @@ trim_obs <- function(trap_selected_obs, trim_from, trim_to, f){
   withProgress(message = "Trimming Data", min= 0, max = 1, value = 0.3, {
    
     path <- list_files(trap_selected_obs, pattern = 'trap-data.csv')
-    data <- vroom::vroom(path$path, delim = ",")
+    data <- data.table::fread(path$path, sep = ",")
     
     from <- as.integer(trim_from*5000)
     to <- as.integer(trim_to*5000)
@@ -82,7 +82,7 @@ trim_obs <- function(trap_selected_obs, trim_from, trim_to, f){
     #                                obs = f$obs$name,
     #                                raw_bead = trimmed )
   
-    vroom::vroom_write(trimmed, path = file.path(trap_selected_obs, 'trap-data.csv'), delim = ",")
+    data.table::fwrite(trimmed, file = file.path(trap_selected_obs, 'trap-data.csv'), sep = ",")
     
     
     setProgress("Done", value = 1)
