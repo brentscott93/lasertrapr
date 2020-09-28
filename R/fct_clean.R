@@ -7,8 +7,6 @@
 #' @param f the reactiveValues list 'f' with all user selected folder info
 #' @param trap_obs obs folder numbers
 #'
-#' @noRd
-
 move_obs <- function(trap_selected_date, trap_selected_obs, trim_from, trim_to, f, trap_obs){
   withProgress(message = 'Moving Data', value = 0, max = 1, min = 0, {
     #for dev   # trap_selected_date <- '/Users/brentscott/Desktop/2020-01-07'
@@ -59,8 +57,6 @@ move_obs <- function(trap_selected_date, trap_selected_obs, trim_from, trim_to, 
 #' @param trim_to end index to delete
 #' @param f the reactiveValues list 'f' with all user selected folder info
 #'
-#' @noRd
-
 trim_obs <- function(trap_selected_obs, trim_from, trim_to, f){
   
   #trap_grouped_file <- read.csv("/Users/brentscott/Desktop/myoV-WT_2ndConrtol _obs-01/grouped.csv")
