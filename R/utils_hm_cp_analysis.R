@@ -293,7 +293,8 @@ changepoint_and_ensemble <- function(measured_hm_events,  hz,  conversion){
   state_1_avg <-  measured_hm_events$state_1_avg
   
   trap_data <- tibble(data = flip_raw,
-                    index = 1:length(data))
+                    index = 1:length(data),
+                    run_var = RcppRoll::roll_varl(flip_raw, n = 10))
   
   time_prior <- viterbi_rle %>% 
     dplyr::filter(values == 1)
@@ -386,20 +387,18 @@ changepoint_and_ensemble <- function(measured_hm_events,  hz,  conversion){
       better_displacements[[i]] <- NA
       absolute_better_displacements[[i]] <- NA
     } else {
-      forward_cpt_object <- changepoint::cpt.meanvar(forward_event_chunk$data,
+      forward_cpt_object <- changepoint::cpt.meanvar(na.omit(forward_event_chunk$run_var),
                                         penalty = "MBIC",
-                                        method = 'AMOC',
-                                        minseglen = 5)
+                                        method = 'AMOC')
     }
     
     if(length(has_na2) > 1){
       better_time_on_stops[[i]] <- NA
       cp_found_stop[[i]] <- FALSE
     } else {
-      backwards_cpt_object <- changepoint::cpt.meanvar(backwards_event_chunk$data,
+      backwards_cpt_object <- changepoint::cpt.mean(na.omit(backwards_event_chunk$run_var),
                                           penalty = "MBIC",
-                                          method = 'AMOC',
-                                          minseglen = 5)
+                                          method = 'AMOC')
     }
     
    

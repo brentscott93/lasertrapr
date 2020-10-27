@@ -6,7 +6,7 @@
 #' @param em_random_start A logical indicating if the EM-Algorithm should randomly start fitting gaussians.
 
 
-hidden_markov_changepoint_analysis <- function(trap_data, f, hz = 5000, w_width = 150, em_random_start, is_shiny = F, ...){
+hidden_markov_changepoint_analysis <- function(trap_data, f, hz = 5000, w_width = 150, em_random_start,  is_shiny = F, ...){
   # path <- "~/lasertrapr/project_myoV-phosphate/myoV-S217A_pH-7.0_30mM-Pi/2019-02-27/obs-01"
   # files <- list_files(path, pattern = 'trap-data.csv')
   # trap_data <- purrr::map_df(files$path, vroom::vroom)
@@ -88,6 +88,7 @@ hidden_markov_changepoint_analysis <- function(trap_data, f, hz = 5000, w_width 
          cp_data <- changepoint_and_ensemble(measured_hm_events = measured_hm_events, 
                                              hz = hz, 
                                              conversion = conversion)
+                                    
                                             
       
      
