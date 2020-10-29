@@ -39,6 +39,9 @@ usethis::use_package( "data.table" )
 usethis::use_package( "DT" )
 usethis::use_package( "vroom" )
 usethis::use_package( "glue" )
+usethis::use_package( "survival" )
+usethis::use_package( "survminer" )
+usethis::use_package( "patchwork" )
 
 ## Add modules ----
 ## Create a module infrastructure in R/
@@ -48,6 +51,8 @@ golem::add_module( name = "clean_data" )
 golem::add_module( name = "folder_manager" )
 golem::add_module( name = "hm_model" )
 golem::add_module( name = "mini_ensemble" )
+golem::add_module( name = "summarize" )
+golem::add_module( name = "ensemble_average" )
 #golem::add_module( name = "name_of_module2" ) # Name of the module
 
 ## Add helper functions ----

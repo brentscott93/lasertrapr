@@ -1,0 +1,190 @@
+---
+title: "Project myoV-Pi"
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: rows
+    vertical_layout: fill
+editor_options: 
+  chunk_output_type: inline
+params: 
+  data: NA
+  p: NA
+  
+---
+
+```{r setup, include=FALSE}
+library(flexdashboard)
+#library(biophysr)
+library(lasertrapr)
+#library(aomisc)
+#devtools::install_github("onofriAndreaPG/aomisc")
+library(tidyverse)
+library(cowplot)
+library(ggpubr)
+library(DT)
+library(plotly)
+
+```
+    
+Summary Table
+=====================================  
+Row 
+-------------------------------------
+    
+### Summary Table
+    
+```{r, fig.width=14, fig.height=21}
+   params$data$summary %>% 
+     dplyr::select( 'Conditions' = conditions,
+                    "Step Size (nm)" = displacement_avg,
+                    "SE Step" = displacement_se,
+                    "Force (pN)" = force_avg,
+                    "SE Force" = force_se, 
+                    "Time On (ms)" = time_on_avg,
+                    "SE Ton" = time_on_se, 
+                    'Median Time-on' = time_on_median,
+                    "Time Off (ms)" = time_off_avg,
+                    "SE Toff" = time_off_se, 
+                    "No. Events" = num_events,
+                    "Minutes Collected" = minutes ) %>% 
+    dplyr::arrange(Conditions) %>% 
+    DT::datatable(
+              extensions = 'FixedColumns',
+              options = list(
+                dom = 't',
+                scrollX = TRUE,
+                fixedColumns = list(leftColumns = 2)
+              )
+    )
+```
+ 
+Stats
+=====================================  
+
+Row {.tabset .tabset-fade}
+-------------------------------------
+    
+### Step Size
+    
+```{r, fig.height = 8, fig.width=14}
+params$p$step
+```
+    
+### Force
+
+```{r, fig.height = 8, fig.width=14}
+ params$p$force
+```
+
+
+### Time On
+
+```{r, fig.height = 8, fig.width=14}
+ params$p$ton
+```
+
+
+### Time Off
+
+```{r, fig.height = 8, fig.width=14}
+ params$p$toff
+```
+
+
+Time On Survival 
+=====================================
+
+
+Row {.tabset .tabset-fade}
+-------------------------------------
+
+### Cumalative Frequency Curves
+```{r echo=FALSE, fig.height=8, fig.width=14, message=FALSE, warning=FALSE}
+params$p$ton_survival
+```
+
+### Log-Rank Test
+
+```{r, ,fig.width=5, fig.height=7}
+
+params$data$ton_log_rank_test
+```
+
+### Cox Proportional Hazards
+
+The ***coef*** values are the regression coefficients.
+
+The ***exp(coef)*** values are the hazard ratios which can be interpreted as:
+
+    * HR = 1: No effect
+    * HR < 1: Reduction in the hazard
+    * HR > 1: Increase in Hazard
+    
+See [here](http://www.sthda.com/english/wiki/cox-proportional-hazards-model) for more info
+```{r}
+summary(params$data$ton_cox)
+
+```
+
+Event Frequency
+==============================
+
+Row {.tabset .tabset-fade}
+-------------------------------------
+
+### Events Starting
+
+```{r, fig.width=14, fig.height=8, echo=FALSE, message=FALSE, warning=FALSE}
+
+params$p$ef
+ 
+```
+
+
+### Filter Zero
+```{r, fig.width=14, fig.height=8}
+#no zero
+params$p$ef_filter
+```
+
+### Density Plot
+
+```{r, fig.width=7, fig.heigh=5, echo=FALSE, message=FALSE, warning=FALSE}
+  
+  
+```
+
+
+Ensemble Averages
+==============================
+Row {.tabset .tabset-fade}
+-------------------------------------
+
+### Forward Fits
+
+
+
+```{r}
+
+
+  
+```
+
+
+### Forward Plots
+```{r}
+
+```
+
+
+### Backwards Plots
+```{r}
+
+```
+
+
+### Aligned
+
+```{r}
+
+```

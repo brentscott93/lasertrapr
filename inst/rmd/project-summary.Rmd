@@ -1,0 +1,756 @@
+---
+title: "Project myoV-Pi"
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: rows
+    vertical_layout: fill
+editor_options: 
+  chunk_output_type: inline
+params: 
+  data: NA
+  p: NA
+  
+---
+
+```{r setup, include=FALSE}
+library(flexdashboard)
+#library(biophysr)
+library(lasertrapr)
+#library(aomisc)
+#devtools::install_github("onofriAndreaPG/aomisc")
+library(drc)
+library(tidyverse)
+library(magrittr)
+library(gt)
+library(RColorBrewer)
+library(plotrix)
+library(plotly)
+library(broom)
+library(cowplot)
+library(patchwork)
+library(data.table)
+library(tidyverse)
+library(survival)
+library(survminer)
+library(magrittr)
+library(Hmisc)
+library(stringr)
+library(ggridges)
+library(rstatix)
+library(ggpubr)
+
+ 
+```
+    
+Summary Table
+=====================================  
+Row 
+-------------------------------------
+    
+### Summary Table
+    
+```{r, fig.width=14, fig.height=21}
+data$summary %>% 
+   data$summary %>% 
+     dplyr::select( 'Conditions' = conditions,
+                    "Step Size (nm)" = displacement_avg,
+                    "SE Step" = displacement_se,
+                    "Force (pN)" = force_avg,
+                    "SE Force" = force_se, 
+                    "Time On (ms)" = time_on_avg,
+                    "SE Ton" = time_on_se, 
+                    'Median Time-on' = time_on_median,
+                    "Time Off (ms)" = time_off_avg,
+                    "SE Toff" = time_off_se, 
+                    "No. Events" = num_events,
+                    "Minutes Collected" = minutes ) %>% 
+    dplyr::arrange(Conditions) %>% 
+    DT::datatable(
+              extensions = 'FixedColumns',
+              options = list(
+                dom = 't',
+                scrollX = TRUE,
+                fixedColumns = list(leftColumns = 2)
+              )
+    )
+```
+ 
+Stats
+=====================================  
+
+Row {.tabset .tabset-fade}
+-------------------------------------
+    
+### Step Size
+    
+```{r, fig.height = 15, fig.width=21}
+p$step
+```
+    
+### Force
+
+```{r, fig.height = 15, fig.width=21}
+p$force
+```
+
+
+### Time On
+
+```{r, fig.height = 15, fig.width=21}
+p$ton
+```
+
+
+### Time Off
+
+```{r, fig.height = 15, fig.width=21}
+p$time_off
+```
+
+
+Time On Survival 
+=====================================
+
+
+Row {.tabset .tabset-fade}
+-------------------------------------
+
+### Cumalative Frequency Curves
+```{r echo=FALSE, fig.height=10, fig.width=14, message=FALSE, warning=FALSE}
+df <- event_files_filtered %>% 
+  #mutate(conditions = condition) 
+  #separate('condition', c('myo', 'pH', 'pi'), sep = '_') %>% 
+  mutate(#pi = ifelse(str_detect(pi, '2nd'), 'Control', 
+                     #ifelse(str_detect(pi, '15'), '15mM', '30mM')),
+         myo01 = ifelse(str_detect(myo, 'WT'), 0, 1))
+
+df$myo <- factor(df$myo, levels = c('myoV-WT', 'myoV-S217A'))
+df$pi <- factor(df$pi, levels = c('0mM-Pi', '30mM-Pi'))
+
+df$myo01 <- factor(df$myo01, levels = c(0, 1))
+#df$pi <- factor(df$pi, levels = c('Control', '15mM', '30mM'))
+
+
+#df <- data %>% filter(condition=='myoV-S217A_pH7.0_15mM-Pi')
+
+fit <- survfit(Surv(time_on_ms) ~ myo01 + pi, data = df)
+#fit
+#fit
+# Summary of survival curves
+# summary(fit)
+# # Access to the sort summary table
+# summary(fit)$table
+
+# blu <-  brewer.pal(9, 'Blues')[c(4, 8)]
+# red <-   brewer.pal(9, 'Reds')[c( 4,  8)]
+ggsurvival <- ggsurvplot(fit, 
+          ggtheme = theme_linedraw(base_size = 16), # Change ggplot2 theme
+          palette = colors,
+          xlim = c(0, 1000),
+          break.time.by = 150,
+           legend.labs = c('WT 0mM-Pi', 
+                          
+                           'WT 30mM-Pi', 
+                            'S217A 0mM-Pi', 
+           
+                           'S217A 30mM-Pi'),
+           fun = 'event',
+        # pval = T
+          )
+
+m.labs <- c('WT', 'S217A')
+names(m.labs) <- c('0', '1')
+all_surv <- ggsurvival$plot +
+  # facet_wrap(~myo01,
+  #              labeller = labeller(myo01 = m.labs))+
+  xlab('Time (ms)')+
+  xlab("")+
+  theme(panel.grid = element_blank(),
+        legend.title = element_blank(),
+        )
+
+facet_surv <- ggsurvival$plot +
+  facet_wrap(~myo01,
+               labeller = labeller(myo01 = m.labs))+
+  xlab('Time (ms)')+
+  theme(panel.grid = element_blank(),
+        legend.title = element_blank(),
+        legend.position = 'none')
+
+all_surv/facet_surv
+```
+
+### Log-Rank Test
+
+```{r, ,fig.width=5, fig.height=7}
+# survdiff(Surv(time_on_ms) ~ myo, data = df)
+# survdiff(Surv(time_on_ms) ~ pi, data = df)
+# survdiff(Surv(time_on_ms) ~ myo +  pi, data = df)
+# coxph(Surv(time_on_ms) ~ myo, data = df)
+# coxph(Surv(time_on_ms) ~ pi, data = df)
+
+survdiff(Surv(time_on_ms) ~ myo +  pi, data = df)
+
+```
+
+### Cox Proportional Hazards
+
+The ***coef*** values are the regression coefficients.
+
+The ***exp(coef)*** values are the hazard ratios which can be interpreted as:
+
+    * HR = 1: No effect
+    * HR < 1: Reduction in the hazard
+    * HR > 1: Increase in Hazard
+    
+See [here](http://www.sthda.com/english/wiki/cox-proportional-hazards-model) for more info
+```{r}
+cox <- coxph(Surv(time_on_ms) ~ myo + pi, data = df)
+summary(cox)
+
+```
+
+Event Frequency
+==============================
+
+Row {.tabset .tabset-fade}
+-------------------------------------
+
+### Events Starting
+
+```{r, fig.width=14, fig.height=10, echo=FALSE, message=FALSE, warning=FALSE}
+
+ef_paths <- str_replace(event_file_paths, "measured-events", "event-frequency")
+
+ef_read <- function(path){
+   vroom::vroom(path, delim = ",") %>% 
+    dplyr::mutate(path = path)
+}
+ef <- map_df(ef_paths, ef_read) %>% 
+  separate(path, c('root', 'lt', 'project', 'conditions', 'date', 'obs', 'file'), sep = '/') %>% 
+  mutate(conditions_to_sep = conditions) %>% 
+  separate(conditions_to_sep, c("myo", 'ph', 'pi'), sep = "_") %>% 
+  mutate(conditions2 = new_names[conditions])
+
+  
+ 
+ef$conditions2 <- factor(ef$conditions2, levels = c("WT 0mM-Pi",
+                                                      "WT 30mM-Pi",
+                                                      "S217A 0mM-Pi",
+                                                      "S217A 30mM-Pi"))
+    
+
+ef_kruskal <- ef %>% kruskal_test(freq_start ~ conditions2)
+
+ef_wilcox <-  ef %>% 
+  wilcox_test(freq_start ~ conditions2, p.adjust.method = "bonferroni") 
+ef_is_sig <- which(ef_wilcox$p.adj < 0.05)
+
+ef_table <- ef_wilcox %>% 
+  dplyr::select(group1, group2, p.adj) %>% 
+  mutate_if(is.numeric, round, digits = 3) %>% 
+          ggtexttable (theme = ttheme(base_style = 'light', base_size = 14), rows = NULL) %>% 
+          table_cell_bg(row = ef_is_sig + 1, column = 3, fill = '#ffa9a6')
+
+ef_wilcox %<>% add_xy_position(x = "conditions2")
+
+ ef_plot <- ggplot(data = ef, aes(conditions2, freq_start))+
+    geom_jitter(aes(color = conditions2), size = 2, alpha = 0.8)+ 
+    stat_pvalue_manual(ef_wilcox) +
+     stat_summary(
+    fun.data = mean_sdl,  fun.args = list(mult = 1), 
+    geom = "pointrange", color = "black"
+    )+
+    scale_color_manual(values = colors)+
+    scale_y_continuous(breaks = 0:15)+
+   xlab('')+
+   ylab('Events/sec')+
+   labs(
+    title = 'Event Frequency', 
+    subtitle = get_test_label(ef_kruskal, detailed = TRUE),
+    caption = get_pwc_label(ef_wilcox)
+    )+
+   theme_cowplot(font_size = 16)+
+   theme(legend.position = 'none')#+
+ 
+ 
+
+ plot_grid(ef_plot, ef_table, ncol = 2, nrow = 1, rel_widths = c(1, 0.4))
+
+
+ 
+```
+
+
+### Filter Zero
+```{r, fig.width=14, fig.height=10}
+#no zero
+ef_no0 <- filter(ef, freq_start != 0 )
+ef_kruskal_no_zero <- ef_no0 %>% 
+  kruskal_test(freq_start ~ conditions2)
+
+ef_wilcox_no_zero <-  ef_no0 %>% 
+  wilcox_test(freq_start ~ conditions2, p.adjust.method = "bonferroni") 
+
+ef_is_sig_no_zero <- which(ef_wilcox_no_zero$p.adj < 0.05)
+
+ef_table_no_zero <- ef_wilcox_no_zero %>% 
+  dplyr::select(group1, group2, p.adj) %>% 
+  mutate_if(is.numeric, round, digits = 3) %>% 
+  ggtexttable (theme = ttheme(base_style = 'light'), rows = NULL) %>% 
+  table_cell_bg(row = ef_is_sig_no_zero + 1, column = 3, fill = '#ffa9a6')
+
+ef_wilcox_no_zero %<>% add_xy_position(x = "conditions2")
+
+ef_plot_no_zero <- ggplot(data = ef_no0, aes(conditions2, freq_start))+
+    geom_jitter(aes(color = conditions2), size = 2, alpha = 0.8)+ 
+    stat_pvalue_manual(ef_wilcox_no_zero) +
+     stat_summary(
+    fun.data = mean_sdl,  fun.args = list(mult = 1), 
+    geom = "pointrange", color = "black"
+    )+
+    scale_color_manual(values = colors)+
+    scale_y_continuous(breaks = 0:15)+
+     xlab('')+
+   ylab('Events/sec')+
+   labs( 
+    title = 'Event Frequency (zero counts eliminated)',
+    subtitle = get_test_label(ef_kruskal_no_zero, detailed = TRUE),
+    caption = get_pwc_label(ef_wilcox_no_zero)
+    )+
+   theme_cowplot(font_size = 16)+
+   theme(legend.position = 'none')#+
+ 
+plot_grid(ef_plot_no_zero, ef_table_no_zero, ncol = 2, nrow = 1, rel_widths = c(1, 0.4))
+```
+
+### Density Plot
+
+```{r, fig.width=7, fig.heigh=5, echo=FALSE, message=FALSE, warning=FALSE}
+  
+ggplot(ef, aes(x = freq_start, y = conditions2, fill = conditions2)) +
+  geom_density_ridges(scale = 3) + 
+  ylab('Density')+
+  scale_y_discrete(expand = c(0, 0)) +     # will generally have to set the `expand` option
+  scale_x_continuous(expand = c(0, 0)) +
+  xlab('No. events starting every second')+
+  scale_fill_manual(values = colors)+# for both axes to remove unneeded padding
+  coord_cartesian(clip = "off") + # to avoid clipping of the very top of the top ridgeline
+  theme_ridges()+
+  theme(legend.position = 'none')
+  
+```
+
+
+Ensemble Averages
+==============================
+Row {.tabset .tabset-fade}
+-------------------------------------
+
+### Forward Fits
+
+
+
+```{r}
+
+ee_paths <- str_replace(event_file_paths, "measured-events", "ensemble-data")
+
+ee_fread <- function(path){
+   data.table::fread(path) %>% 
+    dplyr::mutate(path = path)
+}
+data <- do.call('rbind', lapply(ee_paths, ee_fread))
+
+
+data[, c('root', 'lt', 'project', 'conditions', 'date', 'obs', 'file') := tstrsplit(path, "/", fixed=TRUE)]
+data[,'conditions2' := conditions]
+data[,c("myo", 'ph', 'pi') :=  tstrsplit(conditions2, "_", fixed = TRUE)]
+
+
+# data <- data %>% 
+#   separate(path, c('root', 'lt', 'project', 'conditions', 'date', 'obs', 'file'), sep = '/') %>%
+#   mutate(conditions2 = conditions) %>%
+#   separate(conditions2, c("myo", 'ph', 'pi'), sep = "_")
+
+# data <- trap_data %>% 
+#   dplyr::select(project, conditions, date, obs, results) %>% 
+#   mutate(ensemble = map(results, 'ensemble_avg')) %>% 
+#   dplyr::select(-results) %>% 
+#   unnest(cols = c(ensemble)) 
+
+
+forward_avg <- data %>%
+    dplyr::filter(is_positive == T & direction == 'forward' & keep == T) %>% 
+    group_by(conditions, ensemble_index) %>%
+    dplyr::summarize(avg = mean(data),
+              n = dplyr::n(),
+              sd = sd(data),
+                se = plotrix::std.error(data)) %>% 
+  nest(ensemble = c(ensemble_index, avg, sd, se, n))
+
+backwards_avg <- data %>%
+    dplyr::filter(is_positive == T & direction == 'backwards' & keep == T) %>% 
+    group_by(conditions, ensemble_index) %>%
+    dplyr::summarize(avg = mean(data),
+              n = dplyr::n(), 
+              sd = sd(data),
+              se = plotrix::std.error(data)) %>% 
+  #mutate(ensemble_index = ifelse(ensemble_index < 5000, ensemble_index + 9999, ensemble_index)) %>% 
+  nest(ensemble = c(ensemble_index, avg, sd, se,  n))
+
+# forward_avg <- data %>%
+#     dplyr::filter(is_positive == T) %>%
+#     group_by(forward_index) %>%
+#     summarize(avg = mean(data, na.rm = T),
+#               n = dplyr::n())
+
+#calculate average of baseline prior to time 0
+avg_baseline_prior <- function(x) {
+   dplyr::filter(x, ensemble_index <= 0) %>% 
+    dplyr::pull(avg) %>% 
+    mean()
+}
+
+#calculate average of baseline prior to time 0
+avg_baseline_after <- function(x) {
+   dplyr::filter(x, ensemble_index >= 9999) %>% 
+    dplyr::pull(avg) %>% 
+    mean()
+}
+
+#replace time point 0 with the new0 calculated
+# replace_time_zero <- function(x, new0){
+#  x$avg[which(x$ensemble_index == 0)] <- new0
+#  return(x)
+# }
+
+#select time 0 + everything after and get a time column for x, y pair to fit
+prep_forward_ensemble_avg <- function(x){
+    x %>% 
+       dplyr::filter(ensemble_index >= 0) %>%
+       mutate(time = ensemble_index/5000) 
+}
+
+
+#select time 0 + everything after and get a time column for x, y pair to fit
+prep_backwards_ensemble_avg <- function(x){
+    x %>% 
+       dplyr::filter(ensemble_index <= 9999) %>%
+       mutate(time = ensemble_index/5000)
+}
+
+
+#y=ae^bx +ce^dx
+# nls(avg ~ a*exp(b*ensemble_index) + c*exp(d*ensemble_index), data =.x, start = list(a = 1, b = 1000, c = 1, d = 50))
+
+forward_avg %<>% mutate(base_prior = map_dbl(ensemble, avg_baseline_prior),
+                        #ensemble_new0 = map2(ensemble, new0, replace_time_zero),
+                        event_forward_ensemble = map(ensemble, prep_forward_ensemble_avg),
+                        drm = map(event_forward_ensemble, ~drm(avg ~ time, data = .x, fct = aomisc::DRC.negExp())))
+                        # drm = map(event_forward_ensemble, ~nls(avg ~ a*exp(-b*time) + c*exp(-d*time), 
+                        #          data =.x, 
+                        #          start = list(a = 10, b = 500, c = 10, d = 200))))
+
+backwards_avg %<>% mutate(base_after = map_dbl(ensemble, avg_baseline_after),
+                        #ensemble_new0 = map2(ensemble, new0, replace_time_zero),
+                        event_backwards_ensemble = map(ensemble, prep_backwards_ensemble_avg))
+                        #drm = map(event_backwards_ensemble, ~lm(log(avg) ~ time), data = .))
+
+forward_avg$conditions <- factor(forward_avg$conditions, 
+                                 levels = c("myoV-WT_pH-7.0_0mM-Pi",
+                                                   
+                                                    
+                                                      "myoV-WT_pH-7.0_30mM-Pi",
+                                                      "myoV-S217A_pH-7.0_0mM-Pi",
+                                                   
+                                               
+                                                      "myoV-S217A_pH-7.0_30mM-Pi"))
+
+
+backwards_avg$conditions <- factor(backwards_avg$conditions, 
+                                 levels = c("myoV-WT_pH-7.0_0mM-Pi",
+                                                   
+                                                    
+                                                      "myoV-WT_pH-7.0_30mM-Pi",
+                                                      "myoV-S217A_pH-7.0_0mM-Pi",
+                                                   
+                                               
+                                                      "myoV-S217A_pH-7.0_30mM-Pi"))
+
+forward_avg_unnest <- forward_avg %>% 
+  select(-drm) %>% 
+  unnest(event_forward_ensemble)
+ 
+#map(forward_avg$drm, summary)
+# zero <- forward_avg %>% 
+#   filter(forward_index == 0) %>% 
+#   pull(avg)
+
+
+# df <- filter(forward_avg, forward_index >= 0) %>%
+#   rownames_to_column(var = "new_x") %>%
+#   mutate(time = as.numeric(new_x)/5000,
+#          avg = avg - zero)
+# forward_avg_unnest$conditions <- factor(forward_avg_unnest$conditions, levels =  c("myoV-WT_pH7.0_2ndcontrol",
+#                                                       "myoV-WT_pH7.0_15mMPi",
+#                                                       "myoV-WT_pH7.0_30mM-Pi",
+#                                                       "myoV-S217A_pH7.0_2ndControl",
+#                                                       "myoV-S217A_pH7.0_15mM-Pi",
+#                                                       "myoV-S217A_pH7.0_30mM-Pi"))
+drm_negExp <- drm(avg ~ time, data = forward_avg_unnest, curveid = conditions,  fct = aomisc::DRC.negExp())
+
+class(drm_negExp) <- append(class(drm_negExp),"nls")
+ee_fit_par <- drm_negExp[["parmMat"]]
+
+summary_ensemble <- ee_fit_par %>% 
+  as_tibble() %>% 
+  mutate(coef  = c("a", "c")) %>% 
+  pivot_longer(!coef, names_to = 'conditions', values_to = 'value') %>% 
+  select(conditions, coef, value)
+
+
+summary_ensemble$conditions <- factor(summary_ensemble$conditions, 
+                                levels =  c("myoV-WT_pH-7.0_0mM-Pi",
+                                             "myoV-WT_pH-7.0_30mM-Pi",
+                                             "myoV-S217A_pH-7.0_0mM-Pi",
+                                             "myoV-S217A_pH-7.0_30mM-Pi"))
+
+summary_ensemble %<>% 
+   tidyr::separate(conditions, c("myo", "pH", "pi"), sep = "_") 
+
+summary_ensemble$myo <- factor(summary_ensemble$myo, levels = 
+                                           c("myoV-WT",
+                                             "myoV-S217A"))
+ summary_ensemble %>%  
+   arrange(coef, myo) %>% 
+  select(-pH) %>% 
+  mutate_if(is.numeric, ~round(., 2)) %>% 
+  # dplyr::select(!pH) %>% 
+  gt() %>% 
+  tab_style(
+    style = list(
+      cell_fill(color = "red", alpha = 0.25)
+    ),
+    locations = cells_body(
+      rows = str_detect(myo, 'myoV-S217A')
+      )
+  ) %>% 
+  tab_style(
+    style = list(
+      cell_fill(color = "blue", alpha = 0.25)
+    ),
+    locations = cells_body(
+      rows = str_detect(myo, 'WT')
+    )
+  ) %>% 
+  tab_header(
+    title = "Ensemble Average Fits",
+    subtitle = "a = asymptope, c = rate"
+  ) 
+ 
+  
+```
+
+
+### Forward Plots
+```{r}
+forward_avg %<>% mutate(avg_line = list(data.frame(time = seq(0, 1, by = 0.0001))),
+                        predict =  map2(drm, avg_line, function(.x, .y)  data.frame(y = predict(.x, newdata = .y))),
+                        fit = map2(avg_line, predict, cbind),
+                        
+                        before0 = map(ensemble, function(x) filter(x, between(ensemble_index, -75, -5)) %>%
+                                                                  mutate(time = seq(-71/5000, -0.0002, by = 0.0002))),
+                        
+                        after0 = map(event_forward_ensemble, ~dplyr::select(., ensemble_index, avg, n, time, sd, se)),
+                                                        
+                        
+                        all = map2(before0, after0, rbind)) %>% 
+  arrange(conditions)
+
+
+#avg_line = list(data.frame(time = seq(0, 0.02, by = 0.0001))),
+                        #predict =  map2(drm, avg_line, function(.x, .y)  data.frame(y = predict(.x, newdata = .y))),
+                        #fit = map2(avg_line, predict, cbind),
+                        
+backwards_avg %<>% mutate(after200 = map(ensemble, function(x) filter(x, ensemble_index > 9999) %>%
+                                                                  mutate(time = seq(2, by = 0.0002, along.with = ensemble_index))),
+                        
+                        before200 = map(event_backwards_ensemble, ~dplyr::select(., ensemble_index, avg, n, time, sd, se)  %>%
+                                                        mutate(time = time-0.0002)),
+                        
+                        all = map2(before200, after200, rbind)) %>% 
+  arrange(conditions)
+                        # plot = pmap(event_ensemble, fit, before0, color, conditions, function(first, second, third, fourth, fifth) gg_ensemble(df = first, avg_line = second, before = third, color = fourth, title = fifth))
+                        # )
+
+forward_avg$color <- colors
+#forward_avg$color <- "blue"
+
+backwards_avg$color <- colors
+#backwards_avg$color <- "blue"
+
+forward_avg$title <- c('WT 0mM-Pi', 'WT 30mM-Pi', 'S217A 0mM-Pi', 'S217A 30mM-Pi')
+
+backwards_avg$title <- c('WT 0mM-Pi', 'WT 30mM-Pi', 'S217A 0mM-Pi', 'S217A 30mM-Pi')
+# forward_avg$color = 'blue'
+# 
+# backwards_avg$color = 'blue'
+
+#forward_avg %<>% mutate(plot = pmap(event_ensemble, fit, before0, color, conditions, gg_ensemble))
+#plot_data <- map(forward_avg$drm, ~predict(drm_negExp, newda(a = avg_line))
+
+# class(drm_negExp) <- append(class(drm_negExp),"nls")
+# 
+# table <- tidy(drm_negExp) %>%
+#   mutate_if(is.numeric, round, digits = 1)
+# 
+# tb <- tibble(x = 0.95, y = 0.05, tb = list(table))
+
+# 
+# before <- forward_avg_unnest %>% 
+#   split(forward_avg_unnest$conditions)
+#   map(., function(x)
+#   filter(x, forward_index >= -150, forward_index < 0) %>% 
+#   mutate(time = seq(-0.03, -0.0002, by = 0.0002))
+#   )
+
+# baseline_avg <- before %>% 
+#   summarize(mean = mean(avg)) %>% 
+#   pull(mean) %>% 
+#   as.numeric
+# 
+# before %<>% mutate(avg = avg-baseline_avg)
+# with(forward_avg, gg_ensemble(df = event_ensemble[[1]], 
+#                               avg_line = fit[[1]],
+#                               before = before0[[1]],
+#                               color = color[[1]],
+#                               title = conditions[[1]]))
+
+gg_forward_ensemble <- function(event_forward_ensemble, all, fit, before0, color, conditions, title, ...){
+ggplot()+
+     geom_point(data = all,
+             aes(x = time,
+                 y = avg), 
+             color = 'black', 
+             size = 2,
+             alpha = 0.6
+             )+
+  geom_line(data = fit,
+           aes(x = time,
+             y = y),
+         color =color,
+         size = 0.5,
+         linetype = "dashed"
+         )+
+    # geom_errorbar(data = all, 
+    #               aes(x = time,
+    #                   ymin = avg-se,
+    #                   ymax = avg+se))+
+  # geom_line(data = before0,
+  #            aes(x = time,
+  #                y = avg),
+  #            size = 1.5,
+  #            alpha = 0.95)+
+  geom_point(aes(x = 0.0000,
+                 y = event_forward_ensemble$avg[[1]]),
+             color = color,
+             size = 2,
+             #shape = 17,
+             fill = color,
+             #alpha = 0.8
+             )+
+   coord_cartesian(c(-0.015, 1))+
+  # scale_y_continuous(limits = c(-4, 17), breaks = seq(-4, 16, by = 2))+
+  ylab("Displacement (nm)")+
+  xlab("Time (sec)")+
+  ggtitle(title)+
+  theme_cowplot()
+  # annotate("text", x = -.02, y = 7, label = paste0('# of events = ', n_events), size = 6)+
+  #  geom_table_npc(data = tb, aes(npcx = x, npcy = y, label = tb), size = 4)
+  #annotate('text', x = 0.04, y = 2,
+        # label = "y==alpha*(1-e^{(-c*X)})",parse = TRUE,size=10)
+}
+
+plotz <- pmap(forward_avg, gg_forward_ensemble)
+plotz
+cowplot::plot_grid(plotlist = plotz, ncol = 2)
+ggsave('~/Desktop/bs-method3-10dp.png', plotz[[1]])
+#forward_avg$ensemble[[1]]
+```
+
+
+### Backwards Plots
+```{r}
+gg_backwards_ensemble <- function(event_backwards_ensemble, all, fit, after200, color, conditions, ...){
+ggplot()+
+     geom_point(data = all,
+             aes(x = time,
+                 y = avg),
+             color = color,
+                 alpha = 0.5)+
+  # geom_line(data = fit8
+  #          aes(x = time,
+  #            y = y),
+  #        color = color,
+  #        size = 1.5, 
+  #        linetype = "dashed")+
+  # geom_line(data = before0, 
+  #            aes(x = time, 
+  #                y = avg),
+  #            size = 2,
+  #            alpha = 0.95)+
+  # geom_point(aes(x = event_backwards_ensemble$time[[4999]],
+  #                y = event_backwards_ensemble$avg[[4999]]),
+  #            color = color,
+  #            size = 2,
+  #            shape = 25,
+  #            fill = color,
+  #            alpha = 0.95)+
+  # scale_y_continuous(limits = c(-4, 17), breaks = seq(-4, 16, by = 2))+
+  ylab("Displacement (nm)")+
+  xlab("Time (sec)")+
+  ggtitle(conditions)+
+   # coord_cartesian(c(1.99, 2.02))+
+  theme_classic(base_size = 8)
+  # annotate("text", x = -.02, y = 7, label = paste0('# of events = ', n_events), size = 6)+
+  #  geom_table_npc(data = tb, aes(npcx = x, npcy = y, label = tb), size = 4)
+  #annotate('text', x = 0.04, y = 2,
+        # label = "y==alpha*(1-e^{(-c*X)})",parse = TRUE,size=10)
+}
+
+plotz_back <- pmap(backwards_avg, gg_backwards_ensemble)
+
+
+cowplot::plot_grid(plotlist = plotz_back, ncol = 2)
+```
+
+
+### Aligned
+
+```{r}
+
+
+fee <- forward_avg %>% 
+  dplyr::select(conditions, ensemble) %>% 
+    unnest( cols = ensemble) 
+
+bee <-  backwards_avg %>% 
+  dplyr::select(conditions, ensemble) %>% 
+    unnest( cols = ensemble) 
+
+
+
+ggplot()+
+  geom_point(data = fee, aes(x = ensemble_index, y = avg, color = conditions))+
+  geom_point(data = bee, aes(x = ensemble_index, y = avg, color = conditions))+
+  geom_vline(xintercept = 5000, size = 2)+
+   # geom_point(data = fee, aes(x = ensemble_index[[76]], avg[[76]]), size = 1.5, shape = 17, color = "green")+
+   # geom_point(data = bee, aes(x = ensemble_index[[4999]], avg[[4999]]), size = 1.5, shape = 25, color = "red")+
+   facet_wrap(~conditions)+
+  scale_color_manual(values = colors)+
+    theme_linedraw()+
+  theme(legend.position = 'none')
+
+
+
+```

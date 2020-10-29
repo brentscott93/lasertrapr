@@ -42,6 +42,8 @@ app_server <- function( input, output, session ) {
   
   callModule(mod_mini_ensemble_server, "mini_ensemble", f = f)
   
+  callModule(mod_summarize_server, "summarize", f = f)
+  
   
   
 }
