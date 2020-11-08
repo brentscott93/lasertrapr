@@ -4,8 +4,7 @@
 #' @param trap_data A dataframe of all 'trap-data' files.
 #' @param f The 'f' reactiveValues from app.
 #' @param em_random_start A logical indicating if the EM-Algorithm should randomly start fitting gaussians.
-
-
+#' 
 hidden_markov_changepoint_analysis <- function(trap_data, f, hz = 5000, w_width = 150, em_random_start,  is_shiny = F, ...){
   # path <- "~/lasertrapr/project_myoV-phosphate/myoV-S217A_pH-7.0_30mM-Pi/2019-02-27/obs-01"
   # files <- list_files(path, pattern = 'trap-data.csv')
@@ -21,6 +20,7 @@ hidden_markov_changepoint_analysis <- function(trap_data, f, hz = 5000, w_width 
   date <- unique(trap_data$date)
   obs <- unique(trap_data$obs)
   include <- unique(trap_data$include)
+  mv2nm <-  unique(trap_data$mv2nm)
   
  report_data  <- "error"
   error_file <- file(file.path(f$date$path, "error-log.txt"), open = "a")
@@ -31,7 +31,15 @@ hidden_markov_changepoint_analysis <- function(trap_data, f, hz = 5000, w_width 
                           analyzer = 'none',
                           review = F)
           
-          vroom::vroom_write(obs_trap_data_exit, path = file.path('~', 'lasertrapr', project, conditions, date, obs, 'trap-data.csv'), delim = ",")
+          vroom::vroom_write(obs_trap_data_exit, 
+                             path = file.path('~', 
+                                              'lasertrapr', 
+                                              project,
+                                              conditions, 
+                                              date, 
+                                              obs, 
+                                              'trap-data.csv'), 
+                             delim = ",")
           stop("User Excluded")
         }
         
@@ -55,8 +63,6 @@ hidden_markov_changepoint_analysis <- function(trap_data, f, hz = 5000, w_width 
         
         if(is_shiny) setProgress(0.1, detail = "Calculating Running Windows")
         run_mean <- na.omit(RcppRoll::roll_meanl(processed_data, n = w_width, by = w_width/2))
-        #run_mean_to_subtract <- na.omit(RcppRoll::roll_meanl(processed_data, n = 50))
-        #processed_mean_removed <- processed_data[1:length(run_mean_to_subtract)] - run_mean_to_subtract
         run_var <- na.omit(RcppRoll::roll_varl(processed_data, n = w_width, by = w_width/2))
       
        
@@ -87,7 +93,8 @@ hidden_markov_changepoint_analysis <- function(trap_data, f, hz = 5000, w_width 
         
          cp_data <- changepoint_and_ensemble(measured_hm_events = measured_hm_events, 
                                              hz = hz, 
-                                             conversion = conversion)
+                                             conversion = conversion,
+                                             mv2nm = mv2nm)
                                     
                                             
       

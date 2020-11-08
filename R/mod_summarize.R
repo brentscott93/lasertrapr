@@ -112,55 +112,47 @@ mod_summarize_server <- function(input, output, session, f){
     setkey(trap_data, conditions)
     
     setProgress(detail = 'filter')    
-    trap_data <- trap_data[report == "success" & review == T & include == T]
-                                                                        
+    data$trap_data <- trap_data[report == "success" & review == T & include == T]
     
-    project <- unique(trap_data$project)
-    conditions <- unique(trap_data$conditions)
-    date <- unique(trap_data$date)
-    obs <- unique(trap_data$obs)
-    
-    setProgress(0.5, detail = 'Getting event paths')
-    event_file_paths <- unique(trap_data[, .(project, conditions, date, obs)]) %>% 
+    setProgress(0.75, detail = 'Getting event paths')
+    data$event_file_paths <- unique(trap_data[, .(project, conditions, date, obs)]) %>% 
       unite('path', c(project, conditions, date, obs), sep = "/") %>% 
       pull(path) %>% 
       paste0("~/lasertrapr/", ., '/measured-events.csv')
-    # event_file_paths <- trap_data %>% 
-    #   unite('path', c(project, conditions, date, obs), sep = "/") %>% 
-    #   group_by(path) %>% 
-    #   dplyr::summarize(path = unique(path)) %>% 
-    #   pull(path) %>% 
-    #   paste0("~/lasertrapr/", ., '/measured-events.csv')
     
-    event_files_filtered <- vroom::vroom(event_file_paths, delim = ",") %>%
-      filter(keep == T)
+    data$event_files_filtered <- vroom::vroom(data$event_file_paths, delim = ",") %>%
+      dplyr::filter(keep == T)
     
-    event_files_filtered$conditions <- factor(event_files_filtered$conditions,
+    data$event_files_filtered$conditions <- factor(data$event_files_filtered$conditions,
                                                levels = input$factor_order)
+    })
 
-    setProgress(0.75, detail = 'Calculating...')
-    get_time <- trap_data %>%
-      dplyr::group_by(conditions) %>% 
-      dplyr::summarize(minutes = round((length(raw_bead)/5000)/60, 2)) 
-
-    summarize_trap <- event_files_filtered %>%
-      dplyr::group_by(conditions) %>%
-      dplyr::summarize(displacement_avg = mean(displacement_nm, na.rm = TRUE),
-                       displacement_se = plotrix::std.error(displacement_nm, na.rm = TRUE),
-                       force_avg = mean(force, na.rm = TRUE),
-                       force_se = plotrix::std.error(force, na.rm = TRUE),
-                       time_on_avg = mean(time_on_ms),
-                       time_on_se = plotrix::std.error(time_on_ms, na.rm = TRUE),
-                       time_on_median = median(time_on_ms, na.rm = TRUE),
-                       time_off_avg = mean(time_off_ms, na.rm = TRUE),
-                       time_off_se = plotrix::std.error(time_off_ms, na.rm = TRUE),
-                       time_off_median = median(time_off_ms, na.rm = TRUE), 
-                       num_events = n()) %>%
-      dplyr::right_join(get_time)
     
-    setProgress(1, detail = 'Done!')
-    summarize_trap$conditions <- factor(summarize_trap$conditions,
-                                        levels = input$factor_order)
+    trap_summary <- reactive({
+      
+      get_time <- data$trap_data %>%
+        dplyr::group_by(conditions) %>% 
+        dplyr::summarize(minutes = round((length(raw_bead)/5000)/60, 2)) 
+  
+      summarize_trap <- data$event_files_filtered %>%
+        dplyr::group_by(conditions) %>%
+        dplyr::summarize(displacement_avg = mean(displacement_nm, na.rm = TRUE),
+                         displacement_se = plotrix::std.error(displacement_nm, na.rm = TRUE),
+                         force_avg = mean(force, na.rm = TRUE),
+                         force_se = plotrix::std.error(force, na.rm = TRUE),
+                         time_on_avg = mean(time_on_ms),
+                         time_on_se = plotrix::std.error(time_on_ms, na.rm = TRUE),
+                         time_on_median = median(time_on_ms, na.rm = TRUE),
+                         time_off_avg = mean(time_off_ms, na.rm = TRUE),
+                         time_off_se = plotrix::std.error(time_off_ms, na.rm = TRUE),
+                         time_off_median = median(time_off_ms, na.rm = TRUE), 
+                         num_events = n()) %>%
+        dplyr::right_join(get_time)
+      
+      summarize_trap$conditions <- factor(summarize_trap$conditions,
+                                          levels = input$factor_order)
+      
+      swummarize_trap
     })
     
     data$events <- event_files_filtered

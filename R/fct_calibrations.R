@@ -16,7 +16,7 @@ equipartition <- function(data){
   
   signal_var <- var(data) #get variance of data trace
   
-  ep <- signal_var/kb  #equation from you, me, and dupuis
+  ep <- kb/signal_var  #equation from you, me, and dupuis
   
   return(ep)
   
