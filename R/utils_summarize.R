@@ -105,3 +105,71 @@ compare_displacements <- function(event_files_filtered, plot_colors){
   
   
 }
+
+
+#' Title
+#'
+#' @param f 
+#'
+#' @return
+#' @export
+#' @import data.table
+#' @examples
+summarize_trap_data <- function(f){
+  
+  trap_selected_project <- f$project$path
+  #browser()
+  trap_data_paths <- list_files(trap_selected_project,
+                                pattern = "trap-data.csv",
+                                recursive = TRUE)
+  
+  setProgress(0.05, detail = 'Reading Data')
+  # trap_data <- purrr::map(trap_data_paths$path, function(x){ incProgress(0.0025)
+  #   data.table::fread(x)} )
+  
+  trap_data <- purrr::map(trap_data_paths$path, data.table::fread, nrows = 1) %>% 
+    data.table::rbindlist(fill = T) %>% 
+    .[report == "success" & review == T & include == T]
+  
+  
+  setProgress(0.1, detail = 'Getting event paths')
+  event_file_paths <- unique(trap_data[, .(project, conditions, date, obs)]) %>% 
+    unite('path', c(project, conditions, date, obs), sep = "/") %>% 
+    pull(path) %>% 
+    paste0("~/lasertrapr/", ., '/measured-events.csv')
+  
+  event_files_filtered <- lapply(event_file_paths, data.table::fread) %>%
+    data.table::rbindlist(fill = T) %>% 
+    .[keep == T] 
+  
+  event_files_filtered$conditions <- factor(data$event_files_filtered$conditions,
+                                                 levels = input$factor_order)
+  
+  get_time <-  purrr::map(trap_data_paths$path, function(x){ incProgress(0.0025)
+                                                   data.table::fread(x, 
+                                                                     select = c('conditions', 'report', 'review', 'include'))} ) %>%
+    data.table::rbindlist(fill = T) %>% 
+    .[report == "success" & review == T & include == T, .N, by = conditions] %>% 
+    dplyr::mutate(minutes = round((N/5000)/60, 2))
+  
+  summarize_trap <- event_files_filtered %>%
+    dplyr::group_by(conditions) %>%
+    dplyr::summarize(time_on_avg = mean(time_on_ms),
+                     time_on_se = plotrix::std.error(time_on_ms, na.rm = TRUE),
+                     time_on_median = median(time_on_ms, na.rm = TRUE),
+                     time_off_avg = mean(time_off_ms, na.rm = TRUE),
+                     time_off_se = plotrix::std.error(time_off_ms, na.rm = TRUE),
+                     time_off_median = median(time_off_ms, na.rm = TRUE), 
+                     displacement_avg = mean(displacement_nm, na.rm = TRUE),
+                     displacement_se = plotrix::std.error(displacement_nm, na.rm = TRUE),
+                     force_avg = mean(force, na.rm = TRUE),
+                     force_se = plotrix::std.error(force, na.rm = TRUE),
+                     trap_stiffness = mean(trap_stiffness, na.rm = T),
+                     myo_stiffness = mean(myo_stiffness, na.rm = T),
+                     num_events = n()) %>%
+    dplyr::right_join(get_time)# %>% 
+  
+  return(event_files_filtered = event_files_filtered,
+         summary = summarize_trap,
+         event_file_paths = event_file_paths)
+}

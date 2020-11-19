@@ -6,14 +6,12 @@
 #' @param em_random_start A logical indicating if the EM-Algorithm should randomly start fitting gaussians.
 #' 
 hidden_markov_changepoint_analysis <- function(trap_data, f, hz = 5000, w_width = 150, em_random_start,  is_shiny = F, ...){
-  # path <- "~/lasertrapr/project_myoV-phosphate/myoV-S217A_pH-7.0_30mM-Pi/2019-02-27/obs-01"
-  # files <- list_files(path, pattern = 'trap-data.csv')
-  # trap_data <- purrr::map_df(files$path, vroom::vroom)
-  # trap_data %<>% nest(data = c(raw_bead, processed_bead, hm_overlay))
-  # em_random_start <- FALSE
-  # hz <- 5000
-  # w_width <- 150
-  #mv2nm <- trap_data$mv2nm
+ 
+  # dev_path <- '~/lasertrapr/project_myoV-phosphate/myoV-S217A_pH-7.0_30mM-Pi/2020-11-01/obs-19/trap-data.csv'
+  # trap_data <- read_csv(dev_path)
+  # w_width = 150
+  # em_random_start = F
+  
   nm2pn <- unique(trap_data$nm2pn)
   project <- unique(trap_data$project)
   conditions <- unique(trap_data$conditions)
@@ -21,6 +19,17 @@ hidden_markov_changepoint_analysis <- function(trap_data, f, hz = 5000, w_width 
   obs <- unique(trap_data$obs)
   include <- unique(trap_data$include)
   mv2nm <-  unique(trap_data$mv2nm)
+  
+  path <- file.path('~',
+                    'lasertrapr', 
+                    project,
+                    conditions,
+                    date,
+                    obs, 
+                    'trap-data.csv')
+  
+  if(is_shiny) setProgress(0.03, paste("Reading Data", conditions, obs))
+  trap_data <- readr::read_csv(path)
   
  report_data  <- "error"
   error_file <- file(file.path(f$date$path, "error-log.txt"), open = "a")
@@ -31,17 +40,18 @@ hidden_markov_changepoint_analysis <- function(trap_data, f, hz = 5000, w_width 
                           analyzer = 'none',
                           review = F)
           
-          vroom::vroom_write(obs_trap_data_exit, 
+          readr::write_csv(obs_trap_data_exit, 
                              path = file.path('~', 
                                               'lasertrapr', 
                                               project,
                                               conditions, 
                                               date, 
                                               obs, 
-                                              'trap-data.csv'), 
-                             delim = ",")
+                                              'trap-data.csv')
+          )
           stop("User Excluded")
         }
+        
         
         not_ready <- is_empty(trap_data$processed_bead)
         if(not_ready){
@@ -94,7 +104,8 @@ hidden_markov_changepoint_analysis <- function(trap_data, f, hz = 5000, w_width 
          cp_data <- changepoint_and_ensemble(measured_hm_events = measured_hm_events, 
                                              hz = hz, 
                                              conversion = conversion,
-                                             mv2nm = mv2nm)
+                                             mv2nm = mv2nm, 
+                                             conditions = conditions)
                                     
                                             
       
@@ -146,7 +157,11 @@ hidden_markov_changepoint_analysis <- function(trap_data, f, hz = 5000, w_width 
                                       measured_hm_events$viterbi_rle, 
                                       conversion, 
                                       hz = hz,
-                                      ends_in_state_1 = measured_hm_events$ends_in_state_1)
+                                      ends_in_state_1 = measured_hm_events$ends_in_state_1,
+                                      project = project, 
+                                      conditions = conditions,
+                                      date = date, 
+                                      obs = obs)
         
         #get some data for plotting later
         s1_avg_4plot <- tibble::tibble(avg = measured_hm_events$state_1_avg,
@@ -195,7 +210,7 @@ hidden_markov_changepoint_analysis <- function(trap_data, f, hz = 5000, w_width 
                              hm_model_results,
                              event_freq)
         
-        purrr::walk2(data_to_save, file_paths, ~vroom::vroom_write(x = .x, path = .y, delim = ','))
+        purrr::walk2(data_to_save, file_paths, ~readr::write_csv(x = .x, path = .y))
         
 
       }, error=function(e){

@@ -275,7 +275,7 @@ measure_hm_events <- function(processed_data, hm_model_results, conversion, hz, 
 #'
 #' @return
 #' @export
-changepoint_and_ensemble <- function(measured_hm_events,  hz,  conversion, mv2nm){
+changepoint_and_ensemble <- function(measured_hm_events,  hz,  conversion, mv2nm, conditions){
   #for dev
   # flip_raw <- measured_hm_events$flip_raw
   # viterbi_rle <- measured_hm_events$viterbi_rle
@@ -375,6 +375,8 @@ changepoint_and_ensemble <- function(measured_hm_events,  hz,  conversion, mv2nm
      }
     
     forward_event_chunk <- trap_data[forward_cp_window_start:forward_cp_window_stop,]
+    
+    if(backwards_cp_window_stop >= nrow(trap_data)) backwards_cp_window_stop <- nrow(trap_data)
     backwards_event_chunk <- trap_data[backwards_cp_window_start:backwards_cp_window_stop,]
     
     #if data has NA skip - helped reduce errors
@@ -464,10 +466,10 @@ changepoint_and_ensemble <- function(measured_hm_events,  hz,  conversion, mv2nm
                              keep = keep)
     } else {
       
-      #take average of 4ms from 12ms-8ms before cp ID end to extend events shorter than 1 second to 1 second
+      #take average of 10ms from 12ms-8ms before cp ID end to extend events shorter than 1 second to 1 second
       #OR 
       #take the mean calcualted from the changepoint object
-      i1 <- 0.020*hz
+      i1 <- 0.015*hz
       i2 <- 0.010*hz
       front_avg <- mean(trap_data$data[(cp_off-i1) : (cp_off-i2) ])
       #front_avg <- processed_data_tibble$data[cp_off-1]
@@ -499,15 +501,15 @@ changepoint_and_ensemble <- function(measured_hm_events,  hz,  conversion, mv2nm
     
     
     if(length_of_event >= ensemble_length){
-      b1 <- 0.005*hz
+      b1 <- 1
       backwards_5000 <- tibble(data = trap_data$data[ (cp_off - (ensemble_length-1)) : cp_off ],
                                ensemble_index = length(data):(2*length(data) - 1),
                                event = i, 
                                keep = keep)
     } else {
-      #get average of first 15ms to extend backwards in time to 1 second
-      b1 <- 0.005*hz
-      b2 <- 0.020*hz
+      #get average of 3ms to extend backwards in time to 1 second
+      b1 <- 1 #0.002*hz
+      b2 <- 0.005*hz
       back_avg <- mean(trap_data$data[(cp_start+b1):(cp_start+b2)])
       # back_avg <- mean(processed_data_tibble$data[cp_start+2])
       #replace first 1ms (5 datapoints) with 5ms average
@@ -556,6 +558,7 @@ changepoint_and_ensemble <- function(measured_hm_events,  hz,  conversion, mv2nm
       myo_stiffness[[i]] <- equipartition(myo_event_chunk)
     } else {
       base_prior_start <- better_time_on_stops[[(i-1)]] + 1
+      if(is.na(base_prior_start)) next
       base_prior_stop <- better_time_on_starts[[i]] - 1
       base_prior <- trap_data$data[base_prior_start : base_prior_stop]
       trap_stiffness[[i]] <- equipartition(base_prior)
@@ -568,9 +571,11 @@ changepoint_and_ensemble <- function(measured_hm_events,  hz,  conversion, mv2nm
   backwards_ensemble_df <- dplyr::bind_rows(backwards_ensemble_average_data)
   
   ensemble_avg_df <- rbind(forward_ensemble_df, backwards_ensemble_df) %>%
+    mutate(conditions = conditions) %>% 
     arrange(event)
   
 
+  
   cp_transitions <- tibble(start = better_time_on_starts,
                            stop = better_time_on_stops,
                            cp_found_start = cp_found_start,
@@ -597,7 +602,7 @@ changepoint_and_ensemble <- function(measured_hm_events,  hz,  conversion, mv2nm
 #' @param rle_object A run-length-encoding object
 #' @param conversion The conversion between running window time and 5kHz
 
-event_frequency <- function(processed_data, rle_object, conversion, hz = 5000, ends_in_state_1){
+event_frequency <- function(processed_data, rle_object, conversion, hz = 5000, ends_in_state_1, project, conditions, date, obs){
   #return a dataframe of event frequencies per each second
   #get the number of seconds in the trace
   seconds_in_trace <- length(processed_data)/hz
@@ -651,7 +656,11 @@ event_frequency <- function(processed_data, rle_object, conversion, hz = 5000, e
     dplyr::group_by(begin, end) %>%
     dplyr::summarize(freq_start = sum(is_in)) %>%
     tibble::rownames_to_column('second') %>%
-    dplyr::mutate(second = as.numeric(second))
+    dplyr::mutate(second = as.numeric(second), 
+                  project = project, 
+                  conditions = conditions,
+                  date = date, 
+                  obs = obs)
   
   
   find_it_end <- end_freq_df %>%
