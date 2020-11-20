@@ -359,7 +359,7 @@ mod_clean_data_server <- function(input, output, session, f){
     
       })
   
-  rv <- reactiveValues(wait = FALSE)
+  rv <- reactiveValues(wait = FALSE, update_filter = 0)
   #### slect obs ####
   #OBS
   #1 list of obs names
