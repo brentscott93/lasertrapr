@@ -263,12 +263,12 @@ mod_mini_ensemble_server <- function(input, output, session, f){
     withProgress(message = 'Saving Review', {
       
       td <- list_files(f$obs$path, pattern = 'trap-data.csv')
-      trap <- vroom::vroom(td$path)
+      trap <- data.table::fread(td$path)
       setProgress(0.7)
       trap_reviewed <- trap %>% 
         dplyr::mutate(review = input$quality_control)
       
-      vroom::vroom_write(trap_reviewed, path = file.path(f$obs$path, 'trap-data.csv'), delim = ",")
+      data.table::fwrite(trap_reviewed, file = file.path(f$obs$path, 'trap-data.csv'), sep = ",")
       setProgress(1, detail = 'Done')
     })
     showNotification('Review saved' , type = 'message')
@@ -279,9 +279,10 @@ mod_mini_ensemble_server <- function(input, output, session, f){
     defend_if_empty(f$date, ui = 'Please select a date folder', type = 'error')
     showNotification('Refreshing table', type = 'message')
     files <- list_files(f$date$path, pattern = 'trap-data.csv', recursive = T)
-    map_df(files$path, ~vroom::vroom(., delim = ",",
-                                     col_select = c(obs, include, analyzer, report, review),
-                                     n_max = 1))
+    map_df(files$path, ~data.table::fread(., 
+                                          sep = ",",
+                                          select = c("obs", "include", "analyzer", "report", "review"),
+                                          nrows = 1))
   
   })
   
@@ -313,7 +314,7 @@ mod_mini_ensemble_server <- function(input, output, session, f){
     
     filenames <- c('trap-data.csv', 'measured-events.csv')
     paths <- map(filenames, ~list_files(f$obs$path, pattern = .x))
-    data <-  map(paths, ~vroom::vroom(.x$path))
+    data <-  map(paths, ~data.table::fread(.x$path))
     names(data) <- c('trap', 'events')
     data
   })

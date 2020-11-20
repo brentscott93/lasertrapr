@@ -207,7 +207,7 @@ split_obs <- function(input_data, project, conditions, date, threshold){
                                        raw_bead = create_obs[[c]]$raw_bead,
                                        trap_position = create_obs[[c]]$trap_position)
         
-        vroom::vroom_write(t, path = paste0(date$path, "/obs-0", c, "/trap-data.csv"), delim = ",")
+         data.table::fwrite(t, file = file.path(date$path, paste0("obs-0", c), "trap-data.csv"), sep = ",")
          # write_csv(create_obs[[c]],
          #           path = paste0(date, "/obs-0", c, "/grouped.csv"),
          #           col_names = TRUE)
@@ -222,7 +222,7 @@ split_obs <- function(input_data, project, conditions, date, threshold){
                                        raw_bead = create_obs[[c]]$raw_bead,
                                        trap_position = create_obs[[c]]$trap_position)
         
-        vroom::vroom_write(t, path = paste0(date$path, "/obs-", c, "/trap-data.csv"), delim = ",")
+        data.table::fwrite(t, file = file.path(date$path, paste0("obs-", c), "trap-data.csv"), sep = ",")
         # write_csv(create_obs[[c]],
         #           path = paste0(date, "/obs-", c, "/grouped.csv"),
         #           col_names = TRUE)

@@ -154,7 +154,7 @@ get_info_table <- function(f_date, f_date_input){
   all_trap_paths <- list_files(f_date$path, pattern = 'trap-data.csv', recursive = T)
   defend_if_empty(all_trap_paths, ui = "No trap-data.rds files in date folder yet. Start by loading date with 'Initialize Data'",  type = 'error')
  
-  df <- vroom::vroom(all_trap_paths$path, delim = ",")
+  df <- data.table::fread(all_trap_paths$path, sep = ",")
   if('hm_overlay' %not_in% colnames(df)){
     df %<>% tidyr::nest(data = c(raw_bead, processed_bead)) %>% 
     dplyr::select(!data)
