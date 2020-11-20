@@ -20,13 +20,13 @@ hidden_markov_changepoint_analysis <- function(trap_data, f, hz = 5000, w_width 
   include <- unique(trap_data$include)
   mv2nm <-  unique(trap_data$mv2nm)
   
-  path <- file.path('~',
-                    'lasertrapr', 
+  path <- file.path(path.expand("~"),
+                    "lasertrapr", 
                     project,
                     conditions,
                     date,
                     obs, 
-                    'trap-data.csv')
+                    "trap-data.csv")
   
   if(is_shiny) setProgress(0.03, paste("Reading Data", conditions, obs))
   trap_data <- readr::read_csv(path)
@@ -41,13 +41,13 @@ hidden_markov_changepoint_analysis <- function(trap_data, f, hz = 5000, w_width 
                           review = F)
           
           readr::write_csv(obs_trap_data_exit, 
-                             path = file.path('~', 
-                                              'lasertrapr', 
+                             path = file.path(path.expand("~"),
+                                              "lasertrapr", 
                                               project,
-                                              conditions, 
-                                              date, 
+                                              conditions,
+                                              date,
                                               obs, 
-                                              'trap-data.csv')
+                                              "trap-data.csv")
           )
           stop("User Excluded")
         }
@@ -202,7 +202,7 @@ hidden_markov_changepoint_analysis <- function(trap_data, f, hz = 5000, w_width 
                          'hm-model-data.csv',
                          'event-frequency.csv')
         
-        file_paths <-  file.path('~', 'lasertrapr', project,  conditions, date, obs, file_names)
+        file_paths <-  file.path(path.expand("~"), "lasertrapr", project,  conditions, date, obs, file_names)
       
         data_to_save <- list(trap_data,
                              single_molecule_results,

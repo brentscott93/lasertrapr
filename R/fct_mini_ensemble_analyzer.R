@@ -29,7 +29,7 @@ mini_ensemble_analyzer <- function(trap_data, w_width_ms = 10, hz = 5000, displa
                       analyzer = 'none',
                       review = F)
       
-      vroom::vroom_write(obs_trap_data_exit, path = file.path('~', 'lasertrapr', project, conditions, date, obs, 'trap-data.csv'), delim = ",")
+      vroom::vroom_write(obs_trap_data_exit, path = file.path(path.expand('~'), 'lasertrapr', project, conditions, date, obs, 'trap-data.csv'), delim = ",")
       stop("User Excluded")
     }
     
@@ -172,7 +172,7 @@ mini_ensemble_analyzer <- function(trap_data, w_width_ms = 10, hz = 5000, displa
     filenames <- c('mini-measured-events.csv',
                    'mini-event-frequency.csv',
                    'trap-data.csv')
-    path <- file.path('~', 'lasertrapr', project, conditions, date, obs)
+    path <- file.path(path.expand('~'), 'lasertrapr', project, conditions, date, obs)
     #path <- '~/Desktop'
     purrr::walk2(data_to_save, filenames, ~vroom::vroom_write(.x, path = file.path(path, .y), delim = ","))
     
