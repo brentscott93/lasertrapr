@@ -1021,7 +1021,7 @@ output$move_files <- renderText({
      status$df <- map_df(all_trap_paths$path, ~data.table::fread(., 
                                                                  sep = ",",
                                                                  select = c("obs", "processor", "mv2nm", "nm2pn", "include"),
-                                                                 rows = 1))
+                                                                 nrows = 1))
      
      
      setProgress(1)
