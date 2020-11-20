@@ -435,7 +435,7 @@ mod_clean_data_server <- function(input, output, session, f){
    
   })
   
-  observeEvent(rv$update_filter, {
+  observeEvent(rv$update_filter, ignoreInit = T, {
    
     trap_path <- list_files(f$obs$path, pattern = 'trap-data.csv')
     rv$filter_max <- nrow(data.table::fread(trap_path$path, select = "raw_bead"))
