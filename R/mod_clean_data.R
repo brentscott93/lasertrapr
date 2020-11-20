@@ -495,7 +495,7 @@ mod_clean_data_server <- function(input, output, session, f){
         dplyr::filter(str_detect(name, "trap-data.csv")) %>%
         dplyr::pull(path)
 
-      data <- vroom::vroom(trap_data, delim = ",") %>%
+      data <- data.table::fread(trap_data, sep = ",") %>%
         #tidyr::unnest(cols = c(grouped)) %>%
         dplyr::mutate(seconds = 1:nrow(.)/5000,
                       bead = raw_bead*as.numeric(input$mv2nm)) %>%
@@ -964,7 +964,7 @@ output$move_files <- renderText({
         dplyr::filter(str_detect(name, "trap-data.csv")) %>%
         dplyr::pull(path)
       
-       data <- vroom::vroom(trap_data, delim = ",")
+       data <- data.table::fread(trap_data, sep = ",")
        
       
       # grouped <- data %>% 
@@ -1003,7 +1003,7 @@ output$move_files <- renderText({
      
      setProgress(0.5)
      
-     vroom::vroom_write(data, path = file.path(f$obs$path, 'trap-data.csv'), delim = ",")
+     data.table::fwrite(data, file = file.path(f$obs$path, 'trap-data.csv'), sep = ",")
      
      setProgress(0.75)
       # index <- input$save
@@ -1018,9 +1018,10 @@ output$move_files <- renderText({
      
      setProgress(0.9)
     
-     status$df <- map_df(all_trap_paths$path, ~vroom::vroom(., delim = ",",
-                                                            col_select = c(obs, processor, mv2nm, nm2pn, include),
-                                                            n_max = 1))
+     status$df <- map_df(all_trap_paths$path, ~data.table::fread(., 
+                                                                 sep = ",",
+                                                                 select = c("obs", "processor", "mv2nm", "nm2pn", "include"),
+                                                                 rows = 1))
      
      
      setProgress(1)
@@ -1036,9 +1037,10 @@ output$move_files <- renderText({
     all_trap_paths <- list_files(f$date$path, pattern = 'trap-data.csv', recursive = T)
     defend_if_empty(all_trap_paths, ui = "No trap-data.rds files in date folder yet. Start by loading date with 'Initialize Data'",  type = 'error')
     golem::print_dev(all_trap_paths$path)
-    status$df <- map_df(all_trap_paths$path, ~vroom::vroom(., delim = ",",
-                                                        col_select = c(obs, processor, mv2nm, nm2pn, include),
-                                                        n_max = 1))
+    status$df <- map_df(all_trap_paths$path, ~data.table::fread(.,
+                                                                sep = ",",
+                                                                select = c("obs", "processor", "mv2nm", "nm2pn", "include"),
+                                                                nrows = 1))
     
     # df %<>% map(~summarize(., obs = unique(obs),
     #                           processor = unique(processor), mv2nm, nm2pn, include))
