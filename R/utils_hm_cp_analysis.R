@@ -81,7 +81,7 @@ if(hmm_posterior$state[[1]] == 2){
     dplyr::mutate(report = 'hmm-error',
                   analyzer = 'hm/cp')
 
-  vroom::vroom_write(obs_trap_data_exit, path = file.path('~', 'lasertrapr', project, conditions, date, obs, 'trap-data.csv'), delim = ",")
+  data.table::fwrite(obs_trap_data_exit, path = file.path(path.expand('~'), 'lasertrapr', project, conditions, date, obs, 'trap-data.csv'), sep = ",")
   if(is_shiny) showNotification('Skipping...HM-Model starts in state 2. Try trimming beginnging of obs.', type = 'warning')
   stop("HM-Model Starts in State 2. Try trimming the beginning of the obs.")
 } 

@@ -188,10 +188,10 @@ mod_hm_model_server <- function(input, output, session, f){
     
     if(input$which_obs =='single'){
       file <- list_files(f$obs$path, pattern = 'trap-data.csv')
-      trap_data <- purrr::map(file$path, readr::read_csv, n_max = 1)
+      trap_data <- purrr::map(file$path, data.table::fread, nrows = 1)
     } else {
       files <- list_files(f$date$path, pattern = 'trap-data.csv', recursive = T)
-      trap_data <- purrr::map(files$path, readr::read_csv, n_max = 1)
+      trap_data <- purrr::map(files$path, data.table::fread, nrows = 1)
     }
     
     # if('hm_overlay' %not_in% colnames(trap_data)){
@@ -252,7 +252,7 @@ mod_hm_model_server <- function(input, output, session, f){
   
     filenames <- c('trap-data.csv', 'measured-events.csv', 'hm-model-data.csv')
     paths <- map(filenames, ~list_files(f$obs$path, pattern = .x))
-    data <-  map(paths, ~readr::read_csv(.x$path))
+    data <-  map(paths, ~data.table::fread(.x$path))
     names(data) <- c('trap', 'events', 'running')
     data
   })
@@ -378,10 +378,10 @@ mod_hm_model_server <- function(input, output, session, f){
     defend_if_empty(f$date, ui = 'Please select a date folder', type = 'error')
     showNotification('Refreshing table', type = 'message')
     files <- list_files(f$date$path, pattern = 'trap-data.csv', recursive = T)
-    map_df(files$path, ~readr::read_csv(.,
-                                     #col_select = c(obs, include, analyzer, report, review),
-                                     n_max = 1) %>% dplyr::select(obs, include, analyzer, report, review) )
-  })
+    map_df(files$path, ~data.table::fread(.,
+                                          select = c("obs", "include", "analyzer", "report", "review"),
+                                          rows = 1))
+  }) 
   
   output$table <- DT::renderDT({
     req(info())
@@ -413,12 +413,12 @@ mod_hm_model_server <- function(input, output, session, f){
     withProgress(message = 'Saving Review', {
       
       td <- list_files(f$obs$path, pattern = 'trap-data.csv')
-      trap <- readr::read_csv(td$path)
+      trap <- data.table::fread(td$path)
       setProgress(0.7)
       trap_reviewed <- trap %>% 
         dplyr::mutate(review = input$quality_control)
       
-      readr::write_csv(trap_reviewed, path = file.path(f$obs$path, 'trap-data.csv'))
+      data.table::fwrite(trap_reviewed, file = file.path(f$obs$path, 'trap-data.csv'))
       setProgress(1, detail = 'Done')
     })
      showNotification('Review saved' , type = 'message')

@@ -431,14 +431,14 @@ mod_clean_data_server <- function(input, output, session, f){
   observeEvent(f$obs_input, {
     req(substring(f$obs_input, 1, 3) == 'obs')
     trap_path <- list_files(f$obs$path, pattern = 'trap-data.csv')
-   rv$filter_max <- nrow(readr::read_csv(trap_path$path, col_types = cols_only('raw_bead' = col_double())))
+   rv$filter_max <- nrow(data.table::fread(trap_path$path, select = "raw_bead"))
    
   })
   
   observeEvent(rv$update_filter, {
    
     trap_path <- list_files(f$obs$path, pattern = 'trap-data.csv')
-    rv$filter_max <- nrow(vroom::vroom(trap_path$path, delim = ","))
+    rv$filter_max <- nrow(data.table::fread(trap_path$path, sep = ","), select = "raw_bead")
     
   })
  

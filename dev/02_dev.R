@@ -42,6 +42,13 @@ usethis::use_package( "glue" )
 usethis::use_package( "survival" )
 usethis::use_package( "survminer" )
 usethis::use_package( "patchwork" )
+usethis::use_package( "cowplot" )
+usethis::use_package( "rstatix" )
+usethis::use_package( "ggpubr" )
+usethis::use_package( "Hmisc" )
+usethis::use_package( "plotrix" )
+usethis::use_package( "broom" )
+usethis::use_package( "drc" )
 
 ## Add modules ----
 ## Create a module infrastructure in R/

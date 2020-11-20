@@ -196,10 +196,10 @@ mod_mini_ensemble_server <- function(input, output, session, f){
     golem::print_dev('getting file ')
     if(input$which_obs =='single'){
       file <- list_files(f$obs$path, pattern = 'trap-data.csv')
-      trap_data <- purrr::map(file$path, vroom::vroom, delim = ",")
+      trap_data <- purrr::map(file$path, data.table::fread, sep = ",")
     } else {
       files <- list_files(f$date$path, pattern = 'trap-data.csv', recursive = T)
-      trap_data <- purrr::map(files$path, vroom::vroom, delim = ",")
+      trap_data <- purrr::map(files$path, data.table::fread, sep = ",")
     }
     
     # if(c('run_mean_overlay', 'rescaled_mini_data' %not_in% colnames(trap_data)){
