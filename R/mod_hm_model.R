@@ -380,7 +380,7 @@ mod_hm_model_server <- function(input, output, session, f){
     files <- list_files(f$date$path, pattern = 'trap-data.csv', recursive = T)
     map_df(files$path, ~data.table::fread(.,
                                           select = c("obs", "include", "analyzer", "report", "review"),
-                                          rows = 1))
+                                           nrows = 1))
   }) 
   
   output$table <- DT::renderDT({
