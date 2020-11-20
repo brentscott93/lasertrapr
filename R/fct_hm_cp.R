@@ -29,7 +29,7 @@ hidden_markov_changepoint_analysis <- function(trap_data, f, hz = 5000, w_width 
                     "trap-data.csv")
   
   if(is_shiny) setProgress(0.03, paste("Reading Data", conditions, obs))
-  trap_data <- readr::read_csv(path)
+  trap_data <- data.table::fread(path) 
   
  report_data  <- "error"
   error_file <- file(file.path(f$date$path, "error-log.txt"), open = "a")
