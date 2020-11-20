@@ -40,15 +40,15 @@ hidden_markov_changepoint_analysis <- function(trap_data, f, hz = 5000, w_width 
                           analyzer = 'none',
                           review = F)
           
-          readr::write_csv(obs_trap_data_exit, 
-                             path = file.path(path.expand("~"),
+           data.table::fwrite(obs_trap_data_exit, 
+                              file = file.path(path.expand("~"),
                                               "lasertrapr", 
                                               project,
                                               conditions,
                                               date,
                                               obs, 
-                                              "trap-data.csv")
-          )
+                                              "trap-data.csv"),
+                              sep = ",")
           stop("User Excluded")
         }
         
@@ -210,7 +210,7 @@ hidden_markov_changepoint_analysis <- function(trap_data, f, hz = 5000, w_width 
                              hm_model_results,
                              event_freq)
         
-        purrr::walk2(data_to_save, file_paths, ~readr::write_csv(x = .x, path = .y))
+        purrr::walk2(data_to_save, file_paths, ~data.table::fwrite(x = .x, file = .y, sep = ","))
         
 
       }, error=function(e){
