@@ -49,6 +49,7 @@ usethis::use_package( "Hmisc" )
 usethis::use_package( "plotrix" )
 usethis::use_package( "broom" )
 usethis::use_package( "drc" )
+usethis::use_package( "truncdist" )
 
 ## Add modules ----
 ## Create a module infrastructure in R/
