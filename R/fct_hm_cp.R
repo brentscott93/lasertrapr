@@ -5,7 +5,19 @@
 #' @param f The 'f' reactiveValues from app.
 #' @param em_random_start A logical indicating if the EM-Algorithm should randomly start fitting gaussians.
 #' 
-hidden_markov_changepoint_analysis <- function(trap_data, f, hz = 5000, w_width = 150, em_random_start,  is_shiny = F, ...){
+hidden_markov_changepoint_analysis <- function(trap_data,
+                                               f = f,
+                                               a = a, 
+                                               hz = 5000,
+                                               w_width = 150,
+                                               w_slide = "1/2",
+                                               use_channels,
+                                               em_random_start, 
+                                               front_cp_method,
+                                               back_cp_method,
+                                               cp_running_var_window,
+                                               is_shiny = F, 
+                                               ...){
  
   # dev_path <- '~/lasertrapr/project_myoV-phosphate/myoV-S217A_pH-7.0_30mM-Pi/2020-11-01/obs-19/trap-data.csv'
   # trap_data <- read_csv(dev_path)
@@ -29,9 +41,10 @@ hidden_markov_changepoint_analysis <- function(trap_data, f, hz = 5000, w_width 
                     "trap-data.csv")
   
   if(is_shiny) setProgress(0.03, paste("Reading Data", conditions, obs))
+  
   trap_data <- data.table::fread(path) 
   
- report_data  <- "error"
+  report_data  <- "error"
   error_file <- file(file.path(f$date$path, "error-log.txt"), open = "a")
       tryCatch({
         if(!include){
@@ -59,10 +72,8 @@ hidden_markov_changepoint_analysis <- function(trap_data, f, hz = 5000, w_width 
           stop('Data not processed')
           }
                   
-        if(is_shiny) setProgress(0.05, paste("Analyzing", conditions, obs))
-        
-     
         if(is_shiny){
+          setProgress(0.05, paste("Analyzing", conditions, obs))
           defend_if_empty(trap_data$processed_bead, ui = paste0(obs, ' data not processed.'), type = 'error')
         }
   
@@ -70,10 +81,22 @@ hidden_markov_changepoint_analysis <- function(trap_data, f, hz = 5000, w_width 
 
         
         #### RUNNING MEAN & VAR ####
+        if(w_slide == "1-pt"){
+          ws <- 1 
+        } else if(w_slide == "1/4"){
+          ws <- w_width*0.25
+        } else if(w_slide == "1/2"){
+          ws <- w_width*0.5
+        } else if(w_slide == "3/4"){
+          ws <- w_width*0.75
+        } else if(w_slide == "No-overlap"){
+          ws <- w_width
+        }
         
         if(is_shiny) setProgress(0.1, detail = "Calculating Running Windows")
-        run_mean <- na.omit(RcppRoll::roll_meanl(processed_data, n = w_width, by = w_width/2))
-        run_var <- na.omit(RcppRoll::roll_varl(processed_data, n = w_width, by = w_width/2))
+        
+        run_mean <- na.omit(RcppRoll::roll_meanl(processed_data, n = w_width, by = ws))
+        run_var <- na.omit(RcppRoll::roll_varl(processed_data, n = w_width, by = ws))
       
        
         #### HMM ####
@@ -82,6 +105,7 @@ hidden_markov_changepoint_analysis <- function(trap_data, f, hz = 5000, w_width 
         hm_model_results <- fit_hm_model(trap_data = trap_data, 
                                          run_mean = run_mean, 
                                          run_var = run_var, 
+                                         use_channels = use_channels,
                                          em_random_start = em_random_start,
                                          is_shiny = F, 
                                          project = project, 
@@ -90,7 +114,7 @@ hidden_markov_changepoint_analysis <- function(trap_data, f, hz = 5000, w_width 
                                          obs = obs)
         
         #### MEASURE EVENTS ####
-        conversion <- w_width/2
+        conversion <- ws
         if(is_shiny) setProgress(0.5, detail = "Measuring")
         
         measured_hm_events <- measure_hm_events(processed_data = processed_data, 
@@ -105,7 +129,11 @@ hidden_markov_changepoint_analysis <- function(trap_data, f, hz = 5000, w_width 
                                              hz = hz, 
                                              conversion = conversion,
                                              mv2nm = mv2nm, 
-                                             conditions = conditions)
+                                             conditions = conditions,
+                                             front_cp_method = front_cp_method,
+                                             back_cp_method = back_cp_method,
+                                             cp_running_var_window = cp_running_var_window,
+                                             ws = ws)
                                     
                                             
       

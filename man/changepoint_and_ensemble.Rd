@@ -4,7 +4,17 @@
 \alias{changepoint_and_ensemble}
 \title{Runs changepoint analysis, estimates more accurate event measurements, and saves data for ensemble averaging.}
 \usage{
-changepoint_and_ensemble(measured_hm_events, hz, conversion, mv2nm, conditions)
+changepoint_and_ensemble(
+  measured_hm_events,
+  hz,
+  conversion,
+  mv2nm,
+  conditions,
+  front_cp_method,
+  back_cp_method,
+  cp_running_var_window,
+  ws
+)
 }
 \arguments{
 \item{measured_hm_events}{the results from measure_hm_events()}

@@ -6,101 +6,108 @@
 #' @param em_random_start TRUE/FALSE
 #' @param is_shiny TRUE/FALSE
 #' @return a list of two. 1) a table with running mean, variance, and hm-model identified state. 2) variance signal-to-noise.
-fit_hm_model <- function(trap_data, run_mean, run_var, em_random_start, is_shiny, project, conditions, date, obs){
+fit_hm_model <- function(trap_data, run_mean, run_var, use_channels, em_random_start, is_shiny, project, conditions, date, obs){
 
 
-seed <- floor(runif(1, 0, 1e6))
-
-hmm <- depmixS4::depmix(list(run_var~1,
-                             run_mean~1),
-                        data = data.frame(run_mean = run_mean,
-                                          run_var = run_var),
-                        nstates = 2,
-                        family = list(stats::gaussian(),
-                                      stats::gaussian()))
-
-
-hmm_initial_parameters <- c(0.98, 0.02,        #Initial state probabilities
-                            0.98, 0.02,         #transition probs s1 to s1/s2. These are guesses knowing they are stable states
-                            0.02, 0.98)       #transition probs s2 to s1/s2. Again a guess
-
-
-sd_run_mean <- sd(run_mean)
-mean_run_var <- mean(run_var)
-sd_run_var <- sd(run_var)
-
-if(em_random_start == T){
-  hmm_fit <- depmixS4::fit(hmm, emcontrol = depmixS4::em.control(random.start = TRUE))
-} else {
-  estimate_hmm_gaussians <- c(mean_run_var, sd_run_var, 0, sd_run_mean,
-                              mean_run_var/2, sd_run_var, 3, sd_run_mean*2)
-  hmm <- depmixS4::setpars(hmm, c(hmm_initial_parameters, estimate_hmm_gaussians))
-  set.seed(seed)
-  hmm_fit <- depmixS4::fit(hmm, emcontrol = depmixS4::em.control(random.start = FALSE))
-}
-
-hmm_posterior <- depmixS4::posterior(hmm_fit)
-
-#make sure HMM starts in state 2 this will reset seed and try to refit 10 times
-#should really never have to do this with the em.control set
-
-hmm_repeat <- 0
-
-while(hmm_repeat < 10){
+  seed <- floor(runif(1, 0, 1e6))
   
-  if(hmm_posterior$state[[1]] == 1){
-    print("HMM starts in state 1")
-    hmm_repeat <- 11
-    
-  } else if(hmm_posterior$state[[1]] == 2){
-    print(paste("Refitting HMM", hmm_repeat))
-    
-    seed <- floor(runif(1, 0, 1e6))
-    
-    set.seed(seed)
-    
-    hmm_fit <- depmixS4::fit(hmm, emcontrol = depmixS4::em.control(random.start = em_random_start))
-    
-    hmm_posterior <- depmixS4::posterior(hmm_fit)
-    
-    hmm_repeat <- hmm_repeat + 1
+  if(use_channels == "Mean/Var"){
+    hmm <- depmixS4::depmix(list(run_var~1,
+                                 run_mean~1),
+                            data = data.frame(run_mean = run_mean,
+                                              run_var = run_var),
+                            nstates = 2,
+                            family = list(stats::gaussian(),
+                                          stats::gaussian()))
+  } else if(use_channels == "Variance"){
+    hmm <- depmixS4::depmix(run_var~1,
+                            data = data.frame(run_var = run_var),
+                            nstates = 2,
+                            family = stats::gaussian())
   }
-}
-
-
-
-
-#purposesefully skip data if hm-model starts in state 2. All calculations assume it starts in state 1
-if(hmm_posterior$state[[1]] == 2){
-  # writeLines(c("Skipping",
-  #              trap_data$obs,
-  #              "HMM starts in State 2. Try trimming the beginning of the observation."), error_file);
- 
   
-  obs_trap_data_exit <- trap_data  %>% 
-    dplyr::mutate(report = 'hmm-error',
-                  analyzer = 'hm/cp')
-
-  data.table::fwrite(obs_trap_data_exit, path = file.path(path.expand('~'), 'lasertrapr', project, conditions, date, obs, 'trap-data.csv'), sep = ",")
-  if(is_shiny) showNotification('Skipping...HM-Model starts in state 2. Try trimming beginnging of obs.', type = 'warning')
-  stop("HM-Model Starts in State 2. Try trimming the beginning of the obs.")
-} 
-
-
-sum_fit <- depmixS4::summary(hmm_fit)
-base_var <- sum_fit[[1]]
-event_var <- sum_fit[[2]]
-
-s2n <- base_var/event_var
-
-#save running mean, var, & state for dygraph
-data <- tibble::tibble(run_mean = unname(run_mean),
-                       run_var = unname(run_var),
-                       state = hmm_posterior$state, 
-                       index = 1:length(state),
-                       var_signal_ratio = s2n)
-
-return(data)
+  
+  hmm_initial_parameters <- c(0.98, 0.02,        #Initial state probabilities
+                              0.98, 0.02,         #transition probs s1 to s1/s2. These are guesses knowing they are stable states
+                              0.02, 0.98)       #transition probs s2 to s1/s2. Again a guess
+  
+  
+  sd_run_mean <- sd(run_mean)
+  mean_run_var <- mean(run_var)
+  sd_run_var <- sd(run_var)
+  
+  if(em_random_start == T){
+    hmm_fit <- depmixS4::fit(hmm, emcontrol = depmixS4::em.control(random.start = TRUE))
+  } else {
+    estimate_hmm_gaussians <- c(mean_run_var, sd_run_var, 0, sd_run_mean,
+                                mean_run_var/2, sd_run_var, 3, sd_run_mean*2)
+    hmm <- depmixS4::setpars(hmm, c(hmm_initial_parameters, estimate_hmm_gaussians))
+    set.seed(seed)
+    hmm_fit <- depmixS4::fit(hmm, emcontrol = depmixS4::em.control(random.start = FALSE))
+  }
+  
+  hmm_posterior <- depmixS4::posterior(hmm_fit)
+  
+  #make sure HMM starts in state 2 this will reset seed and try to refit 10 times
+  #should really never have to do this with the em.control set
+  
+  hmm_repeat <- 0
+  
+  while(hmm_repeat < 10){
+    
+    if(hmm_posterior$state[[1]] == 1){
+      print("HMM starts in state 1")
+      hmm_repeat <- 11
+      
+    } else if(hmm_posterior$state[[1]] == 2){
+      print(paste("Refitting HMM", hmm_repeat))
+      
+      seed <- floor(runif(1, 0, 1e6))
+      
+      set.seed(seed)
+      
+      hmm_fit <- depmixS4::fit(hmm, emcontrol = depmixS4::em.control(random.start = em_random_start))
+      
+      hmm_posterior <- depmixS4::posterior(hmm_fit)
+      
+      hmm_repeat <- hmm_repeat + 1
+    }
+  }
+  
+  
+  
+  
+  #purposesefully skip data if hm-model starts in state 2. All calculations assume it starts in state 1
+  if(hmm_posterior$state[[1]] == 2){
+    # writeLines(c("Skipping",
+    #              trap_data$obs,
+    #              "HMM starts in State 2. Try trimming the beginning of the observation."), error_file);
+   
+    
+    obs_trap_data_exit <- trap_data  %>% 
+      dplyr::mutate(report = 'hmm-error',
+                    analyzer = 'hm/cp')
+  
+    data.table::fwrite(obs_trap_data_exit, path = file.path(path.expand('~'), 'lasertrapr', project, conditions, date, obs, 'trap-data.csv'), sep = ",")
+    if(is_shiny) showNotification('Skipping...HM-Model starts in state 2. Try trimming beginnging of obs.', type = 'warning')
+    stop("HM-Model Starts in State 2. Try trimming the beginning of the obs.")
+  } 
+  
+  
+  sum_fit <- depmixS4::summary(hmm_fit)
+  base_var <- sum_fit[[1]]
+  event_var <- sum_fit[[2]]
+  
+  s2n <- base_var/event_var
+  
+  #save running mean, var, & state for dygraph
+  data <- tibble::tibble(run_mean = unname(run_mean),
+                         run_var = unname(run_var),
+                         state = hmm_posterior$state, 
+                         index = 1:length(state),
+                         var_signal_ratio = s2n)
+  
+  return(data)
 
 }
 
@@ -275,7 +282,15 @@ measure_hm_events <- function(processed_data, hm_model_results, conversion, hz, 
 #'
 #' @return
 #' @export
-changepoint_and_ensemble <- function(measured_hm_events,  hz,  conversion, mv2nm, conditions){
+changepoint_and_ensemble <- function(measured_hm_events,
+                                     hz,
+                                     conversion,
+                                     mv2nm,
+                                     conditions,
+                                     front_cp_method, 
+                                     back_cp_method, 
+                                     cp_running_var_window,
+                                     ws){
   #for dev
   # flip_raw <- measured_hm_events$flip_raw
   # viterbi_rle <- measured_hm_events$viterbi_rle
@@ -287,9 +302,14 @@ changepoint_and_ensemble <- function(measured_hm_events,  hz,  conversion, mv2nm
   is_positive <- measured_hm_events$is_positive
   state_1_avg <-  measured_hm_events$state_1_avg
   
-  trap_data <- tibble(data = flip_raw,
-                    index = 1:length(data),
-                    run_var = RcppRoll::roll_varl(flip_raw, n = 5))
+  if(is.null(cp_running_var_window)){
+    trap_data <- tibble(data = flip_raw,
+                        index = 1:length(data))
+  } else {
+    trap_data <- tibble(data = flip_raw,
+                        index = 1:length(data),
+                        run_var = RcppRoll::roll_varl(flip_raw, n = cp_running_var_window))
+  }
   
   time_prior <- viterbi_rle %>% 
     dplyr::filter(values == 1)
@@ -349,8 +369,8 @@ changepoint_and_ensemble <- function(measured_hm_events,  hz,  conversion, mv2nm
     
     
  #   if(length_of_hm_event == 1){
-      forward_cp_window_stop <- estimated_start * conversion
-      backwards_cp_window_start <- floor((estimated_stop - 0.5) * conversion)
+      forward_cp_window_stop <- ceiling((estimated_start * conversion) + ws) 
+      backwards_cp_window_start <- floor((estimated_stop * conversion) - ws)
    # } 
     # else {
     #   forward_cp_window_stop <- (estimated_start + 1) * conversion
@@ -358,7 +378,7 @@ changepoint_and_ensemble <- function(measured_hm_events,  hz,  conversion, mv2nm
     # }
 
     #if(length_of_prior_baseline == 1) {
-      forward_cp_window_start <- (estimated_start - 2) * conversion
+      forward_cp_window_start <- floor((estimated_start - 1.5) * conversion)
    # } 
     # else if(length_of_prior_baseline == 2) {
     #   forward_cp_window_start <- (estimated_start - 3) * conversion
@@ -366,13 +386,11 @@ changepoint_and_ensemble <- function(measured_hm_events,  hz,  conversion, mv2nm
     #   forward_cp_window_start <- (estimated_start - 4) * conversion
     # }
 
-    if(length_of_after_baseline == 1 | class(length_of_after_baseline) == 'try-error') {
-      backwards_cp_window_stop <- ceiling((estimated_stop + 1.5)) * conversion
-    } else if(length_of_after_baseline == 2) {
+    if(length_of_after_baseline == 1 | class(length_of_after_baseline) == 'try-error'){
+       backwards_cp_window_stop <- ceiling((estimated_stop + 1.5)) * conversion
+    } else {
        backwards_cp_window_stop <- ceiling((estimated_stop + 2.5)) * conversion
-     } else {
-       backwards_cp_window_stop <- ceiling((estimated_stop + 3.5)) * conversion
-     }
+    } 
     
     forward_event_chunk <- trap_data[forward_cp_window_start:forward_cp_window_stop,]
     
@@ -390,9 +408,15 @@ changepoint_and_ensemble <- function(measured_hm_events,  hz,  conversion, mv2nm
       keep_event[[i]] <- FALSE
       next
     } else {
-      forward_cpt_object <- changepoint::cpt.mean(na.omit(forward_event_chunk$run_var),
-                                        penalty = "MBIC",
-                                        method = 'AMOC')
+      if(front_cp_method == "Variance"){
+        forward_cpt_object <- changepoint::cpt.mean(na.omit(forward_event_chunk$run_var),
+                                                    penalty = "MBIC",
+                                                    method = 'AMOC')
+      } else {
+        forward_cpt_object <- changepoint::cpt.meanvar(na.omit(forward_event_chunk$data),
+                                                    penalty = "MBIC",
+                                                    method = 'AMOC')
+      }
     }
     
     if(length(has_na2) > 1){
@@ -400,9 +424,15 @@ changepoint_and_ensemble <- function(measured_hm_events,  hz,  conversion, mv2nm
       # cp_found_stop[[i]] <- FALSE
       keep_event[[i]] <- FALSE
     } else {
-      backwards_cpt_object <- changepoint::cpt.meanvar(na.omit(backwards_event_chunk$data),
-                                          penalty = "MBIC",
-                                          method = 'AMOC')
+      if(back_cp_method == "Variance"){
+        backwards_cpt_object <- changepoint::cpt.mean(na.omit(backwards_event_chunk$run_var),
+                                                       penalty = "MBIC",
+                                                       method = 'AMOC')
+      } else {
+        backwards_cpt_object <- changepoint::cpt.meanvar(na.omit(backwards_event_chunk$data),
+                                                         penalty = "MBIC",
+                                                         method = 'AMOC')
+      }
     }
     
    
@@ -469,8 +499,8 @@ changepoint_and_ensemble <- function(measured_hm_events,  hz,  conversion, mv2nm
       #take average of 10ms from 12ms-8ms before cp ID end to extend events shorter than 1 second to 1 second
       #OR 
       #take the mean calcualted from the changepoint object
-      i1 <- 0.015*hz
-      i2 <- 0.010*hz
+      i1 <- 0.005*hz
+      i2 <- 0.001*hz
       front_avg <- mean(trap_data$data[(cp_off-i1) : (cp_off-i2) ])
       #front_avg <- processed_data_tibble$data[cp_off-1]
       time_diff <- ensemble_length - length_of_event
@@ -501,21 +531,21 @@ changepoint_and_ensemble <- function(measured_hm_events,  hz,  conversion, mv2nm
     
     
     if(length_of_event >= ensemble_length){
-      b1 <- 1
+      b1 <- hz/1000
       backwards_5000 <- tibble(data = trap_data$data[ (cp_off - (ensemble_length-1)) : cp_off ],
                                ensemble_index = length(data):(2*length(data) - 1),
                                event = i, 
                                keep = keep)
     } else {
       #get average of 3ms to extend backwards in time to 1 second
-      b1 <- 1 #0.002*hz
-      b2 <- 0.005*hz
+      b1 <- hz/1000 #0.002*hz
+      b2 <- 0.006*hz
       back_avg <- mean(trap_data$data[(cp_start+b1):(cp_start+b2)])
       # back_avg <- mean(processed_data_tibble$data[cp_start+2])
       #replace first 1ms (5 datapoints) with 5ms average
       time_diff <- (ensemble_length-length_of_event) + b1
       
-      extend_event_back <- c(rep(back_avg, time_diff), trap_data$data[ (cp_start + 5) : (cp_off-1) ])
+      extend_event_back <- c(rep(back_avg, time_diff), trap_data$data[ (cp_start + b1) : (cp_off-1) ])
       
       backwards_5000 <- tibble::tibble(data = extend_event_back,
                                        ensemble_index = length(data):(2*length(data)-1),

@@ -9,7 +9,7 @@ app_server <- function( input, output, session ) {
   
   lasertrapr_folder <- file.path(path.expand('~'), 'lasertrapr') 
   
-  if( file.exists( lasertrapr_folder ) == FALSE) {
+  if(file.exists(lasertrapr_folder) == FALSE){
     dir.create(lasertrapr_folder)
     showModal(modalDialog( title = "Welcome!",
                            paste0('All your data will be saved to: ', lasertrapr_folder)

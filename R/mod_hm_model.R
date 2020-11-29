@@ -33,39 +33,24 @@ mod_hm_model_ui <- function(id){
            
                   #conditionalPanel(conditions = "input.which_obs == 'single
        
-                 shinyWidgets::materialSwitch(ns('advanced'), 
-                                              'Advanced',
-                                              value = FALSE, 
-                                              status = 'primary'),
-                 sliderInput(ns('w_width'), 
-                             label = 'Window Width (dp)',
-                             value = 150, 
-                             min = 10, 
-                             max = 300, 
-                             step = 10),
-                 
-                 numericInput(inputId = ns('hz'),
-                              label = 'Sampling Frequency (Hz)', 
-                              value = 5000),
-                 
-                 
-                shinyWidgets::prettyCheckbox(inputId = ns('em_random_start'),
-                                              value = FALSE,
-                                              label = "EM Random Start?", 
-                                              status = "primary",
-                                              shape = "curve",
-                                              outline = TRUE),
-                
-                
+      fluidRow(
+        column(6, 
+                actionButton(inputId = ns("options"),
+                             label = "Options",
+                             icon = icon("cog"),
+                             width = "100%",
+                             style = 'margin-top: 25px;')
+        ),
+        column(6,
                 actionButton(inputId = ns("analyze_trap"),
                              label = "Run Analysis",
                              icon = icon("running"),
                              width = "100%",
                              style = 'margin-top: 25px;')
-                                                          
-                 ),
-             
-         ),
+        )
+      )
+    )
+  ),
       
   
     column(8,
@@ -165,7 +150,7 @@ mod_hm_model_ui <- function(id){
 #' @param input,output,session,f module parameters
 #' @noRd 
 mod_hm_model_server <- function(input, output, session, f){
-  ns <- session$ns
+ ns <- session$ns
  
   
  hm <- reactiveValues(analyze = 0)
@@ -194,47 +179,19 @@ mod_hm_model_server <- function(input, output, session, f){
       trap_data <- purrr::map(files$path, data.table::fread, nrows = 1)
     }
     
-    # if('hm_overlay' %not_in% colnames(trap_data)){
-    #   trap_data %<>% 
-    #     tidyr::nest(data = c(raw_bead, processed_bead)) 
-    # } else {
-    #    trap_data %<>% 
-    #     tidyr::nest(data = c(raw_bead, processed_bead, hm_overlay)) 
-    # }
-    
-    if(is.null(input$em_random_start)){
-      em_start <- FALSE
-    } else {
-      em_start <- input$em_random_start
-    }
-    
-    if(is.null(input$hz)){
-      hz <- 5000
-    } else {
-      hz <- input$hz
-    }
-    
-    if(is.null(input$w_width)){
-      w_width <- 150
-    } else {
-      w_width <- input$w_width
-    }
-    
-  
-    
-    # keep <- purrr::map_lgl(trap_data, ~unique(.$include) == T)
-    # 
-    # trap_data %<>% trap_data[keep]
-    
     withProgress(message = 'Analyzing trap data', value = 0, max = 1, min = 0, {
     purrr::walk(trap_data, ~hidden_markov_changepoint_analysis(
                                     trap_data = .x,
                                     f = f,
-                                    hz = hz,
-                                    w_width = w_width,
-                                    em_random_start = em_start, 
-                                    cp_filter = cp_filter,
-                                    is_shiny = T)
+                                    hz = a$hz,
+                                    w_width = a$w_width,
+                                    w_slide = a$w_slide,
+                                    use_channels = a$use_channels,
+                                    em_random_start = a$em_random_start, 
+                                    front_cp_method = a$front_cp_method,
+                                    back_cp_method = a$back_cp_method, 
+                                    cp_running_var_window = a$cp_running_var_window,
+                                    is_shiny = TRUE)
               )
        })
       
@@ -426,17 +383,7 @@ mod_hm_model_server <- function(input, output, session, f){
   })
   
   
-  observe({
-  if(input$advanced){
-    shinyjs::show('w_width')
-    shinyjs::show('hz')
-    shinyjs::show('em_random_start')
-  } else {
-    shinyjs::hide('w_width')
-    shinyjs::hide('hz')
-    shinyjs::hide('em_random_start')
-  }
-  })
+  
   
   # output$obs_2_review <-  renderPrint({
   #   
@@ -447,7 +394,123 @@ mod_hm_model_server <- function(input, output, session, f){
   #   
   # })
   
+    a <- reactiveValues(w_width = 150,
+                        w_slide = "1/2",
+                        em_random_start = FALSE, 
+                        use_channels = "Mean/Var",
+                        hz = 5000,
+                        front_cp_method = "Variance",
+                        back_cp_method = "Mean/Var",
+                        cp_running_var_window = 5)
     
+    observeEvent(input$set_options, {
+      a$w_width <- input$w_width
+      a$w_slide <- input$w_slide
+      a$em_random_start <- input$em_random_start
+      a$use_channels <- input$use_channels
+      a$hz <- input$hz
+      a$front_cp_method <-input$front_cp_method
+      a$back_cp_method <-input$back_cp_method
+      a$cp_running_var_window <- input$cp_running_var_window
+      removeModal()
+    })
+    
+    #### Analysis Options ####
+  observeEvent(input$options, {
+    showModal(
+      modalDialog(
+        title = "Set Analysis Parameters",
+        footer = tagList(modalButton("Cancel"), actionButton(ns("set_options"), "OK")),
+        tabsetPanel(
+          tabPanel("HM-Model",
+                       fluidRow(
+                         column(6, 
+                                sliderInput(ns("w_width"), "Window Width", min = 50, max = 300, value = a$w_width, width = "100%",step = 5)
+                         ), 
+                         column(6, 
+                                shinyWidgets::sliderTextInput(ns("w_slide"), 
+                                                              "Slide Window", c("1-Pt", "1/4", "1/2", "3/4", "No-overlap"),
+                                                              grid = TRUE, 
+                                                              selected = a$w_slide, 
+                                                              width = "100%")
+                         )
+                       ),
+                       fluidRow(
+                         column(6, 
+                                shinyWidgets::prettyRadioButtons(
+                                  inputId = ns("use_channels"),
+                                  label = "Channels", 
+                                  choices = c("Variance", "Mean/Var"),
+                                  selected = a$use_channels,
+                                  inline = TRUE,  
+                                  status = "primary",
+                                  fill = TRUE
+                                )
+                            ),
+                         column(4,
+                                div(style = "margin-top: 25px;",
+                                shinyWidgets::prettyCheckbox(inputId = ns('em_random_start'),
+                                                             value = a$em_random_start,
+                                                             label = "EM Random Start?", 
+                                                             status = "primary",
+                                                             shape = "curve",
+                                                             outline = TRUE)
+                          )
+                         )
+                        )
+        ), #hm-model tab close
+        tabPanel("Changepoint", 
+                 fluidRow(
+                   column(6, 
+                          h4("Front"),
+                          shinyWidgets::prettyRadioButtons(
+                            inputId = ns("front_cp_method"),
+                            label = "Channels", 
+                            choices = c("Variance", "Mean/Var"),
+                            selected = a$front_cp_method,
+                            inline = TRUE,  
+                            status = "primary",
+                            fill = TRUE
+                          )
+                   ),
+                          column(6, 
+                                 h4("Back"),
+                                 shinyWidgets::prettyRadioButtons(
+                                   inputId = ns("back_cp_method"),
+                                   label = "Channels", 
+                                   choices = c("Variance", "Mean/Var"),
+                                   selected = a$back_cp_method,
+                                   inline = TRUE,  
+                                   status = "primary",
+                                   fill = TRUE
+                                 )
+                          )
+                   ),
+                    sliderInput(ns("cp_running_var_window"), "Running Variance Window Width", min = 5, max = 100, value = a$cp_running_var_window, width = "100%")
+          ), #cp tab panel
+        tabPanel("Hz",
+                 numericInput(inputId = ns('hz'),
+                              label = 'Sampling Frequency (Hz)', 
+                              value = a$hz)
+        )
+                 
+        )
+      )
+    )
+    
+    observe({
+      if(is.null(input$back_cp_method)){
+        shinyjs::hide("cp_running_var_window")
+      } else {
+        if(input$back_cp_method == "Variance" || input$front_cp_method == "Variance"){
+          shinyjs::show("cp_running_var_window")
+        } else  {
+          shinyjs::hide("cp_running_var_window")
+        }
+      }
+      })
+  })
+  
 }
     
 ## To be copied in the UI

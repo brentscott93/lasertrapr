@@ -47,6 +47,8 @@ mod_folder_manager_server <- function(input, output, session, lasertrapr_folder,
   observe({
     f$obs_input <- input$trap_obs_selectInput
     f$date_input <- input$trap_date_selectInput
+    f$project_input <- input$trap_project_selectInput
+    f$conditions_input <- input$trap_conditions_selectInput
     })
   observe({golem::print_dev(input$trap_obs_selectInput)})
   #### CREATE NEW FOLDERS ####

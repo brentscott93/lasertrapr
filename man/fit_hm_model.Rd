@@ -8,6 +8,7 @@ fit_hm_model(
   trap_data,
   run_mean,
   run_var,
+  use_channels,
   em_random_start,
   is_shiny,
   project,
