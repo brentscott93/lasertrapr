@@ -298,7 +298,8 @@ mod_split_obs_server <- function(input, output, session, f){
              inputId = ns('sim_pi_release_occurs'),
              label = "Pi release before or after stroke?",
              choices = c("Before" = "before",
-                         "After" = "after"),
+                         "After" = "after",
+                         "Uncoupled" = "uncoupled"),
              justified = TRUE,
              selected = 'after',
              checkIcon = list(
@@ -307,6 +308,7 @@ mod_split_obs_server <- function(input, output, session, f){
                               no = tags$i(class = "fa fa-square-o",
                               style = "color: black"))
                   ),
+           conditionalPanel(condition = "input.sim_pi_release_occurs != 'uncoupled'", ns = ns, 
             fluidRow(
               column(6,
                numericInput(ns("sim_pi_release_rate"), "Avg Rate (Hz)", value = 200, max = 500, min = 0, step = 5, width = "100%")
@@ -315,45 +317,87 @@ mod_split_obs_server <- function(input, output, session, f){
                      div(style = 'margin-top: 22px;', verbatimTextOutput(ns("sim_pi_release_rate_conversion")))
               )
             ),
-            sliderInput(ns("sim_pi_release_lower"), "Lower (ms)", value = 1, step = 1, round = TRUE, min = 1, max = 100, width = "100%"),
+            sliderInput(ns("sim_pi_release_lower"), "Lower (ms)", value = 0, step = 1, round = TRUE, min = 1, max = 100, width = "100%"),
             sliderInput(ns("sim_pi_release_upper"), "Upper (ms)", value = 5000, step = 25, round = TRUE, min = 100, max = 5000 , width = "100%"),
             plotOutput(ns("sim_pi_release_histogram"))
+           )
          ),
           tabPanel("ADP Release",
-             fluidRow(
-               column(4,
-                numericInput(ns("sim_adp_release_rate"), "Avg Rate (Hz)", value = 25, max = 500, min = 0, step = 5, width = "100%"),
-               ), 
-               column(4, 
+                   shinyWidgets::radioGroupButtons(
+                     inputId = ns('sim_adp_release_type'),
+                     label = "",
+                     choices = c("Use Distribution" = "distribution",
+                                 "Set Time" = "set_time"),
+                     justified = TRUE,
+                     selected = 'distribution',
+                     checkIcon = list(
+                       yes = tags$i(class = "fa fa-check-square",
+                                    style = "color: black"),
+                       no = tags$i(class = "fa fa-square-o",
+                                   style = "color: black"))
+                   ),
+              fluidRow(
+                conditionalPanel(condition = "input.sim_adp_release_type == 'distribution'", ns = ns, 
+                  column(4,
+                    numericInput(ns("sim_adp_release_rate"), "Avg Rate (Hz)", value = 25, max = 500, min = 0, step = 5, width = "100%"),
+                ), 
+                  column(4, 
                       div(style = 'margin-top: 22px;',  verbatimTextOutput(ns("sim_adp_release_conversion")))
-               ),
+                )
+              ),
+              conditionalPanel(condition = "input.sim_adp_release_type == 'set_time'", ns = ns, 
+                               column(8, 
+                                      sliderInput(ns("sim_adp_release_set_time"), label = "Set Time",  min = 0, max = 1000, value = 200, width = "100%")
+                                     
+                               )
+              ), 
                column(4, 
                       numericInput(ns("sim_hitch_size"), "Hitch Size (nm)", value = 1.5, step = 0.5,  min = 0, max = 10,  width = "100%")
               )
              ),
-           sliderInput(ns("sim_adp_release_lower"), "Lower (ms)", value = 1, step = 5, round = TRUE, min = 1, max = 200, width = "100%"),
-           sliderInput(ns("sim_adp_release_upper"), "Upper (ms)", value = 1000, step = 10, round = TRUE, min = 50, max = 1000, width = "100%"),
-           
-           plotOutput(ns("sim_adp_release_histogram"))
+             conditionalPanel(condition = "input.sim_adp_release_type == 'distribution'", ns = ns, 
+               sliderInput(ns("sim_adp_release_lower"), "Lower (ms)", value = 1, step = 5, round = TRUE, min = 1, max = 200, width = "100%"),
+               sliderInput(ns("sim_adp_release_upper"), "Upper (ms)", value = 1000, step = 10, round = TRUE, min = 50, max = 1000, width = "100%"),
+               
+               plotOutput(ns("sim_adp_release_histogram"))
+             )
           ),
          tabPanel("ATP Binding",
-           fluidRow(
-             column(6,
-              numericInput(ns("sim_atp_binding_rate"), "Rate (1/mean)", value = 1000, max = 5000, min = 0, step = 10, width = "100%")
-             ),
-              column(6, 
-                     div(style = 'margin-top: 22px;', verbatimTextOutput(ns("sim_atp_binding_conversion")))
-               )
-            ),
-           sliderInput(ns("sim_atp_binding_lower"), "Lower (ms)", value = 1, step = 10, round = TRUE, min = 1, max = 2000,  width = "100%"),
-           sliderInput(ns("sim_atp_binding_upper"), "Upper (ms)", value = 20000, step = 1000, round = TRUE, min = 1000, max = 20000, width = "100%"),
-           plotOutput(ns("sim_atp_binding_histogram"))
-          ),
+            shinyWidgets::radioGroupButtons(
+                    inputId = ns('sim_atp_binding_type'),
+                    label = "",
+                    choices = c("Use Distribution" = "distribution",
+                                "Set Time" = "set_time"),
+                    justified = TRUE,
+                    selected = 'distribution',
+                    checkIcon = list(
+                      yes = tags$i(class = "fa fa-check-square",
+                                   style = "color: black"),
+                      no = tags$i(class = "fa fa-square-o",
+                                  style = "color: black"))
+                  ),
+            conditionalPanel(condition = "input.sim_atp_binding_type == 'distribution'", ns = ns, 
+             fluidRow(
+               column(6,
+                numericInput(ns("sim_atp_binding_rate"), "Rate (1/mean)", value = 1000, max = 5000, min = 1, step = 10, width = "100%")
+               ),
+                column(6, 
+                       div(style = 'margin-top: 22px;', verbatimTextOutput(ns("sim_atp_binding_conversion")))
+                 )
+              ),
+             sliderInput(ns("sim_atp_binding_lower"), "Lower (ms)", value = 1, step = 10, round = TRUE, min = 1, max = 2000,  width = "100%"),
+             sliderInput(ns("sim_atp_binding_upper"), "Upper (ms)", value = 20000, step = 1000, round = TRUE, min = 1000, max = 20000, width = "100%"),
+             plotOutput(ns("sim_atp_binding_histogram"))
+            ), 
+            conditionalPanel(condition = "input.sim_atp_binding_type == 'set_time'", ns = ns, 
+               sliderInput(ns("sim_atp_binding_set_time"), label = "Set Rate",  min = 1, max = 5000, value = 1000, width = "100%")
+          )
+         ),
          
          tabPanel("Time Off",
           fluidRow(
            column(6,
-            numericInput(ns("sim_time_off_rate"), "Rate (1/mean)", value = 50, max = 200, min = 0, step = 5, width = "100%")
+            numericInput(ns("sim_time_off_rate"), "Rate (1/mean)", value = 50, max = 200, min = 1, step = 5, width = "100%")
            ),
            column(6, 
                   div(style = 'margin-top: 22px;', verbatimTextOutput(ns("sim_time_off_conversion")))
@@ -515,6 +559,33 @@ mod_split_obs_server <- function(input, output, session, f){
   
   sim_data <- eventReactive(input$sim_go, {
     #browser()
+    if(input$sim_pi_release_occurs == "uncoupled"){
+      pi_release <- "uncoupled"
+    } else {
+      pi_release <- list(rate = input$sim_pi_release_rate, 
+                         lower = input$sim_pi_release_lower, 
+                         upper = input$sim_pi_release_upper,
+                         occurs = input$sim_pi_release_occurs)
+    }
+    
+    if(input$sim_adp_release_type == "set_time"){
+      adp_release <-  list(set_time = input$sim_adp_release_set_time,
+                           hitch = input$sim_hitch_size)
+    } else {
+      adp_release <-  list(rate = input$sim_adp_release_rate, 
+                           lower = input$sim_adp_release_lower, 
+                           upper = input$sim_adp_release_upper,
+                           hitch = input$sim_hitch_size)
+    }
+    
+    if(input$sim_atp_binding_type == "set_time"){
+      atp_binding <-  list(set_time = input$sim_atp_binding_set_time)
+    } else {
+      atp_binding <-  list(rate = input$sim_atp_binding_rate, 
+                           lower = input$sim_atp_binding_lower, 
+                           upper = input$sim_atp_binding_upper)
+    }
+      
     simulate_single_molecule_trap_data(n = input$sim_n_events, 
                                        hz = input$sim_hz, 
                                        signal_to_noise = input$sim_signal,
@@ -522,18 +593,10 @@ mod_split_obs_server <- function(input, output, session, f){
                                                        sd = input$sim_baseline_sd),
                                        displacement = list(mean = input$sim_displacement_mean, 
                                                            sd = input$sim_displacement_sd),
-                                       pi_release = list(rate = input$sim_pi_release_rate, 
-                                                         lower = input$sim_pi_release_lower, 
-                                                         upper = input$sim_pi_release_upper,
-                                                         occurs = input$sim_pi_release_occurs),
-                                       adp_release = list(rate = input$sim_adp_release_rate, 
-                                                          lower = input$sim_adp_release_lower, 
-                                                          upper = input$sim_adp_release_upper,
-                                                          hitch = input$sim_hitch_size),
-                                       atp_binding = list(rate = input$sim_atp_binding_rate, 
-                                                          lower = input$sim_atp_binding_lower, 
-                                                          upper = input$sim_atp_binding_upper),
-                                       time_off <- list(rate = input$sim_time_off_rate, 
+                                       pi_release = pi_release, 
+                                       adp_release = adp_release, 
+                                       atp_binding = atp_binding,
+                                       time_off = list(rate = input$sim_time_off_rate, 
                                                         lower = input$sim_time_off_lower, 
                                                         upper = input$sim_time_off_upper))
   })
@@ -550,7 +613,7 @@ mod_split_obs_server <- function(input, output, session, f){
     allow_if(grepl("simulation", tolower(f$project_input)), ui = "The 'Project' folder must have 'simulation' in its name to save simulated data to it.")
     defend_if_blank(f$conditions_input, ui = "Please select a 'Conditions folder.", type = "error")
     allow_if(grepl("simulation", tolower(f$conditions_input)), ui = "The 'Conditions' folder must have 'simulation' in its name to save simulated data to it.")
-    defend_if_blank(f$date_input, message = "Please select a 'Date' Folder.", type = "error")
+    defend_if_blank(f$date_input, ui = "Please select a 'Date' Folder.", type = "error")
     allow_if(is.data.frame(sim_data()), ui = "No simulation data to save")
     withProgress(message = "Saving Simulation Data", {
      num_obs_folders <- nrow(list_files(f$date$path)) + 1

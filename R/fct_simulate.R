@@ -55,43 +55,53 @@ simulate_single_molecule_trap_data <- function(n,
     
     step_size <- round(rnorm(1, mean = displacement$mean, sd = displacement$sd), 2)
     
-    #on times
-    pi <- round(
-            rtrunc(1, 
-                   spec = "exp", 
-                   a = pi_release$lower, 
-                   b = pi_release$upper, 
-                   rate = 1/pi_release$rate
-                   ), 
-            0)
+    if(pi_release != "uncoupled"){
+      #on times
+      pi <- round(
+              rtrunc(1, 
+                     spec = "exp", 
+                     a = pi_release$lower, 
+                     b = pi_release$upper, 
+                     rate = 1/pi_release$rate
+                     ), 
+              0)
+      
+      pi_release_time <- round((1/pi)*hz, 0)
+      
+  
+      if(pi_release$occurs == "before"){
+        pi_release_df <- data.frame(data = rnorm(pi_release_time, mean = baseline$mean, sd = sqrt((baseline$sd^2)/signal_to_noise)),
+                                    key = 'pi_release',
+                                    key_value = baseline$mean, 
+                                    state = 2)
+      } else if(pi_release$occurs == "after"){
+        pi_release_df <- data.frame(data = rnorm(pi_release_time, mean = step_size, sd = sqrt((baseline$sd^2)/signal_to_noise)),
+                                    key = 'pi_release',
+                                    key_value = step_size, 
+                                    state = 2)
+      }
+    }
     
-    pi_release_time <- round((1/pi)*hz, 0)
-    
-    if(pi_release$occurs == "before"){
-      pi_release_df <- data.frame(data = rnorm(pi_release_time, mean = baseline$mean, sd = sqrt((baseline$sd^2)/signal_to_noise)),
-                                  key = 'pi_release',
-                                  key_value = baseline$mean, 
-                                  state = 2)
-    } else if(pi_release$occurs == "after"){
-      pi_release_df <- data.frame(data = rnorm(pi_release_time, mean = step_size, sd = sqrt((baseline$sd^2)/signal_to_noise)),
-                                  key = 'pi_release',
-                                  key_value = step_size, 
-                                  state = 2)
+    if(is.null(adp_release$set_time)){
+      #on times
+      adp <- round(
+        rtrunc(1, 
+               spec = "exp", 
+               a = adp_release$lower, 
+               b = adp_release$upper, 
+               rate = 1/adp_release$rate
+        ), 
+        0)
+      
+      
+      
+      adp_release_time <- round((1/adp)*hz, 0)
+      
+    } else {
+      adp_release_time <- round((1/adp_release$set_time)*hz, 0)
+      
     }
       
-    #on times
-    adp <- round(
-      rtrunc(1, 
-             spec = "exp", 
-             a = adp_release$lower, 
-             b = adp_release$upper, 
-             rate = 1/adp_release$rate
-      ), 
-      0)
-    
-    
-    
-    adp_release_time <- round((1/adp)*hz, 0)
 
     
     adp_release_df <- data.frame(data = rnorm(adp_release_time, mean = step_size, sd = sqrt((baseline$sd^2)/signal_to_noise)),
@@ -99,26 +109,37 @@ simulate_single_molecule_trap_data <- function(n,
                                  key_value = step_size, 
                                  state = 2) 
    
-    
+    if(is.null(atp_binding$set_time)){
     #on times
-    atp <- round(
-      rtrunc(1, 
-             spec = "exp", 
-             a = atp_binding$lower, 
-             b = atp_binding$upper, 
-             rate = 1/atp_binding$rate
-      ), 
-      0)
-    
-    atp_binding_time <- round((1/atp)*hz, 0)
-    
-    atp_binding_df <- data.frame(data = rnorm(atp_binding_time, mean = (step_size + adp_release$hitch), sd = sqrt((baseline$sd^2)/signal_to_noise)),
-                                 key = 'atp_binding',
-                                 key_value = step_size + adp_release$hitch, 
-                                 state = 2) 
+      atp <- round(
+        rtrunc(1, 
+               spec = "exp", 
+               a = atp_binding$lower, 
+               b = atp_binding$upper, 
+               rate = 1/atp_binding$rate
+        ), 
+        0)
+      
+      atp_binding_time <- round((1/atp)*hz, 0)
+    } else {
+      
+     atp_binding_time <- round((1/atp_binding$set_time)*hz, 0)
+      
+    }
+      
+      atp_binding_df <- data.frame(data = rnorm(atp_binding_time, mean = (step_size + adp_release$hitch), sd = sqrt((baseline$sd^2)/signal_to_noise)),
+                                   key = 'atp_binding',
+                                   key_value = step_size + adp_release$hitch, 
+                                   state = 2) 
 
-    
-    results[[i]] <- rbind(baseline_df, pi_release_df, adp_release_df, atp_binding_df)
+      
+      
+
+    if(pi_release == "uncoupled"){
+      results[[i]] <- rbind(baseline_df, adp_release_df, atp_binding_df)
+    } else {
+      results[[i]] <- rbind(baseline_df, pi_release_df, adp_release_df, atp_binding_df)
+    }
   }
   
   baseline_df_end <- data.frame(data = rnorm(1*hz, mean = baseline$mean, sd = baseline$sd), 

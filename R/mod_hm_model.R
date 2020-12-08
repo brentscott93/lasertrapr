@@ -136,7 +136,8 @@ mod_hm_model_ui <- function(id){
     fluidRow(
       column(12,
       box(width = NULL, title = 'Analyzed Data', collapsible = T, collapsed = T, 
-             dygraphs::dygraphOutput(ns('overlay_dygraph'), height = '400px') %>% shinycssloaders::withSpinner(type = 8, color = "#373B38")
+          actionButton(ns("review_options"), "Review Options"),
+          dygraphs::dygraphOutput(ns('overlay_dygraph'), height = '400px') %>% shinycssloaders::withSpinner(type = 8, color = "#373B38")
     )
       )
     # ) #rowclose
@@ -196,7 +197,7 @@ mod_hm_model_server <- function(input, output, session, f){
        })
       
       shinyWidgets::sendSweetAlert(session = session,
-                                   title =  "Hidden Markov Analysis Complete",
+                                   title =  "Analysis Complete",
                                    text = "Results saved to 'lasertrapr' folder",
                                    type = "success")
      shinyjs::click('info_table')
@@ -225,9 +226,12 @@ mod_hm_model_server <- function(input, output, session, f){
     periods_df <- data.frame(start = trap_data()$events$cp_event_start_dp/5000,
                              stop = trap_data()$events$cp_event_stop_dp/5000,
                              keep = trap_data()$events$keep,
+                             front_signal_ratio = trap_data()$events$front_signal_ratio,
+                             back_signal_ratio = trap_data()$events$back_signal_ratio,
                              color = scales::alpha("#D95F02" , 0.4))
     
    periods_df %<>%  dplyr::filter(keep == T)
+   periods_df %<>% dplyr::filter(front_signal_ratio >= ro$front_signal_ratio & back_signal_ratio >= ro$back_signal_ratio)
 
    pni <-  trap_data()$events$peak_nm_index
    labels <- trap_data()$events %>% filter(keep == T)
@@ -246,7 +250,7 @@ mod_hm_model_server <- function(input, output, session, f){
       # } else {
         
         overlay_dy <-  dygraphs::dygraph(d) %>% #raw_data_dygraph
-                        dygraphs::dySeries('raw', color = 'black', strokeWidth = 2) %>%
+                        dygraphs::dySeries('raw', color = 'black') %>%
                         dygraphs::dySeries('model', color = "#1B9E77",  strokeWidth = 2) %>%
                         dygraphs::dyRangeSelector(fillColor ='white', strokeColor = 'black') %>%
                         add_shades(periods_df) %>% #raw_periods
@@ -510,6 +514,48 @@ mod_hm_model_server <- function(input, output, session, f){
       }
       })
   })
+    
+    #### Review Options ####
+    ro <- reactiveValues(front_signal_ratio = 0,
+                         back_signal_ratio = 0)
+    
+    observeEvent(input$review_options, {
+      showModal(
+        modalDialog(
+          title = "Review Options",
+          footer = tagList(modalButton("Cancel"), actionButton(ns("set_review_options"), "OK")),
+          size = "l",
+          tabsetPanel(
+            tabPanel("Signal Filter",
+                     column(6, 
+                            sliderInput(ns("front_signal_ratio"),
+                                        "Front Signal-to-noise Filter",
+                                        min = 0, 
+                                        max = 4,
+                                        value = 0, 
+                                        step = 0.1)
+                            ),
+                            column(6, 
+                                   sliderInput(ns("back_signal_ratio"),
+                                               "Back Signal-to-noise Filter",
+                                               min = 0, 
+                                               max = 4,
+                                               value = 0, 
+                                               step = 0.1)
+                            )
+            ),
+            tabPanel("Event Insights")
+          )
+        )
+      )
+    })
+    
+    observeEvent(input$set_review_options, {
+      ro$front_signal_ratio <- input$front_signal_ratio
+      ro$back_signal_ratio <- input$back_signal_ratio
+      removeModal()
+      shinyjs::click("view_results")
+    })
   
 }
     
