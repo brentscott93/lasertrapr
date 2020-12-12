@@ -23,6 +23,9 @@ hidden_markov_changepoint_analysis <- function(trap_data,
   # trap_data <- read_csv(dev_path)
   # w_width = 150
   # em_random_start = F
+  #w_slide <- "1/2"
+  #use_channels <- "Mean/Var"
+  #hz <- 5000
   
   nm2pn <- unique(trap_data$nm2pn)
   project <- unique(trap_data$project)
@@ -125,15 +128,15 @@ hidden_markov_changepoint_analysis <- function(trap_data,
         #### CHANGEPOINT ####
         if(is_shiny) setProgress(0.75, detail = "Changepoint")
         
-         cp_data <- changepoint_and_ensemble(measured_hm_events = measured_hm_events, 
-                                             hz = hz, 
-                                             conversion = conversion,
-                                             mv2nm = mv2nm, 
-                                             conditions = conditions,
-                                             front_cp_method = front_cp_method,
-                                             back_cp_method = back_cp_method,
-                                             cp_running_var_window = cp_running_var_window,
-                                             ws = ws)
+         cp_data <- changepoint_analysis(measured_hm_events = measured_hm_events, 
+                                         hz = hz, 
+                                         conversion = conversion,
+                                         mv2nm = mv2nm, 
+                                         conditions = conditions,
+                                         front_cp_method = front_cp_method,
+                                         back_cp_method = back_cp_method,
+                                         cp_running_var_window = cp_running_var_window,
+                                         ws = ws)
                                     
                                             
       
@@ -226,7 +229,7 @@ hidden_markov_changepoint_analysis <- function(trap_data,
         if(is_shiny == T) setProgress(0.95, detail = 'Saving Data')
         file_names <-  c('trap-data.csv', 
                          'measured-events.csv',
-                         'ensemble-data.csv',
+                         #'ensemble-data.csv',
                          'hm-model-data.csv',
                          'event-frequency.csv')
         
@@ -234,7 +237,7 @@ hidden_markov_changepoint_analysis <- function(trap_data,
       
         data_to_save <- list(trap_data,
                              single_molecule_results,
-                             cp_data$ensemble_data,
+                             #cp_data$ensemble_data,
                              hm_model_results,
                              event_freq)
         
