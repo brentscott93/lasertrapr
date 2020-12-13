@@ -90,10 +90,10 @@ prep_ensemble <- function(trap_selected_project,
         forward_extended_event <- c(event_chunk, rep(s2_avg, time_diff))
         forward_event <- data.frame(data = forward_extended_event,
                                     ensemble_index = 0:(longest_event-1))
-        
-        s1_avg <-  mean(trap_trace[(start:(start+dp_extend_s1))])
-        backwards_extended_event <- c(rep(s1_avg, (time_diff+1)), event_chunk[-1])
-        backwards_event <- data.frame(data = forward_extended_event,
+        s1_start <- start + (hz/1000)
+        s1_avg <-  mean(trap_trace[(s1_start:(s1_start+dp_extend_s1))])
+        backwards_extended_event <- c(rep(s1_avg, (time_diff+s1_start)), event_chunk[c(1:s1_start)])
+        backwards_event <- data.frame(data = backwards_extended_event,
                                       ensemble_index = -(longest_event-1):0)
       }
       
