@@ -2,16 +2,20 @@
 % Please edit documentation in R/utils_summarize.R
 \name{summarize_trap_data}
 \alias{summarize_trap_data}
-\title{Title}
+\title{Summarize trap project}
 \usage{
-summarize_trap_data(f)
+summarize_trap_data(f, hz, factor_order)
 }
 \arguments{
-\item{f}{}
+\item{f}{reactive folder list}
+
+\item{hz}{sampling frequency}
+
+\item{factor_order}{user supplied order of factors}
 }
 \value{
 
 }
 \description{
-Title
+Summarize trap project
 }

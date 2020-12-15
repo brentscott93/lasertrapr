@@ -3,14 +3,14 @@ mini_ensemble_analyzer <- function(trap_data, w_width_ms = 10, hz = 5000, displa
   #for dev
   # trap_data <- read_tsv("/Users/brentscott/Documents/silver_flash/azo-TP_trapping_stuff/raw_data/mini_ensemble/6-28-19_100uMORTHAZTP_25ugMYO/observation_one/processed.txt",
   #                       col_names = "processed_bead")
-   # trap_data <- list_files("~/lasertrapr/project_mini/mini/2020-08-04/obs-01", pattern = 'trap-data.csv')
-   # trap_data <- vroom::vroom(trap_data$path, delim = ",")
+  # trap_data <- list_files("~/lasertrapr/project_mini/mini/2020-08-04/obs-01", pattern = 'trap-data.csv')
+  # trap_data <- vroom::vroom(trap_data$path, delim = ",")
   # processed_data <- trap_data$processed_bead
   # conditions = 'conditions'
   # project = "project"
   # obs = 'obs'
   # date = 'date'
-  #w_width_ms = 10; hz = 5000; displacement_threshold = 8; time_threshold_ms = 50
+  # w_width_ms = 10; hz = 5000; displacement_threshold = 8; time_threshold_ms = 50
   project <-  unique(trap_data$project)
   conditions <- unique(trap_data$conditions)
   date <- unique(trap_data$date)
@@ -39,8 +39,8 @@ mini_ensemble_analyzer <- function(trap_data, w_width_ms = 10, hz = 5000, displa
       stop('Data not processed')
     }
     
-     report_data = 'error'
-     w_width = ms_to_dp(w_width_ms, hz = hz)
+     report_data <- 'error'
+     w_width <- ms_to_dp(w_width_ms, hz = hz)
      time_threshold <- ms_to_dp(time_threshold_ms, hz = hz)
      processed_data <- trap_data$processed_bead
      nm2pn <- unique(trap_data$nm2pn)
@@ -123,8 +123,8 @@ mini_ensemble_analyzer <- function(trap_data, w_width_ms = 10, hz = 5000, displa
                                index = min(temp_vector$index):(min(temp_vector$index) + (length(data)-1)))
       peak_window <- max(run_mean_event$data)
       peak_displacement[i] <- peak_window
-      get_index_in_chunk <- which(run_mean_event$data==max(run_mean_event$data))
-      get_index_in_data <- run_mean_event$index[get_index_in_chunk]
+      get_index_in_chunk <- which(run_mean_event$data==max(run_mean_event$data))[[1]]
+      get_index_in_data <- run_mean_event$index[[get_index_in_chunk]]
       peak_nm_index[i] <- get_index_in_data 
     }
     

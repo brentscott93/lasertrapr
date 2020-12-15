@@ -7,8 +7,7 @@ output:
 editor_options: 
   chunk_output_type: inline
 params: 
-  data: NA
-  p: NA
+  rv: NA
   
 ---
 
@@ -22,7 +21,7 @@ library(tidyverse)
 library(cowplot)
 library(ggpubr)
 library(DT)
-library(plotly)
+#library(plotly)
 
 ```
     
@@ -34,7 +33,7 @@ Row
 ### Summary Table
     
 ```{r, fig.width=14, fig.height=21}
-   params$data$summary %>% 
+   params$rv$data$summary %>% 
      dplyr::select( 'Conditions' = conditions,
                     "Step Size (nm)" = displacement_avg,
                     "SE Step" = displacement_se,
@@ -67,27 +66,27 @@ Row {.tabset .tabset-fade}
 ### Step Size
     
 ```{r, fig.height = 8, fig.width=14}
-params$p$step
+params$rv$step
 ```
     
 ### Force
 
 ```{r, fig.height = 8, fig.width=14}
- params$p$force
+ params$rv$force
 ```
 
 
 ### Time On
 
 ```{r, fig.height = 8, fig.width=14}
- params$p$ton
+ params$rv$ton
 ```
 
 
 ### Time Off
 
 ```{r, fig.height = 8, fig.width=14}
- params$p$toff
+ params$rv$toff
 ```
 
 
@@ -100,14 +99,14 @@ Row {.tabset .tabset-fade}
 
 ### Cumalative Frequency Curves
 ```{r echo=FALSE, fig.height=8, fig.width=14, message=FALSE, warning=FALSE}
-params$p$ton_survival
+params$rv$ton_survival
 ```
 
 ### Log-Rank Test
 
 ```{r, ,fig.width=5, fig.height=7}
 
-params$data$ton_log_rank_test
+params$rv$ton_survival$ton_log_rank_test
 ```
 
 ### Cox Proportional Hazards
@@ -122,7 +121,7 @@ The ***exp(coef)*** values are the hazard ratios which can be interpreted as:
     
 See [here](http://www.sthda.com/english/wiki/cox-proportional-hazards-model) for more info
 ```{r}
-summary(params$data$ton_cox)
+summary(rv$ton_survival$ton_cox)
 
 ```
 
@@ -136,7 +135,7 @@ Row {.tabset .tabset-fade}
 
 ```{r, fig.width=14, fig.height=8, echo=FALSE, message=FALSE, warning=FALSE}
 
-params$p$ef
+params$rv$ef
  
 ```
 
@@ -144,16 +143,20 @@ params$p$ef
 ### Filter Zero
 ```{r, fig.width=14, fig.height=8}
 #no zero
-params$p$ef_filter
+params$rv$ef_filter
 ```
 
-### Density Plot
-
-```{r, fig.width=7, fig.heigh=5, echo=FALSE, message=FALSE, warning=FALSE}
-  
-  
+Correlations
+==============================
+```{r}
+params$rv$correlations
 ```
 
+Stiffness
+==============================
+```{r}
+params$rv$stiffness
+```
 
 Ensemble Averages
 ==============================
