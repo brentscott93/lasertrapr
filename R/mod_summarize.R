@@ -112,7 +112,8 @@ mod_summarize_server <- function(input, output, session, f){
                                  plot_colors = plot_colors)
       setProgress(0.65, detail = "Time On Stats")
       rv$ton <- stats_plot_time_on(event_files_filtered = rv$data$event_files_filtered,
-                                       plot_colors = plot_colors)
+                                   plot_colors = plot_colors,
+                                   p_adj = "holm")
       setProgress(0.7, detail = "Time Off Stats")
       rv$toff <- stats_plot_time_off(event_files_filtered = rv$data$event_files_filtered,
                                          plot_colors = plot_colors)

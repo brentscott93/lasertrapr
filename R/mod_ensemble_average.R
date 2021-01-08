@@ -21,8 +21,15 @@ mod_ensemble_average_ui <- function(id){
                              max = 10, 
                              step = 1, 
                              width = "100%"),
+                 sliderInput(ns("ms_2_skip"),
+                             "Number of ms to skip before s1 avg",
+                             value = 5,
+                             min = 1, 
+                             max = 10, 
+                             step = 1, 
+                             width = "100%"),
              sliderInput(ns("ms_extend_s1"),
-                         "Avg of ms to extend backwards",
+                         "Avg of ms to extend s1 backwards",
                          value = 3,
                          min = 1, 
                          max = 10, 
@@ -73,6 +80,7 @@ mod_ensemble_average_ui <- function(id){
 mod_ensemble_average_server <- function(input, output, session, f){
   ns <- session$ns
   observeEvent(input$prep_ensemble, {
+    browser()
     golem::print_dev(f$project_input)
     golem::print_dev(str(f))
     defend_if_null(f$project_input, ui = 'Please Select a Project', type = 'error')
@@ -81,6 +89,7 @@ mod_ensemble_average_server <- function(input, output, session, f){
       prep_ensemble(trap_selected_project = f$project$path,
                     ms_extend_s2 = input$ms_extend_s2, 
                     ms_extend_s1 = input$ms_extend_s1, 
+                    ms_2_skip = input$ms_2_skip,
                     hz = input$hz)
     })
     showNotification("Ensembles Prepared")

@@ -9,7 +9,7 @@
 #' @export
 #'
 #' @examples
-summarize_trap_data <- function(f, hz, factor_order){
+summarize_trap_data <- function(f, hz, factor_order, is_shiny = T){
   
   trap_selected_project <- f$project$path
   #browser()
@@ -18,7 +18,7 @@ summarize_trap_data <- function(f, hz, factor_order){
                pattern = "trap-data.csv",
                recursive = TRUE)
   
-  setProgress(0.05, detail = 'Reading Data')
+ if(is_shiny) setProgress(0.05, detail = 'Reading Data')
   # trap_data <- purrr::map(trap_data_paths$path, function(x){ incProgress(0.0025)
   #   data.table::fread(x)} )
   
@@ -46,7 +46,7 @@ summarize_trap_data <- function(f, hz, factor_order){
   get_time <- 
     lapply(trap_data_paths$path,
            function(x){ 
-             incProgress(0.0025)
+             if(is_shiny)   incProgress(0.0025)
               data.table::fread(x, 
                                 select = c('conditions',
                                            'report', 
@@ -58,16 +58,20 @@ summarize_trap_data <- function(f, hz, factor_order){
   
   summarize_trap <- event_files_filtered %>%
     dplyr::group_by(conditions) %>%
-    dplyr::summarize(time_on_avg = mean(time_on_ms),
+    dplyr::summarize(time_on_avg = mean(time_on_ms, na.rm = TRUE),
                      time_on_se = plotrix::std.error(time_on_ms, na.rm = TRUE),
+                     time_on_sd = sd(time_on_ms, na.rm = TRUE),
                      time_on_median = median(time_on_ms, na.rm = TRUE),
                      time_off_avg = mean(time_off_ms, na.rm = TRUE),
                      time_off_se = plotrix::std.error(time_off_ms, na.rm = TRUE),
+                     time_off_sd = sd(time_off_ms, na.rm = TRUE),
                      time_off_median = median(time_off_ms, na.rm = TRUE), 
                      displacement_avg = mean(displacement_nm, na.rm = TRUE),
                      displacement_se = plotrix::std.error(displacement_nm, na.rm = TRUE),
+                     displacement_sd = sd(displacement_nm, na.rm = TRUE),
                      force_avg = mean(force, na.rm = TRUE),
                      force_se = plotrix::std.error(force, na.rm = TRUE),
+                     force_sd = sd(force, na.rm = TRUE),
                      trap_stiffness = mean(trap_stiffness, na.rm = T),
                      myo_stiffness = mean(myo_stiffness, na.rm = T),
                      num_events = n()) %>%
@@ -78,6 +82,15 @@ summarize_trap_data <- function(f, hz, factor_order){
                event_file_paths = event_file_paths))
 }
 
+#' Title
+#'
+#' @param event_files_filtered 
+#' @param plot_colors 
+#'
+#' @return
+#' @export
+#'
+#' @examples
 stats_plot_step <- function(event_files_filtered, plot_colors){
   
   step_histo <- ggplot(data = event_files_filtered,
@@ -157,7 +170,17 @@ stats_plot_step <- function(event_files_filtered, plot_colors){
   
 }
 
-stats_plot_time_on <- function(event_files_filtered, plot_colors){
+#' Title
+#'
+#' @param event_files_filtered 
+#' @param plot_colors 
+#' @param p_adj 
+#'
+#' @return
+#' @export
+#'
+#' @examples
+stats_plot_time_on <- function(event_files_filtered, plot_colors, p_adj){
   
   ton_histo <- ggplot(data = event_files_filtered,
                       aes(x = time_on_ms,
@@ -170,7 +193,7 @@ stats_plot_time_on <- function(event_files_filtered, plot_colors){
     xlab("Time on (ms)")+
     scale_y_continuous(expand = c(0,0))+
     #scale_x_continuous(breaks = seq(0, 6000, by = 100))+
-    coord_cartesian(c(0, 500))+
+    coord_cartesian(c(0, 1000))+
     scale_fill_manual(values = plot_colors)+
     #scale_fill_brewer(palette = "Dark2")+
     theme_linedraw(base_size = 11)+
@@ -181,7 +204,7 @@ stats_plot_time_on <- function(event_files_filtered, plot_colors){
     rstatix::kruskal_test(time_on_ms ~ conditions)
   
   ton_wilcox <-   event_files_filtered %>%
-    rstatix::wilcox_test(time_on_ms ~ conditions,  p.adjust.method = "holm")
+    rstatix::wilcox_test(time_on_ms ~ conditions,  p.adjust.method = p_adj)
   
   ton_is_sig <- which(ton_wilcox$p.adj < 0.05)
   
@@ -231,6 +254,15 @@ stats_plot_time_on <- function(event_files_filtered, plot_colors){
                      rel_heights = c(0.05, 1))
 }
 
+#' Title
+#'
+#' @param event_files_filtered 
+#' @param plot_colors 
+#'
+#' @return
+#' @export
+#'
+#' @examples
 stats_plot_time_off <- function(event_files_filtered, plot_colors){
   toff_histo <- 
     ggplot(data = event_files_filtered,
@@ -311,13 +343,22 @@ stats_plot_time_off <- function(event_files_filtered, plot_colors){
              rel_heights = c(0.05, 1))
 }
 
+#' Title
+#'
+#' @param event_files_filtered 
+#' @param plot_colors 
+#'
+#' @return
+#' @export
+#'
+#' @examples
 stats_plot_force <- function(event_files_filtered, plot_colors){
   
   force_histo <- ggplot(data = event_files_filtered,
                         aes(x = force,
                             fill = conditions))+
     geom_histogram(aes(y = stat(density)),
-                   binwidth = 0.1,
+                   binwidth = 0.25,
                    color = "black",
                    size = 0.9)+
     facet_wrap(~conditions, ncol=2)+
@@ -434,6 +475,16 @@ survival_analysis <- function(event_files_filtered, plot_colors){
        
 }
 
+#' Title
+#'
+#' @param event_file_paths 
+#' @param factor_order 
+#' @param plot_colors 
+#'
+#' @return
+#' @export
+#'
+#' @examples
 stats_plot_event_frequency <- function(event_file_paths, factor_order, plot_colors){
   ef_paths <- str_replace(event_file_paths, "measured-events", "event-frequency")
   
@@ -497,7 +548,7 @@ stats_plot_event_frequency <- function(event_file_paths, factor_order, plot_colo
   ef_table_no_zero <- ef_wilcox_no_zero %>%
     dplyr::select(group1, group2, p.adj) %>%
     dplyr::mutate_if(is.numeric, round, digits = 3) %>%
-    ggpubr::ggtexttable(theme = ggpubr::ttheme(base_style = 'light'), rows = NULL) 
+    ggpubr::ggtexttable(theme = ggpubr::ttheme(base_style = 'light', base_size = 10), rows = NULL) 
   
   if(any(ef_is_sig_no_zero)) ef_table_no_zero %<>% table_cell_bg(row = ef_is_sig_no_zero + 1, column = 3, fill = '#ffa9a6')
 
@@ -522,12 +573,21 @@ stats_plot_event_frequency <- function(event_file_paths, factor_order, plot_colo
     theme_cowplot(font_size = 11)+
     theme(legend.position = 'none')#+
 
-  ef_plot_no_zero <- plot_grid(ef_plot_no_zero, ef_table_no_zero, ncol = 2, nrow = 1, rel_widths = c(1, 0.4))
+  ef_plot_no_zero <- plot_grid(ef_plot_no_zero, ef_table_no_zero, ncol = 2, nrow = 1, rel_widths = c(2, 1))
   
   list(ef_plot = ef_plot,
        ef_plot_no_zero = ef_plot_no_zero)
 }
 
+#' Title
+#'
+#' @param event_files_filtered 
+#' @param plot_colors 
+#'
+#' @return
+#' @export
+#'
+#' @examples
 correlations <- function(event_files_filtered, plot_colors){
   step_vs_on <- ggscatter(event_files_filtered,
                           y = "time_on_ms", 
@@ -645,6 +705,15 @@ correlations <- function(event_files_filtered, plot_colors){
   plot_grid(step_vs_on, on_vs_off, step_vs_kmyo, ktrap_vs_kmyo, step_vs_off, nrow = 1) 
 }
 
+#' Title
+#'
+#' @param event_files_filtered 
+#' @param plot_colors 
+#'
+#' @return
+#' @export
+#'
+#' @examples
 stiffness <- function(event_files_filtered, plot_colors){
   
   stiff_data <- event_files_filtered %>% 
@@ -660,69 +729,90 @@ stiffness <- function(event_files_filtered, plot_colors){
            label = paste0("\u03bc = ", round(mean_val, 3)))
   
   
-  g <- ggplot(stiff_data)+
-    geom_density(aes(value, fill = stiffness), alpha = 0.4,
+  
+  g <- ggplot()+
+    geom_density(data = filter(stiff_data, stiffness == "trap_stiffness"), 
+                 aes(value), fill = "black", alpha = 0.4,
+                 #color = 'blac k'
+    )+
+    geom_density(data = filter(stiff_data, stiffness == "myo_stiffness"), 
+                 aes(value, fill = conditions), alpha = 0.4,
                  #color = 'blac k'
     )+
     # geom_vline(data = mean_trap, aes(xintercept=mean_val))+
     scale_y_continuous(breaks = NULL, expand = expansion(c(0, 0)))+
     # scale_x_continuous(breaks = seq(0, 5, by = 0.05))+
-    scale_fill_manual(values = c('blue', 'red'), 
+    scale_fill_manual(values = plot_colors, 
                       name = '',
-                      labels = c(bquote('k'[trap]), bquote('k'[myo])))+
+                     # labels = c(bquote('k'[trap]), bquote('k'[myo]))
+                     )+
     xlab('Stiffness (pN/nm)')+
-    facet_wrap(~conditions)+
+    facet_wrap(~conditions, nrow=1)+
+    coord_cartesian(c(0, 0.5))+
     theme_linedraw()+
-    theme(legend.position = 'bottom',
+    theme(legend.position = 'none',
           panel.grid.major = element_blank(),
-          panel.grid.minor = element_blank())
+          panel.grid.minor = element_blank(),
+         # strip.background = element_rect(fill = "white"),
+          strip.text = element_text(face = "bold"))
   
   #g
-  gb <- ggplot_build(g)
-  
-  #get_y <- gb$data[[1]] %>% filter(abs(x - mean_val) == min(abs(x - mean_val)) %>% pull(y)
-  # mean_trap %<>%
-  #   arrange(conditions) %>%
-  #   mutate(gg_build = split(gb$data[[1]], gb$data[[1]]$PANEL))
-  
-  
-  by_conditions <- split(gb$data[[1]], gb$data[[1]]$PANEL)
-  by_fill <- map(by_conditions, ~split(., .$fill))
-  names(by_fill) <- levels(event_files_filtered$conditions)
-  gg_df <- unlist(by_fill, recursive = F)
-  y_position_df <- map2(gg_df, mean_trap$mean_val,  ~dplyr::filter(.x, abs(x - .y) == min(abs(x - .y))))
-  get_y <- map_dbl(y_position_df, `[[`, 'y')
-  mean_trap$y  <- get_y
-  
-  
+   gb <- ggplot_build(g)
+  # 
+  # #get_y <- gb$data[[1]] %>% filter(abs(x - mean_val) == min(abs(x - mean_val)) %>% pull(y)
+  # # mean_trap %<>%
+  # #   arrange(conditions) %>%
+  # #   mutate(gg_build = split(gb$data[[1]], gb$data[[1]]$PANEL))
   # 
   # 
+  # by_conditions <- split(gb$data[[2]], gb$data[[2]]$PANEL)
+  # by_fill <- map(by_conditions, ~split(., .$fill))
+  # names(by_fill) <- levels(event_files_filtered$conditions)
+  # gg_df <- unlist(by_fill, recursive = F)
+  # myo_mean <- filter(mean_trap, stiffness == "myo_stiffness")
+  # y_position_df <- map2(gg_df, myo_mean$mean_val,  ~dplyr::filter(.x, abs(x - .y) == min(abs(x - .y))))
+  # get_y <- map_dbl(y_position_df, `[[`, 'y')
+  # myo_mean$y  <- get_y
   # 
-  
-  g <- g +
-    geom_point(data = mean_trap, aes(x = mean_val, y = y), size = 2)+
-    geom_segment(data = mean_trap, aes(x = mean_val, y = y, xend = mean_val+0.05, yend = y+2))+
-    geom_label(data = mean_trap, aes(x = mean_val+0.05, y = y+2, label = label))+
+  # trap_by_conditions <- split(gb$data[[1]], gb$data[[1]]$PANEL)
+  # trap_by_fill <- map(by_conditions, ~split(., .$fill))
+  # names(trap_by_fill) <- levels(rv$data$event_files_filtered$conditions)
+  # trap_gg_df <- unlist(trap_by_fill, recursive = F)
+  # trap_mean <- filter(mean_trap, stiffness == "trap_stiffness")
+  # trap_y_position_df <- map2(trap_gg_df, trap_mean$mean_val,  ~dplyr::filter(.x, abs(x - .y) == min(abs(x - .y))))
+  # trap_get_y <- map_dbl(trap_y_position_df, `[[`, 'y')
+  # trap_mean$y  <- get_y
+  # 
+  # 
+  # mean_trap <- rbind(myo_mean, trap_mean)
+  #
+  #
+  #
+
+  # g <- g +
+  #   geom_point(data = mean_trap, aes(x = mean_val, y = y), size = 2)+
+  #   geom_segment(data = mean_trap, aes(x = mean_val, y = y, xend = mean_val+0.05, yend = y+2))+
+  #   geom_label(data = mean_trap, aes(x = mean_val+0.05, y = y+2, label = label))
     # geom_col(data = mean_trap, aes(conditions, s2n, fill = stiffness))+
-    coord_cartesian(c(0, 0.3))
-  
+    #coord_cartesian(c(0, 0.3))
+
   # geom_point(data = blue_data, aes(x = x, y = density), size = 2)+
   # geom_segment(data = blue_data, aes(x = x, y = density, xend = x+0.05, yend = density+2))+
   # geom_label(data = blue_data, aes(x = x+0.05, y = density+2, label = paste0("\u03bc = ", blue_mean) ))
-  annotation_custom2 <- function (grob, xmin = -Inf, xmax = Inf, ymin = -Inf, ymax = Inf, data) 
+  annotation_custom2 <- function (grob, xmin = -Inf, xmax = Inf, ymin = -Inf, ymax = Inf, data)
   {
-    layer(data = data, stat = StatIdentity, position = PositionIdentity, 
+    layer(data = data, stat = StatIdentity, position = PositionIdentity,
           geom = ggplot2:::GeomCustomAnn,
-          inherit.aes = TRUE, params = list(grob = grob, 
-                                            xmin = xmin, xmax = xmax, 
+          inherit.aes = TRUE, params = list(grob = grob,
+                                            xmin = xmin, xmax = xmax,
                                             ymin = ymin, ymax = ymax))
   }
-  
-  get_inset <- function(df){
+
+  get_inset <- function(df, colorz){
     ggplot(df, aes(conditions, s2n, fill = stiffness))+
       geom_col(alpha = 0.5)+
-      geom_text(aes(label = s2n), position = position_stack(vjust = 0.5), size = 5)+ 
-      scale_fill_manual(values = c('blue', 'red'))+
+      geom_text(aes(label = s2n), position = position_stack(vjust = 0.5), size = 4)+
+      scale_fill_manual(values = c('grey30', colorz))+
       # scale_y_continuous(position = 'right')+
       coord_flip()+
       ggtitle('Signal-to-noise')+
@@ -730,18 +820,94 @@ stiffness <- function(event_files_filtered, plot_colors){
       theme(legend.position = 'none',
             # axis.title.x  = element_text(size = 14, face = 'bold'),
             #axis.text.y = element_text(size = 8),
-            plot.title = element_text(size = 14, face = 'bold'))
-    
+            plot.title = element_text(size = 10, face = 'bold'))
+
   }
-  
-  insets <- mean_trap %>% 
+
+  max_y <- max(gb[["data"]][[1]][["density"]])
+  insets <- mean_trap %>%
     split(f = .$conditions) %>%
-    purrr::map(~annotation_custom2(
-      grob = ggplotGrob(get_inset(.)),
+    purrr::map2(., plot_colors, ~annotation_custom2(
+      grob = ggplotGrob(get_inset(.x, .y)),
       data = data.frame(conditions=unique(.$conditions)),
-      ymin = 50, ymax=60, xmin=0.22, xmax=0.28)
+      ymin = max_y-25, ymax=max_y-5, xmin=0.3, xmax=0.5
+      )
     )
-  
+
   g <- g+insets
+  
+  
+  trap_mean <-
+    mean_trap %>% 
+    filter(stiffness == "trap_stiffness") %>% 
+    mutate(color = "black")
+  
+  myo_mean <-
+    mean_trap %>% 
+    filter(stiffness == "myo_stiffness") 
+  
+  myo_mean$color <- plot_colors
+  
+  mean_trap <- 
+    rbind(trap_mean, myo_mean) %>% 
+    arrange(conditions)
+    
+                    
+  table <- 
+    mean_trap %>% 
+    select("Conditions" = conditions, 
+           "Type" = stiffness, 
+           "Mean" = mean_val,
+           "SD" = sd) %>% 
+    mutate_if(is.numeric, round, digits = 4) %>% 
+    ggtexttable(theme = ttheme(
+      colnames.style = colnames_style(fill = "black", color = "white"),
+      tbody.style = tbody_style(fill = alpha(mean_trap$color, 0.5))))
+  
+  plot_grid(g, table, nrow = 2, rel_heights = c(0.6, 0.4))
 
 }
+
+
+#' Contruct Cumulative Frequency Curves
+#'
+#' @param data df
+#' @param type time_on_ms or time_off_ms
+#'
+#' @return a list with a df and plot
+#' @export
+#'
+#' @examples plot_cum_freq_curves(event_files_filtered, time_on_ms)
+plot_cum_freq_curves <- function(data, type){
+  
+  cum_freq_curves <- 
+    data %>% 
+    split(.$conditions) %>% 
+    imap_dfr(~ .x %>% dplyr::summarize(conditions = .y,
+                                       time = unique({{type}}), 
+                                       ecdf = ecdf({{type}})(unique({{type}})))) 
+  
+  # You can reorder your conditiond factors like this
+  # cum_freq_curves$conditions <- factor(cum_freq_curves$conditions, 
+  #                                      levels =  c("myoV-WT_pH-7.0_0mM-Pi",
+  #                                                  "myoV-WT_pH-7.0_30mM-Pi",
+  #                                                  "myoV-S217A_pH-7.0_0mM-Pi",
+  #                                                  "myoV-S217A_pH-7.0_30mM-Pi"))
+  
+  p <- ggplot(cum_freq_curves, aes(time, ecdf)) + 
+    geom_step(aes(color = conditions))+
+    #coord_cartesian(c(0, 1000))+
+    #facet_grid(~myo)+
+    #ggtitle("Time On")+
+    ylab("ECDF")+
+    xlab("Time (ms)")+
+    #scale_color_manual(values = plot_colors)+
+    #coord_cartesian(c(0, 1000))+
+    theme_cowplot(font_size = 9)+
+    theme(panel.grid = element_blank(),
+          legend.position = 'none')
+  
+  return(list(data = cum_freq_curves,
+              plot = p))
+}
+

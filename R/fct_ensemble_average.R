@@ -10,7 +10,13 @@
 prep_ensemble <- function(trap_selected_project,
                           ms_extend_s2 = 3, 
                           ms_extend_s1 = 3, 
-                          hz){
+                          ms_2_skip,
+                          hz,
+                          is_shiny = TRUE){
+  
+ # trap_selected_project <- "~/lasertrapr/project_myoV-phosphate"
+ # ms_extend_s2 = 3
+ # ms_extend_s1 = 3
   trap_data_paths <- 
     lasertrapr:::list_files(
       trap_selected_project,
@@ -54,7 +60,8 @@ prep_ensemble <- function(trap_selected_project,
   dp_extend_s1 <- ms_extend_s1*hz/1000
   
   for(i in seq_len(nrow(trap_data))){
-    incProgress(1/nrow(trap_data), detail = paste0(i, " of ", nrow(trap_data)))
+    print(paste0("i=", i))
+    if(is_shiny) incProgress(1/nrow(trap_data), detail = paste0(i, " of ", nrow(trap_data)))
     path <- file.path(path.expand("~"), 
                       "lasertrapr",
                       trap_data$project[[i]],
@@ -70,10 +77,12 @@ prep_ensemble <- function(trap_selected_project,
                                                      "cp_event_stop_dp",
                                                      "keep",
                                                      "front_signal_ratio",
-                                                     "back_signal_ratio"))
-    measured_events %<>% filter(keep == TRUE)
+                                                     "back_signal_ratio",
+                                                     "is_positive"))
+    measured_events %<>% filter(keep == TRUE & is_positive == TRUE)
     event_ensembles <- list()
     for(event in seq_len(nrow(measured_events))){
+      print(paste0("event=", event))
       start <- measured_events$cp_event_start_dp[[event]]
       stop <- measured_events$cp_event_stop_dp[[event]]
       event_chunk <- trap_trace[start:stop]
@@ -90,9 +99,11 @@ prep_ensemble <- function(trap_selected_project,
         forward_extended_event <- c(event_chunk, rep(s2_avg, time_diff))
         forward_event <- data.frame(data = forward_extended_event,
                                     ensemble_index = 0:(longest_event-1))
-        s1_start <- start + (hz/1000)
-        s1_avg <-  mean(trap_trace[(s1_start:(s1_start+dp_extend_s1))])
-        backwards_extended_event <- c(rep(s1_avg, (time_diff+s1_start)), event_chunk[c(1:s1_start)])
+        delay_s1_start <- ms_2_skip*hz/1000
+        s1_total_time <- delay_s1_start+dp_extend_s1
+        if(length(event_chunk) <= s1_total_time) next
+        s1_avg <-  mean(event_chunk[(delay_s1_start:(delay_s1_start+dp_extend_s1))])
+        backwards_extended_event <- c(rep(s1_avg, (time_diff+delay_s1_start)), event_chunk[-c(1:delay_s1_start)])
         backwards_event <- data.frame(data = backwards_extended_event,
                                       ensemble_index = -(longest_event-1):0)
       }
@@ -130,6 +141,9 @@ prep_ensemble <- function(trap_selected_project,
       event_ensembles[[event]] <- ensemble
     }
     ensemble_data <- data.table::rbindlist(event_ensembles)
+    ensemble_data$ms_extend_s2 <- ms_extend_s2
+    ensemble_data$ms_extend_s1 <- ms_extend_s1
+    ensemble_data$ms_stroke_to_skip <- ms_2_skip
     ensemble_path <- file.path(path, "ensemble-data.csv")
     data.table::fwrite(ensemble_data, file = ensemble_path, sep = ",")
   }

@@ -4,7 +4,7 @@
 \alias{summarize_trap_data}
 \title{Summarize trap project}
 \usage{
-summarize_trap_data(f, hz, factor_order)
+summarize_trap_data(f, hz, factor_order, is_shiny = T)
 }
 \arguments{
 \item{f}{reactive folder list}

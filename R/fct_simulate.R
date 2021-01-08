@@ -31,6 +31,16 @@ simulate_single_molecule_trap_data <- function(n,
                                                adp_release,
                                                atp_binding, 
                                                time_off){
+  
+# n = 100
+# signal_to_noise = 2.5
+# hz = 5000
+# baseline = list(mean = 0, sd = 8)
+# time_off = list(rate = 1, lower = 0.1, upper = 15)
+# displacement = list(mean = 6, sd = 8)
+# pi_release = list(rate = 200, lower = 0.001, upper = 1000, occurs = 'after')
+# adp_release = list(rate = 20, lower = 0.001, upper = 1000, hitch = 2)
+# atp_binding = list(rate = 50, lower = 0.001, upper = 1000, hitch = 2)
 
   results <- list()
   for(i in 1:n){
@@ -42,11 +52,13 @@ simulate_single_molecule_trap_data <- function(n,
                      spec = "exp", 
                      a = time_off$lower, 
                      b = time_off$upper, 
-                     rate = 1/time_off$rate
+                     rate = time_off$rate
                      ), 
-            0)
+            3)
+    
+    
     #convert seconds to datapoints in hz time
-    off_time <- round((1/off)*hz, 0)
+    off_time <- round(off*hz, 0)
     
     baseline_df <- data.frame(data = rnorm(off_time, mean = baseline$mean, sd = baseline$sd), 
                               key = "baseline",
@@ -55,18 +67,18 @@ simulate_single_molecule_trap_data <- function(n,
     
     step_size <- round(rnorm(1, mean = displacement$mean, sd = displacement$sd), 2)
     
-    if(pi_release != "uncoupled"){
+    if(pi_release[[1]] != "uncoupled"){
       #on times
       pi <- round(
               rtrunc(1, 
                      spec = "exp", 
                      a = pi_release$lower, 
                      b = pi_release$upper, 
-                     rate = 1/pi_release$rate
+                     rate = pi_release$rate
                      ), 
-              0)
+              3)
       
-      pi_release_time <- round((1/pi)*hz, 0)
+      pi_release_time <- round(pi*hz, 0)
       
   
       if(pi_release$occurs == "before"){
@@ -89,16 +101,16 @@ simulate_single_molecule_trap_data <- function(n,
                spec = "exp", 
                a = adp_release$lower, 
                b = adp_release$upper, 
-               rate = 1/adp_release$rate
+               rate = adp_release$rate
         ), 
-        0)
+        3)
       
       
       
-      adp_release_time <- round((1/adp)*hz, 0)
+      adp_release_time <- round(adp*hz, 0)
       
     } else {
-      adp_release_time <- round((1/adp_release$set_time)*hz, 0)
+      adp_release_time <- round(adp_release$set_time*hz, 0)
       
     }
       
@@ -116,14 +128,14 @@ simulate_single_molecule_trap_data <- function(n,
                spec = "exp", 
                a = atp_binding$lower, 
                b = atp_binding$upper, 
-               rate = 1/atp_binding$rate
-        ), 
-        0)
+               rate = atp_binding$rate
+            ), 
+        3)
       
-      atp_binding_time <- round((1/atp)*hz, 0)
+      atp_binding_time <- round(atp*hz, 0)
     } else {
       
-     atp_binding_time <- round((1/atp_binding$set_time)*hz, 0)
+     atp_binding_time <- round(atp_binding$set_time*hz, 0)
       
     }
       
@@ -135,7 +147,7 @@ simulate_single_molecule_trap_data <- function(n,
       
       
 
-    if(pi_release == "uncoupled"){
+    if(pi_release[[1]] == "uncoupled"){
       results[[i]] <- rbind(baseline_df, adp_release_df, atp_binding_df)
     } else {
       results[[i]] <- rbind(baseline_df, pi_release_df, adp_release_df, atp_binding_df)
