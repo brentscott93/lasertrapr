@@ -13,10 +13,19 @@ prep_ensemble <- function(trap_selected_project,
                           ms_2_skip,
                           hz,
                           is_shiny = TRUE){
+  # trap_selected_project <- "~/lasertrapr/project_myoV-phosphate"
+  # ms_extend_s2 = 3
+  # ms_extend_s1 = 3
+  if(is_shiny) incProgress(0.01, detail = "Removing Old Files")
   
- # trap_selected_project <- "~/lasertrapr/project_myoV-phosphate"
- # ms_extend_s2 = 3
- # ms_extend_s1 = 3
+  old_files <- 
+    lasertrapr:::list_files(
+      trap_selected_project,
+      pattern = "ensemble-data.csv",
+      recursive = TRUE)
+  
+  file.remove(old_files$path)
+                      
   trap_data_paths <- 
     lasertrapr:::list_files(
       trap_selected_project,
@@ -47,7 +56,8 @@ prep_ensemble <- function(trap_selected_project,
     data.table::rbindlist(
       lapply(
         event_file_paths, 
-        data.table::fread)
+        data.table::fread
+        )
     )
   
   longest_event_df <- 
@@ -79,7 +89,7 @@ prep_ensemble <- function(trap_selected_project,
                                                      "front_signal_ratio",
                                                      "back_signal_ratio",
                                                      "is_positive"))
-    measured_events %<>% filter(keep == TRUE & is_positive == TRUE)
+    measured_events %<>% filter(keep == TRUE, is_positive = TRUE)
     event_ensembles <- list()
     for(event in seq_len(nrow(measured_events))){
       print(paste0("event=", event))

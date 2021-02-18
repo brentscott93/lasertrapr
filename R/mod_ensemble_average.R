@@ -80,7 +80,7 @@ mod_ensemble_average_ui <- function(id){
 mod_ensemble_average_server <- function(input, output, session, f){
   ns <- session$ns
   observeEvent(input$prep_ensemble, {
-    browser()
+   # browser()
     golem::print_dev(f$project_input)
     golem::print_dev(str(f))
     defend_if_null(f$project_input, ui = 'Please Select a Project', type = 'error')
