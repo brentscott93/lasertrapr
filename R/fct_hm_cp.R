@@ -7,7 +7,6 @@
 #' 
 hidden_markov_changepoint_analysis <- function(trap_data,
                                                f = f,
-                                               a = a, 
                                                hz = 5000,
                                                w_width = 150,
                                                w_slide = "1/2",
@@ -16,7 +15,9 @@ hidden_markov_changepoint_analysis <- function(trap_data,
                                                front_cp_method,
                                                back_cp_method,
                                                cp_running_var_window,
+                                               displacement_type = "avg",
                                                is_shiny = F, 
+                                               opt,
                                                ...){
  
   # dev_path <- '~/lasertrapr/project_myoV-phosphate/myoV-S217A_pH-7.0_30mM-Pi/2020-11-01/obs-19/trap-data.csv'
@@ -136,7 +137,8 @@ hidden_markov_changepoint_analysis <- function(trap_data,
                                          front_cp_method = front_cp_method,
                                          back_cp_method = back_cp_method,
                                          cp_running_var_window = cp_running_var_window,
-                                         ws = ws)
+                                         ws = ws,
+                                         displacement_type = displacement_type)
                                     
                                             
       
@@ -165,7 +167,7 @@ hidden_markov_changepoint_analysis <- function(trap_data,
                  date = date, 
                  obs = obs, 
                  conversion = conversion,
-                 peak_nm_index = (measured_hm_events$peak_nm_index * conversion - 75)/hz) %>%
+                 peak_nm_index = cp_data$displacement_mark) %>%
           dplyr::select(project, 
                         conditions, 
                         date, 
@@ -226,12 +228,20 @@ hidden_markov_changepoint_analysis <- function(trap_data,
                         analyzer = 'hm/cp',
                         status = 'analyzed')
         
+        options_df <- as.data.frame(opt) %>% 
+          dplyr::mutate(project = project,
+                 conditions = conditions, 
+                 date = date, 
+                 obs = obs) %>% 
+          dplyr::select(project, conditions, date, obs, everything())
+        
         if(is_shiny == T) setProgress(0.95, detail = 'Saving Data')
         file_names <-  c('trap-data.csv', 
                          'measured-events.csv',
                          #'ensemble-data.csv',
                          'hm-model-data.csv',
-                         'event-frequency.csv')
+                         'event-frequency.csv',
+                         'options.csv')
         
         file_paths <-  file.path(path.expand("~"), "lasertrapr", project,  conditions, date, obs, file_names)
       
@@ -239,7 +249,8 @@ hidden_markov_changepoint_analysis <- function(trap_data,
                              single_molecule_results,
                              #cp_data$ensemble_data,
                              hm_model_results,
-                             event_freq)
+                             event_freq,
+                             options_df)
         
         purrr::walk2(data_to_save, file_paths, ~data.table::fwrite(x = .x, file = .y, sep = ","))
         

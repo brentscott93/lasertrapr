@@ -13,7 +13,8 @@ changepoint_analysis(
   front_cp_method,
   back_cp_method,
   cp_running_var_window,
-  ws
+  ws,
+  displacement_type
 )
 }
 \arguments{

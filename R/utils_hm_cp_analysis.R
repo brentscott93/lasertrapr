@@ -290,7 +290,8 @@ changepoint_analysis <- function(measured_hm_events,
                                  front_cp_method, 
                                  back_cp_method, 
                                  cp_running_var_window,
-                                 ws){
+                                 ws,
+                                 displacement_type){
   #for dev
   #cp_running_var_window <- 5
   front_cp_method <- "Variance"
@@ -330,6 +331,7 @@ changepoint_analysis <- function(measured_hm_events,
   
   better_displacements <- vector()
   absolute_better_displacements <- vector()
+  displacement_marker <- vector()
   
   trap_stiffness <- vector()
   myo_stiffness <- vector()
@@ -612,14 +614,30 @@ changepoint_analysis <- function(measured_hm_events,
     #exact_event_chunk <- trap_data$data[cp_start : cp_off]
     #percent10 <- length_of_event*
 
-    
-    mean_event_step <-  mean( trap_data$data[ (cp_start + ms_5) : (cp_off - (ms_5+1) )])
+    if(displacement_type == "avg"){
+      mean_event_step <-  mean(trap_data$data[(cp_start + ms_5):((cp_off-1) - ms_5)])
+      displacement_mark <- (measured_hm_events$peak_nm_index[[i]]*conversion)/hz
+    } else if(displacement_type == "peak"){
+       cp_event_subset <- trap_data[cp_start:(cp_off-1),] 
+       cp_event_subset$roll_mean <- RcppRoll::roll_meanr(cp_event_subset$data, 25)
+      if(is_positive[[i]]){
+       mean_event_step <- max(na.omit(cp_event_subset$roll_mean))
+       max_row <- cp_event_subset[which(cp_event_subset$roll_mean == mean_event_step),]
+       displacement_mark <- max_row$index[[1]]/hz
+      } else {
+        mean_event_step <- min(na.omit(cp_event_subset$roll_mean))
+        min_row <- cp_event_subset[which(cp_event_subset$roll_mean == mean_event_step),]
+        displacement_mark <- min_row$index[[1]]/hz
+      }
+    }
     
     #difference in step sizes nad baseline for tablems
     better_displacements[[i]] <- mean_event_step - state_1_avg[[i]]
     
     #absolute postion for graph overlay
     absolute_better_displacements[[i]] <- mean_event_step
+    
+    displacement_marker[[i]] <- displacement_mark
     
     #estimate myosin and trap stiffness
     quarter <- length_of_event/4
@@ -670,7 +688,8 @@ changepoint_analysis <- function(measured_hm_events,
   
   return(list(cp_event_transitions = cp_transitions,
               cp_displacements = better_displacements,
-              absolute_displacements = absolute_better_displacements))
+              absolute_displacements = absolute_better_displacements,
+              displacement_mark = displacement_marker))
 }
 
 

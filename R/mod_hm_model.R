@@ -179,7 +179,7 @@ mod_hm_model_server <- function(input, output, session, f){
       files <- list_files(f$date$path, pattern = 'trap-data.csv', recursive = T)
       trap_data <- purrr::map(files$path, data.table::fread, nrows = 1)
     }
-    
+    opt <- reactiveValuesToList(isolate(a))
     withProgress(message = 'Analyzing trap data', value = 0, max = 1, min = 0, {
     purrr::walk(trap_data, ~hidden_markov_changepoint_analysis(
                                     trap_data = .x,
@@ -192,6 +192,8 @@ mod_hm_model_server <- function(input, output, session, f){
                                     front_cp_method = a$front_cp_method,
                                     back_cp_method = a$back_cp_method, 
                                     cp_running_var_window = a$cp_running_var_window,
+                                    displacement_type = a$displacement_type,
+                                    opt = opt,
                                     is_shiny = TRUE)
               )
        })
@@ -405,7 +407,8 @@ mod_hm_model_server <- function(input, output, session, f){
                         hz = 5000,
                         front_cp_method = "Variance",
                         back_cp_method = "Mean/Var",
-                        cp_running_var_window = 5)
+                        cp_running_var_window = 5,
+                        displacement_type = "avg")
     
     observeEvent(input$set_options, {
       a$w_width <- input$w_width
@@ -416,6 +419,7 @@ mod_hm_model_server <- function(input, output, session, f){
       a$front_cp_method <-input$front_cp_method
       a$back_cp_method <-input$back_cp_method
       a$cp_running_var_window <- input$cp_running_var_window
+      a$displacement_type <- input$displacement_type
       removeModal()
     })
     
@@ -492,6 +496,14 @@ mod_hm_model_server <- function(input, output, session, f){
                    ),
                     sliderInput(ns("cp_running_var_window"), "Running Variance Window Width", min = 5, max = 100, value = a$cp_running_var_window, width = "100%")
           ), #cp tab panel
+        tabPanel("Displacements",
+                 radioButtons(inputId = ns('displacement_type'),
+                              label = 'Displacement Calculation Method', 
+                              choices = list("Average" = "avg",
+                                             "Peak" = "peak"),
+                              inline = TRUE,
+                              selected = a$displacement_type)
+        ),
         tabPanel("Hz",
                  numericInput(inputId = ns('hz'),
                               label = 'Sampling Frequency (Hz)', 
