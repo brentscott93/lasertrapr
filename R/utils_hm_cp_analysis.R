@@ -619,7 +619,7 @@ changepoint_analysis <- function(measured_hm_events,
       displacement_mark <- (measured_hm_events$peak_nm_index[[i]]*conversion)/hz
     } else if(displacement_type == "peak"){
        cp_event_subset <- trap_data[cp_start:(cp_off-1),] 
-       cp_event_subset$roll_mean <- RcppRoll::roll_meanr(cp_event_subset$data, 25)
+       cp_event_subset$roll_mean <- RcppRoll::roll_meanr(cp_event_subset$data, hz/1000*5)
       if(is_positive[[i]]){
        mean_event_step <- max(na.omit(cp_event_subset$roll_mean))
        max_row <- cp_event_subset[which(cp_event_subset$roll_mean == mean_event_step),]

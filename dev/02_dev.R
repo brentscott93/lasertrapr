@@ -50,6 +50,7 @@ usethis::use_package( "plotrix" )
 usethis::use_package( "broom" )
 usethis::use_package( "drc" )
 usethis::use_package( "truncdist" )
+usethis::use_package( "shinyFiles" )
 
 ## Add modules ----
 ## Create a module infrastructure in R/

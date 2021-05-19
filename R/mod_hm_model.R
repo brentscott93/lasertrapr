@@ -405,7 +405,7 @@ mod_hm_model_server <- function(input, output, session, f){
                         em_random_start = FALSE, 
                         use_channels = "Mean/Var",
                         hz = 5000,
-                        front_cp_method = "Variance",
+                        front_cp_method = "Mean/Var",
                         back_cp_method = "Mean/Var",
                         cp_running_var_window = 5,
                         displacement_type = "avg")
@@ -448,7 +448,7 @@ mod_hm_model_server <- function(input, output, session, f){
                                 shinyWidgets::prettyRadioButtons(
                                   inputId = ns("use_channels"),
                                   label = "Channels", 
-                                  choices = c("Variance", "Mean/Var"),
+                                  choices = c("Mean/Var", "Variance"),
                                   selected = a$use_channels,
                                   inline = TRUE,  
                                   status = "primary",
@@ -474,7 +474,7 @@ mod_hm_model_server <- function(input, output, session, f){
                           shinyWidgets::prettyRadioButtons(
                             inputId = ns("front_cp_method"),
                             label = "Channels", 
-                            choices = c("Variance", "Mean/Var"),
+                            choices = c("Mean/Var", "Variance"),
                             selected = a$front_cp_method,
                             inline = TRUE,  
                             status = "primary",
@@ -486,7 +486,7 @@ mod_hm_model_server <- function(input, output, session, f){
                                  shinyWidgets::prettyRadioButtons(
                                    inputId = ns("back_cp_method"),
                                    label = "Channels", 
-                                   choices = c("Variance", "Mean/Var"),
+                                   choices = c("Mean/Var", "Variance"),
                                    selected = a$back_cp_method,
                                    inline = TRUE,  
                                    status = "primary",

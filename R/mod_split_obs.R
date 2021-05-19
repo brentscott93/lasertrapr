@@ -13,10 +13,62 @@ mod_split_obs_ui <- function(id){
   tagList(
     
     fluidRow(box(width = 3, collapsible = TRUE, collapsed = FALSE,
-                           title = "Auto-Split Observations",
+                           title = "Upload Data",
                            #h4(strong("Make Trap Observations")),
                            #strong(h5("1) Select Raw Data Files")),
+                           shinyWidgets::radioGroupButtons(
+                             inputId = ns("upload_method"),
+                             label = 'Method',
+                             choices = c("Upload" = "upload",
+                                         "Split Obs" = "split_obs"),
+                             direction = "horizontal",
+                             width = "100%",
+                             justified = TRUE,
+                             checkIcon = list(
+                               yes = tags$i(class = "fa fa-check-square",
+                                            style = "color: black"),
+                               no = tags$i(class = "fa fa-square-o",
+                                           style = "color: black"))
+                           ),          
                            
+                 conditionalPanel(
+                   condition = " input.upload_method == 'upload'", ns = ns,
+                   
+                           # shinyFiles::shinyFilesButton(id = ns("file_select"), 
+                           #                              "Select Files...",
+                           #                              title = "Select trap data",
+                           #                              multiple = TRUE),
+                           # 
+                   
+                   fileInput(ns("simple_data_input"),
+                             'Upload Any File Type',
+                             multiple = TRUE,
+                             accept = c(".txt", ".csv", ".xls", ".xlsx", ".tsv"),
+                             buttonLabel = "Browse...",
+                             placeholder = "None currently uploaded"),
+                   
+                          #  h5("Selected Files"),
+                          # verbatimTextOutput(ns("selected_files_to_upload")), 
+                          # 
+                          shinyWidgets::prettyCheckbox(ns("ready_for_analysis"), 
+                                                       "Ready for Analysis?",
+                                                       value = FALSE, 
+                                                       outline = TRUE, 
+                                                       shape = "curve",
+                                                       status = "primary"),
+                   conditionalPanel(
+                     condition = " input.ready_for_analysis == true", ns = ns,
+                     numericInput(ns("nm_to_pn"), "Stiffness Conversion (pN/nm)", value = 0.04)
+                   ), 
+                          actionButton(ns("simple_upload_button"), 
+                                       "Initialize Data",
+                                       width = "100%", 
+                                       icon = icon("play-circle"),
+                                       style = 'margin-top: 25px;')
+                 ), #conditional close
+                 conditionalPanel(
+                   condition = " input.upload_method == 'split_obs'", ns = ns,
+                                                        
                            fileInput(ns("trap_txt_upload"),
                                      'Upload Data Files (.txt)',
                                      multiple = TRUE,
@@ -51,6 +103,7 @@ mod_split_obs_ui <- function(id){
                                         icon = icon("eye"),
                                         width = "100%", 
                                         style = 'margin-top: 25px;')
+                 ) #conditional close
                            
       ), #box close,
     
@@ -159,11 +212,24 @@ mod_split_obs_ui <- function(id){
 mod_split_obs_server <- function(input, output, session, f){
   ns <- session$ns
  
+  observeEvent(input$simple_upload_button, {
+    defend_if_empty(f$project, "No 'Project' folder selected. Please select a folder with the folder chooser above.")
+    defend_if_empty(f$conditions, "No 'Conditions' folder selected. Please select a folder with the folder chooser above.")
+    defend_if_empty(f$date, "No 'Date' folder selected. Please select a folder with the folder chooser above.")
+    req(nchar(f$date$path>0))
+    simple_upload(input_data = input$simple_data_input,
+                  project = f$project,
+                  conditions = f$conditions,
+                  date = f$date,
+                  nm2pn = input$nm_to_pn, 
+                  ready_for_analysis = input$ready_for_analysis)
+    f$new_obs_from_split <- f$new_obs_from_split + 1
+  })
   #check if a date folder is properly selected
   observeEvent(input$split_obs_button, {
     golem::print_dev("go")
     if(is_empty(f$date) == TRUE){
-      showNotification("No 'Date' folder selected. Please select a folder with the folder chooser above.",
+      showNotification("No 'Date' folder selected. Please select a folder with the folder chooser above. ",
                        type = "error")
    
     } else if(is_empty(input$trap_txt_upload)){
@@ -797,7 +863,20 @@ mod_split_obs_server <- function(input, output, session, f){
     
   })
   
-  
+  #### file choose ####
+
+  # shinyFiles::shinyFileChoose(
+  #   input = input, 
+  #   id = "file_select", 
+  #   roots= shinyFiles::getVolumes(), 
+  #   filetypes=c('', 'txt', 'csv'),
+  #   session = session)
+  # 
+  # 
+  # 
+  # output$selected_files_to_upload <- renderPrint({
+  #   cat(input$file_select)
+  # })
 }
 
 ## To be copied in the UI
