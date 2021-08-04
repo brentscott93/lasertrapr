@@ -210,23 +210,23 @@ mod_hm_model_server <- function(input, output, session, f){
     defend_if_empty(f$obs, ui = 'Please select an obs folder', type = 'error')
     defend_if_blank(f$obs_input, ui = 'Please select an obs folder', type = 'error')
   
-    filenames <- c('trap-data.csv', 'measured-events.csv', 'hm-model-data.csv')
+    filenames <- c('trap-data.csv', 'measured-events.csv', 'hm-model-data.csv', 'options.csv')
     paths <- map(filenames, ~list_files(f$obs$path, pattern = .x))
     data <-  map(paths, ~data.table::fread(.x$path))
-    names(data) <- c('trap', 'events', 'running')
+    names(data) <- c('trap', 'events', 'running', 'options')
     data
   })
   
 
   output$overlay_dygraph <- dygraphs::renderDygraph({
     req(trap_data())
-
-    d <- data.frame(index = (1:nrow(trap_data()$trap)/5000),
+    hz <- trap_data()$options$hz[[1]]
+    d <- data.frame(index = (1:nrow(trap_data()$trap)/hz),
                     raw = trap_data()$trap$processed_bead,
                     model = trap_data()$trap$hm_overlay)
 
-    periods_df <- data.frame(start = trap_data()$events$cp_event_start_dp/5000,
-                             stop = trap_data()$events$cp_event_stop_dp/5000,
+    periods_df <- data.frame(start = trap_data()$events$cp_event_start_dp/hz,
+                             stop = trap_data()$events$cp_event_stop_dp/hz,
                              keep = trap_data()$events$keep,
                              event_user_excluded = trap_data()$events$event_user_excluded, 
                              front_signal_ratio = trap_data()$events$front_signal_ratio,
@@ -406,7 +406,7 @@ mod_hm_model_server <- function(input, output, session, f){
                         em_random_start = FALSE, 
                         use_channels = "Mean/Var",
                         hz = 5000,
-                        front_cp_method = "Variance",
+                        front_cp_method = "Mean/Var",
                         back_cp_method = "Mean/Var",
                         cp_running_var_window = 5,
                         displacement_type = "avg")
@@ -449,7 +449,7 @@ mod_hm_model_server <- function(input, output, session, f){
                                 shinyWidgets::prettyRadioButtons(
                                   inputId = ns("use_channels"),
                                   label = "Channels", 
-                                  choices = c("Variance", "Mean/Var"),
+                                  choices = c("Mean/Var", "Variance"),
                                   selected = a$use_channels,
                                   inline = TRUE,  
                                   status = "primary",
@@ -475,7 +475,7 @@ mod_hm_model_server <- function(input, output, session, f){
                           shinyWidgets::prettyRadioButtons(
                             inputId = ns("front_cp_method"),
                             label = "Channels", 
-                            choices = c("Variance", "Mean/Var"),
+                            choices = c("Mean/Var", "Variance"),
                             selected = a$front_cp_method,
                             inline = TRUE,  
                             status = "primary",
@@ -487,7 +487,7 @@ mod_hm_model_server <- function(input, output, session, f){
                                  shinyWidgets::prettyRadioButtons(
                                    inputId = ns("back_cp_method"),
                                    label = "Channels", 
-                                   choices = c("Variance", "Mean/Var"),
+                                   choices = c("Mean/Var", "Variance"),
                                    selected = a$back_cp_method,
                                    inline = TRUE,  
                                    status = "primary",

@@ -26,7 +26,7 @@ app_ui <- function(request) {
       dashboardSidebar(
        shinydashboard::sidebarMenu( 
           menuItem(text = 'Home', tabName =  'home', icon = icon('home')),
-          menuItem(text = 'Initialize Data', tabName = 'obs',  icon = icon('play-circle')),
+          menuItem(text = 'Upload Data', tabName = 'obs',  icon = icon('play-circle')),
           menuItem(text = 'Clean & Process', tabName = 'clean', icon = icon('broom')),
           menuItem(text = 'Analyzers', icon = icon('microscope'),
            menuSubItem(text = 'HM-Model/Changepoint', tabName = 'hm_model'),
