@@ -37,7 +37,7 @@ summarize_trap_data <- function(f, hz, factor_order, is_shiny = T){
   event_files_filtered <- 
     lapply(event_file_paths, data.table::fread) %>%
     data.table::rbindlist(fill = T) %>% 
-    dplyr::filter(keep == T)
+    dplyr::filter(keep == T & event_user_excluded == F)
   
   event_files_filtered$conditions <- 
     factor(event_files_filtered$conditions,
@@ -92,7 +92,8 @@ summarize_trap_data <- function(f, hz, factor_order, is_shiny = T){
 #'
 #' @examples
 stats_plot_step <- function(event_files_filtered, plot_colors){
-  
+  # event_files_filtered = rv$data$event_files_filtered
+  # plot_colors = plot_colors
   step_histo <- ggplot(data = event_files_filtered,
                        aes(x = displacement_nm,
                            fill = conditions))+
@@ -126,7 +127,10 @@ stats_plot_step <- function(event_files_filtered, plot_colors){
   
   if(any(step_is_sig))  step_table %<>% ggpubr::table_cell_bg(row = step_is_sig + 1, column = 3, fill = '#ffa9a6')
   
-  step_tukey <- rstatix::add_xy_position(step_tukey, data = event_files_filtered, formula = displacement_nm ~ conditions)
+  # step_tukey <- rstatix::add_xy_position(step_tukey,
+  #                                        data = event_files_filtered,
+  #                                        formula = displacement_nm ~ conditions)
+  # 
   
   step_violin <- ggpubr::ggviolin(event_files_filtered,
                                   x = "conditions",

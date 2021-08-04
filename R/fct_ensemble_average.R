@@ -62,7 +62,7 @@ prep_ensemble <- function(trap_selected_project,
   
   longest_event_df <- 
     event_files_filtered %>%
-    dplyr::filter(keep == TRUE) %>% 
+    dplyr::filter(keep == TRUE & event_user_excluded == FALSE) %>% 
     dplyr::group_by(conditions) %>% 
     dplyr::summarize(longest_event = max(cp_time_on_dp))
   
@@ -89,7 +89,9 @@ prep_ensemble <- function(trap_selected_project,
                                                      "front_signal_ratio",
                                                      "back_signal_ratio",
                                                      "is_positive"))
-    measured_events %<>% filter(keep == TRUE, is_positive = TRUE)
+    measured_events %<>% filter(keep == TRUE, 
+                               # is_positive = TRUE
+                                )
     event_ensembles <- list()
     for(event in seq_len(nrow(measured_events))){
       print(paste0("event=", event))

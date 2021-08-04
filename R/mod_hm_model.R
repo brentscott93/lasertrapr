@@ -228,15 +228,16 @@ mod_hm_model_server <- function(input, output, session, f){
     periods_df <- data.frame(start = trap_data()$events$cp_event_start_dp/5000,
                              stop = trap_data()$events$cp_event_stop_dp/5000,
                              keep = trap_data()$events$keep,
+                             event_user_excluded = trap_data()$events$event_user_excluded, 
                              front_signal_ratio = trap_data()$events$front_signal_ratio,
                              back_signal_ratio = trap_data()$events$back_signal_ratio,
                              color = scales::alpha("#D95F02" , 0.4))
     
-   periods_df %<>%  dplyr::filter(keep == T)
+   periods_df %<>%  dplyr::filter(keep == T, event_user_excluded == F)
    periods_df %<>% dplyr::filter(front_signal_ratio >= ro$front_signal_ratio & back_signal_ratio >= ro$back_signal_ratio)
 
    pni <-  trap_data()$events$peak_nm_index
-   labels <- trap_data()$events %>% filter(keep == T)
+   labels <- trap_data()$events %>%  filter(keep == T, event_user_excluded == F)
   
       # if(nrow(excluded_events) == 0 ){
       # overlay_dy <-  dygraphs::dygraph(d) %>% #raw_data_dygraph
@@ -531,6 +532,13 @@ mod_hm_model_server <- function(input, output, session, f){
     ro <- reactiveValues(front_signal_ratio = 0,
                          back_signal_ratio = 0)
     
+    which_events_user_excluded <- eventReactive(trap_data()$events, {
+      req(trap_data())
+      which(trap_data()$events$event_user_excluded == TRUE)
+    })
+    output$number_excluded_events <- renderText({
+      paste0("Events excluded: ", toString(which_events_user_excluded()))
+    })
     observeEvent(input$review_options, {
       showModal(
         modalDialog(
@@ -538,6 +546,33 @@ mod_hm_model_server <- function(input, output, session, f){
           footer = tagList(modalButton("Cancel"), actionButton(ns("set_review_options"), "OK")),
           size = "l",
           tabsetPanel(
+            tabPanel("Exclude Events",
+            br(), 
+            column(3,    
+              selectInput(ns("exclude_event_manual"), 
+                          label = "Select events to modify",
+                          choices = 1:nrow(trap_data()$events),
+                          multiple = T
+                          )
+                        ),
+            column(3,
+              shinyWidgets::radioGroupButtons(
+                inputId = ns('include_exclude'),
+                label = "Include or Exclude?",
+                choices = c("Include" = "include",
+                            "Exclude" = "exclude"),
+                selected = "exclude",
+                justified = TRUE,
+                checkIcon = list(
+                  yes = tags$i(class = "fa fa-check-square",
+                               style = "color: black"),
+                  no = tags$i(class = "fa fa-square-o",
+                              style = "color: black"))
+                        )
+              ),
+              div(style = "padding-top: 15px", verbatimTextOutput(ns("number_excluded_events")))
+                    
+            ),
             tabPanel("Signal Filter",
                      column(6, 
                             sliderInput(ns("front_signal_ratio"),
@@ -555,8 +590,7 @@ mod_hm_model_server <- function(input, output, session, f){
                                                value = 0, 
                                                step = 0.1)
                             )
-            ),
-            tabPanel("Event Insights")
+            )
           )
         )
       )
@@ -565,6 +599,18 @@ mod_hm_model_server <- function(input, output, session, f){
     observeEvent(input$set_review_options, {
       ro$front_signal_ratio <- input$front_signal_ratio
       ro$back_signal_ratio <- input$back_signal_ratio
+      golem::print_dev("before if")
+      if(!is_empty(input$exclude_event_manual)){
+       excluded_data <- trap_data()$events
+       golem::print_dev("setting val true")
+       if(input$include_exclude == "exclude"){
+       excluded_data$event_user_excluded[as.numeric(input$exclude_event_manual)] <- TRUE
+       } else if(input$include_exclude == "include"){
+       excluded_data$event_user_excluded[as.numeric(input$exclude_event_manual)] <- FALSE
+       }
+       data.table::fwrite(excluded_data, file = file.path(f$obs$path, 'measured-events.csv'))
+       showNotification(paste0("The following events were modified: ", toString(input$exclude_event_manual), " - Refreshing..."), duration = 3, type = "message")
+      }
       removeModal()
       shinyjs::click("view_results")
     })
