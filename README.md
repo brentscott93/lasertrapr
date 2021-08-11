@@ -12,8 +12,9 @@ experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](h
 <!-- badges: end -->
 
 The goal of lasertrapr is to automate the analysis of laser trap data.
-For more information and the official documentation refer to the
-[website](https://lasertrapr.app).
+The app is still being heavily developed, end-users should proceed with
+caution. For more information and the official documentation refer to
+the [website](https://lasertrapr.app).
 
 ## Installation
 
