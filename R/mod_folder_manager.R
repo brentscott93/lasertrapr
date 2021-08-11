@@ -95,7 +95,8 @@ mod_folder_manager_server <- function(input, output, session, lasertrapr_folder,
   
   #list project folders
   project_names <- eventReactive(rv$new_trap_project,{
-    list_dir(path = lasertrapr_folder)
+    n <- list_dir(path = lasertrapr_folder)
+    n[grep("project", n$name),]
   })
   
   #output for renderUI select input button with project names
@@ -130,7 +131,8 @@ mod_folder_manager_server <- function(input, output, session, lasertrapr_folder,
  
  observe({
    req(input$trap_project_selectInput)
-   rv$conditions_names <-  list_dir(path = trap_selected_project()$path)
+   cn <-  list_dir(path = trap_selected_project()$path)
+   rv$conditions_names <- cn[grep("summary", cn$name, invert = TRUE, ignore.case = TRUE),]
   })
 
  observeEvent(rv$new_trap_condition, ignoreNULL = T, ignoreInit = T, {
