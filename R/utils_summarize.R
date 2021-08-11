@@ -431,6 +431,36 @@ stats_plot_force <- function(event_files_filtered, plot_colors){
                      rel_heights = c(0.05, 1))
 }
 
+
+
+#' Time On ECDF
+#'
+#' @param event_files_filtered event data
+#' @param plot_colors user colors
+#'
+#' @return a ggplot
+time_on_ecdf <- function(event_files_filtered, plot_colors){
+  cum_freq_curves <-
+    event_files_filtered %>% 
+    split(.$conditions) %>% 
+    imap_dfr(~ .x %>% dplyr::summarize(conditions = .y,
+                                       time_on = unique(time_on_ms), 
+                                       ecdf = ecdf(time_on_ms)(unique(time_on_ms)))) 
+ 
+  
+    ggplot(cum_freq_curves, aes(time_on, ecdf)) + 
+      geom_step(aes(color = conditions), size = 0.75)+
+      #coord_cartesian(c(0, 1000))+
+      #facet_grid(~myo)+
+      ggtitle("Time On Cumulative Event Distributions")+
+      ylab("Cumulative Distribution")+
+      xlab("Time (ms)")+
+      scale_color_manual(values = plot_colors)+
+      theme_cowplot()+
+      theme(panel.grid = element_blank())
+  
+
+}
 #' Time On Survival Analysis
 #'
 #' @param event_files_filtered 

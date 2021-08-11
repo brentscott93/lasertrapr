@@ -51,6 +51,7 @@ usethis::use_package( "broom" )
 usethis::use_package( "drc" )
 usethis::use_package( "truncdist" )
 usethis::use_package( "shinyFiles" )
+usethis::use_package( "ggstatsplot" )
 
 ## Add modules ----
 ## Create a module infrastructure in R/

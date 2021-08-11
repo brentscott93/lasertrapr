@@ -1,9 +1,10 @@
 ---
-title: "Project myoV-Pi"
+title: "lasertrapr"
 output: 
   flexdashboard::flex_dashboard:
     orientation: rows
     vertical_layout: fill
+    logo: "`r system.file('app/www/lasertrapr-logo-small.ico', package = 'lasertrapr')`"
 editor_options: 
   chunk_output_type: inline
 params: 
@@ -34,7 +35,8 @@ Row
     
 ```{r, fig.width=14, fig.height=21}
    params$rv$data$summary %>% 
-     dplyr::select( 'Conditions' = conditions,
+  dplyr::mutate(across(where(is.numeric), round, digits = 1)) %>% 
+     dplyr::select( "Conditions" = conditions,
                     "Step Size (nm)" = displacement_avg,
                     "SE Step" = displacement_se,
                     "Force (pN)" = force_avg,
@@ -89,62 +91,12 @@ params$rv$step
  params$rv$toff
 ```
 
-
-Time On Survival 
-=====================================
-
-
-Row {.tabset .tabset-fade}
--------------------------------------
-
-### Cumalative Frequency Curves
-```{r echo=FALSE, fig.height=8, fig.width=14, message=FALSE, warning=FALSE}
+ECDF
+=============================
+```{r}
 params$rv$ton_survival
 ```
 
-### Log-Rank Test
-
-```{r, ,fig.width=5, fig.height=7}
-
-params$rv$ton_survival$ton_log_rank_test
-```
-
-### Cox Proportional Hazards
-
-The ***coef*** values are the regression coefficients.
-
-The ***exp(coef)*** values are the hazard ratios which can be interpreted as:
-
-    * HR = 1: No effect
-    * HR < 1: Reduction in the hazard
-    * HR > 1: Increase in Hazard
-    
-See [here](http://www.sthda.com/english/wiki/cox-proportional-hazards-model) for more info
-```{r}
-summary(rv$ton_survival$ton_cox)
-
-```
-
-Event Frequency
-==============================
-
-Row {.tabset .tabset-fade}
--------------------------------------
-
-### Events Starting
-
-```{r, fig.width=14, fig.height=8, echo=FALSE, message=FALSE, warning=FALSE}
-
-params$rv$ef
- 
-```
-
-
-### Filter Zero
-```{r, fig.width=14, fig.height=8}
-#no zero
-params$rv$ef_filter
-```
 
 Correlations
 ==============================
@@ -158,36 +110,3 @@ Stiffness
 params$rv$stiffness
 ```
 
-Ensemble Averages
-==============================
-Row {.tabset .tabset-fade}
--------------------------------------
-
-### Forward Fits
-
-
-
-```{r}
-
-
-  
-```
-
-
-### Forward Plots
-```{r}
-
-```
-
-
-### Backwards Plots
-```{r}
-
-```
-
-
-### Aligned
-
-```{r}
-
-```

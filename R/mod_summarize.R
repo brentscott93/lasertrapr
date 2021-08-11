@@ -77,6 +77,7 @@ mod_summarize_server <- function(input, output, session, f){
   conditions <- reactive({
     req(f$project$path)
     list_dir(f$project$path) %>%
+      dplyr::filter(str_detect(name, "summary", negate = TRUE)) %>% 
       dplyr::pull(name)
   })
   output$user_defaults <- renderUI({
@@ -108,26 +109,66 @@ mod_summarize_server <- function(input, output, session, f){
                                      factor_order = input$factor_order)
       plot_colors <- purrr::map_chr(paste0('color', seq_along(conditions())), ~input[[.x]])
       setProgress(0.6, detail = "Step Stats")
-      rv$step <- stats_plot_step(event_files_filtered = rv$data$event_files_filtered,
-                                 plot_colors = plot_colors)
+        rv$step <-  ggstatsplot::ggbetweenstats(rv$data$event_files_filtered,
+                       x = conditions, 
+                       y = displacement_nm,
+                       ylab = "nanometers",
+                       xlab = "",
+                       title = "Displacements",
+                       ggplot.component = list(scale_color_manual(values = plot_colors)),
+                       centrality.point.args = list(size = 5, color = "grey10"),
+                       ggtheme = theme_cowplot())
+      
       setProgress(0.65, detail = "Time On Stats")
-      rv$ton <- stats_plot_time_on(event_files_filtered = rv$data$event_files_filtered,
-                                   plot_colors = plot_colors,
-                                   p_adj = "holm")
+      rv$ton <- ggstatsplot::ggbetweenstats(rv$data$event_files_filtered,
+                              x = conditions, 
+                              y = time_on_ms,
+                              ylab = "milliseconds",
+                              xlab = "",
+                              title = "Attachment Times",
+                              centrality.point.args = list(size = 5, color = "grey10"),
+                              ggtheme = theme_cowplot(),
+                              type = "nonparametric",
+                              ggstatsplot.layer = F,
+                              ggsignif.args = list(step_increase = 1),
+                              ggplot.component = list(scale_color_manual(values = plot_colors),
+                                                      scale_y_continuous(breaks = scales::trans_breaks("log10", function(x) 10^x),
+                                                                         labels = scales::trans_format("log10", scales::math_format(10^.x))),
+                                                      coord_trans(y = "log10")))
       setProgress(0.7, detail = "Time Off Stats")
-      rv$toff <- stats_plot_time_off(event_files_filtered = rv$data$event_files_filtered,
-                                         plot_colors = plot_colors)
+      rv$toff <-ggstatsplot::ggbetweenstats(rv$data$event_files_filtered,
+                               x = conditions, 
+                               y = time_off_ms,
+                               ylab = "milliseconds",
+                               xlab = "",
+                               title = "Time Between Events",
+                               centrality.point.args = list(size = 5, color = "grey10"),
+                               ggtheme = theme_cowplot(),
+                               type = "nonparametric",
+                               ggstatsplot.layer = F,
+                               ggsignif.args = list(step_increase = 1),
+                               ggplot.component = list(scale_color_manual(values = plot_colors),
+                                                       scale_y_continuous(breaks = scales::trans_breaks("log10", function(x) 10^x),
+                                                                          labels = scales::trans_format("log10", scales::math_format(10^.x))),
+                                                       coord_trans(y = "log10")))
       setProgress(0.75, detail = "Force Stats")
-      rv$force <- stats_plot_force(event_files_filtered = rv$data$event_files_filtered,
-                                   plot_colors = plot_colors)
-      setProgress(0.8, detail = "Time On Survival")
-      rv$ton_survival <- survival_analysis(event_files_filtered = rv$data$event_files_filtered,
+        rv$force <- ggstatsplot::ggbetweenstats(rv$data$event_files_filtered,
+                                   x = conditions, 
+                                   y = force,
+                                   ylab = "piconewtons",
+                                   xlab = "",
+                                   title = "Forces",
+                                   ggplot.component = list(scale_color_manual(values = plot_colors)),
+                                   centrality.point.args = list(size = 5, color = "grey10"),
+                                   ggtheme = theme_cowplot())
+      setProgress(0.8, detail = "Time On ECDF")
+      rv$ton_survival <- time_on_ecdf(event_files_filtered = rv$data$event_files_filtered,
                                            plot_colors = plot_colors)
-      setProgress(0.85, detail = "Event Frequency")
-      rv$ef <- stats_plot_event_frequency(event_file_path = rv$data$event_file_path, 
-                                          factor_order = input$factor_order,
-                                          plot_colors = plot_colors)
-      setProgress(0.9, detail = "Event Frequency")
+      # setProgress(0.85, detail = "Event Frequency")
+      # rv$ef <- stats_plot_event_frequency(event_file_path = rv$data$event_file_path, 
+      #                                     factor_order = input$factor_order,
+      #                                     plot_colors = plot_colors)
+      setProgress(0.9, detail = "Correlations")
       rv$correlations <- correlations(event_files_filtered = rv$data$event_files_filtered,
                                       plot_colors = plot_colors)
       setProgress(0.95, detail = "Stiffness")
@@ -149,7 +190,9 @@ mod_summarize_server <- function(input, output, session, f){
       # Knit the document, passing in the `params` list, and eval it in a
       # child of the global environment (this isolates the code in the document
       # from the code in this app).
-      rmarkdown::render(temp_report, output_dir = f$project$path,
+      out_dir <- file.path(f$project$path, "summary")
+      dir.create(out_dir)
+      rmarkdown::render(temp_report, output_dir = file.path(f$project$path, "summary"),
                         params = params,
                         envir = new.env(parent = globalenv()))
     })
