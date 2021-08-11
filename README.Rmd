@@ -15,41 +15,19 @@ knitr::opts_chunk$set(
 
 # lasertrapr
 
+<img src = "inst/app/www/lasertrapr-logo.gif">
+
 <!-- badges: start -->
 [![Lifecycle: experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](https://www.tidyverse.org/lifecycle/#experimental)
 <!-- badges: end -->
 
-The goal of lasertrapr is to ...
+The goal of lasertrapr is to automate the analysis of laser trap data. The app is still being heavily developed, end-users should proceed with caution. For more information and the official documentation refer to the [website](https://lasertrapr.app).
 
 ## Installation
 
-You can install the released version of lasertrapr from [CRAN](https://CRAN.R-project.org) with:
+You can install the released version of lasertrapr from GitHub with:
 
 ``` r
-install.packages("lasertrapr")
+devtools::install_github("brentscott93/lasertrapr")
 ```
 
-## Example
-
-This is a basic example which shows you how to solve a common problem:
-
-```{r example}
-library(lasertrapr)
-## basic example code
-```
-
-What is special about using `README.Rmd` instead of just `README.md`? You can include R chunks like so:
-
-```{r cars}
-summary(cars)
-```
-
-You'll still need to render `README.Rmd` regularly, to keep `README.md` up-to-date.
-
-You can also embed plots, for example:
-
-```{r pressure, echo = FALSE}
-plot(pressure)
-```
-
-In that case, don't forget to commit and push the resulting figure files, so they display on GitHub!
