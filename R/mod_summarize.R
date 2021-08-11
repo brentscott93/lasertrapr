@@ -52,8 +52,8 @@ mod_summarize_ui <- function(id){
           tabPanel("Force",  plotOutput(ns('force'), height = '600px') %>% shinycssloaders::withSpinner(type = 8, color = '#373B38')),
           tabPanel("Time On",  plotOutput(ns('ton'), height = '600px') %>% shinycssloaders::withSpinner(type = 8, color = '#373B38')),
           tabPanel("Time Off", plotOutput(ns('toff'), height = '600px') %>% shinycssloaders::withSpinner(type = 8, color = '#373B38')),
-          tabPanel("Ton Survival", plotOutput(ns('ton_survival'), height = '600px') %>% shinycssloaders::withSpinner(type = 8, color = '#373B38')),
-          tabPanel("Event Frequency", plotOutput(ns('ef'), height = '600px') %>% shinycssloaders::withSpinner(type = 8, color = '#373B38')),
+          tabPanel("ECDF", plotOutput(ns('ecdf'), height = '600px') %>% shinycssloaders::withSpinner(type = 8, color = '#373B38')),
+          #tabPanel("Event Frequency", plotOutput(ns('ef'), height = '600px') %>% shinycssloaders::withSpinner(type = 8, color = '#373B38')),
           tabPanel("Stiffness", plotOutput(ns('stiffness'), height = '600px') %>% shinycssloaders::withSpinner(type = 8, color = '#373B38')),
           tabPanel("Correlations", plotOutput(ns('correlations'), height = '600px') %>% shinycssloaders::withSpinner(type = 8, color = '#373B38'))
       )
@@ -75,10 +75,19 @@ mod_summarize_server <- function(input, output, session, f){
   })
   # 
   conditions <- reactive({
+  
     req(f$project$path)
     list_dir(f$project$path) %>%
       dplyr::filter(str_detect(name, "summary", negate = TRUE)) %>% 
       dplyr::pull(name)
+  })
+  
+  colorz <- reactive({
+      if(length(conditions()) <= 2){
+        c("#002cd3", "#d30000")
+      } else {
+        RColorBrewer::brewer.pal(length(conditions()), 'Set1')
+      }
   })
   output$user_defaults <- renderUI({
     req(conditions())
@@ -88,11 +97,11 @@ mod_summarize_server <- function(input, output, session, f){
                   multiple = T,
                   choices = conditions()),
       purrr::map2(seq_along(conditions()),
-                  RColorBrewer::brewer.pal(length(conditions()), 'Set1'),
+                  colorz(),
                   ~div(style = 'display:inline-block', colourpicker::colourInput(ns(paste0('color', .x)),
                                              label = paste('Color', .x),
                                              value = .y)))
-    )
+          )
   })
   # 
   # 
@@ -136,7 +145,7 @@ mod_summarize_server <- function(input, output, session, f){
                                                                          labels = scales::trans_format("log10", scales::math_format(10^.x))),
                                                       coord_trans(y = "log10")))
       setProgress(0.7, detail = "Time Off Stats")
-      rv$toff <-ggstatsplot::ggbetweenstats(rv$data$event_files_filtered,
+      rv$toff <- ggstatsplot::ggbetweenstats(rv$data$event_files_filtered,
                                x = conditions, 
                                y = time_off_ms,
                                ylab = "milliseconds",
@@ -162,8 +171,11 @@ mod_summarize_server <- function(input, output, session, f){
                                    centrality.point.args = list(size = 5, color = "grey10"),
                                    ggtheme = theme_cowplot())
       setProgress(0.8, detail = "Time On ECDF")
-      rv$ton_survival <- time_on_ecdf(event_files_filtered = rv$data$event_files_filtered,
-                                           plot_colors = plot_colors)
+      rv$ton_ecdf <- time_on_ecdf(event_files_filtered = rv$data$event_files_filtered,
+                                   plot_colors = plot_colors)
+      setProgress(0.85, detail = "Time Off ECDF")
+      rv$toff_ecdf <- time_off_ecdf(event_files_filtered = rv$data$event_files_filtered,
+                                  plot_colors = plot_colors)
       # setProgress(0.85, detail = "Event Frequency")
       # rv$ef <- stats_plot_event_frequency(event_file_path = rv$data$event_file_path, 
       #                                     factor_order = input$factor_order,
@@ -185,14 +197,15 @@ mod_summarize_server <- function(input, output, session, f){
 
       file.copy(report_file, temp_report, overwrite = TRUE)
       # Set up parameters to pass to Rmd document
-      params <- list(rv = rv)
+      params <- list(rv = rv, 
+                     factor_order = input$factor_order)
 
       # Knit the document, passing in the `params` list, and eval it in a
       # child of the global environment (this isolates the code in the document
       # from the code in this app).
       out_dir <- file.path(f$project$path, "summary")
-      dir.create(out_dir)
-      rmarkdown::render(temp_report, output_dir = file.path(f$project$path, "summary"),
+      if(!file.exists(out_dir)) dir.create(out_dir)
+      rmarkdown::render(temp_report, output_dir = out_dir,
                         params = params,
                         envir = new.env(parent = globalenv()))
     })
@@ -242,9 +255,9 @@ mod_summarize_server <- function(input, output, session, f){
     req(rv$force)
     rv$force
   })
-  output$ton_survival <- renderPlot({
-    req(rv$ton_survival)
-    rv$ton_survival
+  output$ecdf <- renderPlot({
+    req(rv$ton_ecdf)
+    plot_grid(rv$ton_ecdf, rv$toff_ecdf)
   })
   output$ef <- renderPlot({
     req(rv$ef)

@@ -457,9 +457,38 @@ time_on_ecdf <- function(event_files_filtered, plot_colors){
       xlab("Time (ms)")+
       scale_color_manual(values = plot_colors)+
       theme_cowplot()+
-      theme(panel.grid = element_blank())
+      theme(panel.grid = element_blank(),
+            legend.position = "none")
   
 
+}
+#' Time Off ECDF
+#'
+#' @param event_files_filtered event data
+#' @param plot_colors user colors
+#'
+#' @return a ggplot
+time_off_ecdf <- function(event_files_filtered, plot_colors){
+  cum_freq_curves <-
+    event_files_filtered %>% 
+    split(.$conditions) %>% 
+    imap_dfr(~ .x %>% dplyr::summarize(conditions = .y,
+                                       time_off = unique(time_off_ms), 
+                                       ecdf = ecdf(time_off_ms)(unique(time_off_ms)))) 
+  
+  
+  ggplot(cum_freq_curves, aes(time_off, ecdf)) + 
+    geom_step(aes(color = conditions), size = 0.75)+
+    #coord_cartesian(c(0, 1000))+
+    #facet_grid(~myo)+
+    ggtitle("Time Off Cumulative Event Distributions")+
+    ylab("Cumulative Distribution")+
+    xlab("Time (ms)")+
+    scale_color_manual(values = plot_colors)+
+    theme_cowplot()+
+    theme(panel.grid = element_blank())
+  
+  
 }
 #' Time On Survival Analysis
 #'
@@ -639,8 +668,8 @@ correlations <- function(event_files_filtered, plot_colors){
     ylab('Time On (ms)')+
     xlab('Displacement (nm)')+
     ggtitle('Displacement vs Time On')+
-    stat_cor(method = "pearson", label.x.npc = 0.6)+
-    theme_linedraw(base_size = 14)+
+    stat_cor(method = "pearson", label.x.npc = "left", label.y.npc = "top")+
+    theme_linedraw(base_size = 12)+
     theme(panel.grid  = element_blank(),
           legend.position = 'none')
   
@@ -655,18 +684,17 @@ correlations <- function(event_files_filtered, plot_colors){
                          #  facet.by = "conditions",
                          add = "reg.line",  # Add regressin line
                          add.params = list(color = "conditions", fill = "grey", size = 1.25), # Customize reg. line
-                         conf.int = TRUE,
-  )+
-    facet_wrap(~conditions, ncol = 1)+
-    scale_y_log10()+
-    scale_x_log10()+
-    ylab('Time On (ms)')+
-    xlab('Time Off (ms)')+
-    ggtitle('Time On vs Time Off')+
-    stat_cor(method = "pearson", label.x.npc = 0.6)+
-    theme_linedraw(base_size = 14)+
-    theme(panel.grid  = element_blank(),
-          legend.position = 'none')
+                         conf.int = TRUE)+
+                         facet_wrap(~conditions, ncol = 1)+
+                         scale_y_log10()+
+                         scale_x_log10()+
+                         ylab('Time On (ms)')+
+                         xlab('Time Off (ms)')+
+                         ggtitle('Time On vs Time Off')+
+                         stat_cor(method = "pearson", label.x.npc = "left", label.y.npc = "top")+
+                         theme_linedraw(base_size = 12)+
+                         theme(panel.grid  = element_blank(),
+                                legend.position = 'none')
   
   
   step_vs_off <- ggscatter(event_files_filtered,
@@ -686,8 +714,8 @@ correlations <- function(event_files_filtered, plot_colors){
     xlab('Displacement (nm)')+
     ylab('Time Off (ms)')+
     ggtitle('Displacement vs Time Off')+
-    stat_cor(method = "pearson", label.x.npc = 0.6)+
-    theme_linedraw(base_size = 14)+
+    stat_cor(method = "pearson", label.x.npc = "left", label.y.npc = "top")+
+    theme_linedraw(base_size = 12)+
     theme(panel.grid  = element_blank(),
           legend.position = 'none')
   
@@ -708,8 +736,8 @@ correlations <- function(event_files_filtered, plot_colors){
     ylab(expression(k[myo]))+
     ggtitle('ktrap vs kmyo')+
     scale_x_log10()+
-    stat_cor(method = "pearson", label.x.npc = 0.6)+
-    theme_linedraw(base_size = 14)+
+    stat_cor(method = "pearson", label.x.npc = "left", label.y.npc = "top")+
+    theme_linedraw(base_size = 12)+
     theme(panel.grid  = element_blank(),
           legend.position = 'none')
   
@@ -730,8 +758,8 @@ correlations <- function(event_files_filtered, plot_colors){
     scale_y_continuous(breaks = seq(-100, 100, by = 10))+
     ggtitle('Displacement vs kmyo')+
     #scale_x_log10()+
-    stat_cor(method = "pearson", label.x.npc = 0.6)+
-    theme_linedraw(base_size = 14)+
+    stat_cor(method = "pearson", label.x.npc = "left", label.y.npc = "top")+
+    theme_linedraw(base_size = 12)+
     theme(panel.grid  = element_blank(),
           legend.position = 'none')
   

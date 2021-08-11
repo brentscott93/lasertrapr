@@ -4,11 +4,11 @@ output:
   flexdashboard::flex_dashboard:
     orientation: rows
     vertical_layout: fill
-    logo: "`r system.file('app/www/lasertrapr-logo-small.ico', package = 'lasertrapr')`"
 editor_options: 
   chunk_output_type: inline
 params: 
   rv: NA
+  factor_order: NA
   
 ---
 
@@ -22,7 +22,7 @@ library(tidyverse)
 library(cowplot)
 library(ggpubr)
 library(DT)
-#library(plotly)
+library(plotly)
 
 ```
     
@@ -34,8 +34,11 @@ Row
 ### Summary Table
     
 ```{r, fig.width=14, fig.height=21}
-   params$rv$data$summary %>% 
-  dplyr::mutate(across(where(is.numeric), round, digits = 1)) %>% 
+  
+d <- params$rv$data$summary
+d$conditions <- factor(d$conditions, levels = params$factor_order) 
+d %>% 
+  dplyr::mutate(across(where(is.numeric), round, digits = 2)) %>% 
      dplyr::select( "Conditions" = conditions,
                     "Step Size (nm)" = displacement_avg,
                     "SE Step" = displacement_se,
@@ -67,46 +70,49 @@ Row {.tabset .tabset-fade}
     
 ### Step Size
     
-```{r, fig.height = 8, fig.width=14}
+```{r, fig.height = 6, fig.width=12}
 params$rv$step
 ```
     
 ### Force
 
-```{r, fig.height = 8, fig.width=14}
+```{r, fig.height = 6, fig.width=12}
  params$rv$force
 ```
 
 
 ### Time On
 
-```{r, fig.height = 8, fig.width=14}
- params$rv$ton
+```{r, fig.height = 6, fig.width=12}
+params$rv$ton
 ```
 
 
 ### Time Off
 
-```{r, fig.height = 8, fig.width=14}
+```{r, fig.height = 6, fig.width=12}
  params$rv$toff
 ```
 
 ECDF
 =============================
-```{r}
-params$rv$ton_survival
+
+```{r, fig.height = 6, fig.width=14}
+plot_grid(params$rv$ton_ecdf, params$rv$toff_ecdf, rel_widths = c(0.4, 0.6))
 ```
+
+
 
 
 Correlations
 ==============================
-```{r}
+```{r fig.width=24, fig.height=8}
 params$rv$correlations
 ```
 
 Stiffness
 ==============================
-```{r}
+```{r  fig.width=14, fig.height=8}
 params$rv$stiffness
 ```
 
