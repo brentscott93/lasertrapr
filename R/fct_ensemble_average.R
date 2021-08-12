@@ -90,11 +90,12 @@ prep_ensemble <- function(trap_selected_project,
                                                      "back_signal_ratio",
                                                      "is_positive"))
     measured_events %<>% filter(keep == TRUE, 
+                                event_user_excluded == FALSE
                                # is_positive = TRUE
                                 )
     event_ensembles <- list()
     for(event in seq_len(nrow(measured_events))){
-      print(paste0("event=", event))
+      #print(paste0("event=", event))
       start <- measured_events$cp_event_start_dp[[event]]
       stop <- measured_events$cp_event_stop_dp[[event]]
       event_chunk <- trap_trace[start:stop]
@@ -159,4 +160,80 @@ prep_ensemble <- function(trap_selected_project,
     ensemble_path <- file.path(path, "ensemble-data.csv")
     data.table::fwrite(ensemble_data, file = ensemble_path, sep = ",")
   }
+}
+
+
+
+#' Title
+#'
+#' @param trap_selected_project 
+#' @param hz 
+#' @param is_shiny 
+#'
+#' @return
+#' @export
+#'
+#' @examples
+avg_ensembles <- function(f, is_shiny = TRUE){
+  
+  con <-  list_dir(path = f$project$path)
+  con <- con[grep("summary", con$name, invert = TRUE, ignore.case = TRUE),]$name
+  
+  ee_forward_data <- list()
+  ee_backwards_data <- list()
+  for(i in 1:length(con)){
+    
+     
+    ee_paths <- list.files(path = file.path(f$project$path, con),
+                           recursive = TRUE,
+                           full.names = TRUE, 
+                           pattern = "ensemble-data.csv")
+    
+    ee_con_data <- lapply(ee_paths , ee_fread) %>% 
+      data.table::rbindlist()
+    
+    ee_forward_data[[i]] <- ee_con_data[direction == 'forward',  
+                                        .(avg = mean(data, na.rm = T),
+                                          n = .N,
+                                          sd = sd(data, na.rm = T),
+                                          se = plotrix::std.error(data, na.rm = T)), 
+                                        by = .(conditions, direction, ensemble_index, forward_backward_index)]
+    
+    ee_backwards_data[[i]] <- ee_con_data[direction == 'backwards',  
+                                          .(avg = mean(data, na.rm = T),
+                                            n = .N,
+                                            sd = sd(data, na.rm = T),
+                                            se = plotrix::std.error(data, na.rm = T)), 
+                                          by = .(conditions, direction, ensemble_index, forward_backward_index)]
+    rm(ee_con_data)
+    
+  }
+  ee_backwards_data <- data.table::rbindlist(ee_backwards_data)
+  ee_forward_data <- data.table::rbindlist(ee_forward_data)
+  forward_backward <- rbind(ee_forward_data, ee_backwards_data)
+  
+  ggplot(data = forward_backward)+
+    geom_point(aes(x = forward_backward_index, y = avg, color = conditions))+
+    facet_wrap(~conditions)+
+    theme_cowplot()
+  
+  #ee_forward_data <- data.table::rbindlist(ee_forward_data)
+  # 
+  # forward_avg <-
+  #   ee_forward_data %>% 
+  #   as_tibble() %>% 
+  #   dplyr::select(conditions, ensemble_index, avg, sd, se, n) %>% 
+  #   group_by(conditions) %>% 
+  #   tidyr::nest(ensemble = c(ensemble_index, avg, sd, se, n))
+  # 
+  #ee_backwards_data <- data.table::rbindlist(ee_backwards_data)
+  # 
+  # backwards_avg <- 
+  #   ee_backwards_data %>% 
+  #   as_tibble() %>% 
+  #   dplyr::select(conditions, ensemble_index, avg, sd, se, n) %>% 
+  #   group_by(conditions) %>% 
+  #   tidyr::nest(ensemble = c(ensemble_index, avg, sd, se, n))
+  
+  
 }

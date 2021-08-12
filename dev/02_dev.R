@@ -76,6 +76,7 @@ golem::add_utils( "theme" )
 golem::add_fct( "calibrations" ) 
 golem::add_fct( "mini_ensemble_analyzer" ) 
 golem::add_fct( "ensemble_average" ) 
+golem::add_utils( "ensemble_average" )
 
 ## External resources
 ## Creates .js and .css files at inst/app/www

@@ -35,9 +35,11 @@ mod_summarize_ui <- function(id){
           title = 'Summary Table',
           # The id lets us use input$tabset1 on the server to find the current tab
           id = ns("project_summary"),
-
-                  DT::DTOutput(ns('table')) %>% shinycssloaders::withSpinner(type = 8, color = '#373B38'),
-
+          fluidRow(
+            column(12, 
+                   DT::DTOutput(ns('table')) %>% shinycssloaders::withSpinner(type = 8, color = '#373B38'),
+                   br())
+            )
           )
         )
       ),

@@ -59,7 +59,10 @@ mod_ensemble_average_ui <- function(id){
                                       step = 0.25)),
                    column(2, actionButton(ns("avg_ensembles"), "Avg Ensembles"))
                  ),
-                 fluidRow(plotOutput(ns("forward_backward_ensembles")) %>% shinycssloaders::withSpinner(type = 8, color = "#373B38"))
+                 fluidRow(
+                   column(12, 
+                          plotOutput(ns("forward_backward_ensembles")) %>% shinycssloaders::withSpinner(type = 8, color = "#373B38"))
+                 )
                  )
              )
     ),
@@ -92,9 +95,22 @@ mod_ensemble_average_server <- function(input, output, session, f){
                     ms_2_skip = input$ms_2_skip,
                     hz = input$hz)
     })
-    showNotification("Ensembles Prepared")
+    showNotification("Ensembles Prepared", type= "message")
   })
- output$forward_backward_ensembles <- renderPlot({})
+  
+   ee_plot <- eventReactive(input$avg_ensembles, {
+     defend_if_null(f$project_input, ui = 'Please Select a Project', type = 'error')
+     defend_if_blank(f$project_input, ui = "Please Select a Project", type = "error")
+     withProgress(message = "Averaging Ensembles", {
+      p <- avg_ensembles(f = f)
+   })
+     showNotification("Ensembles Averaged", type = "message")
+     p
+   })
+ output$forward_backward_ensembles <- renderPlot({
+   req(ee_plot())
+   ee_plot()
+ })
  
 }
     
