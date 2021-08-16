@@ -182,7 +182,7 @@ avg_ensembles <- function(f, is_shiny = TRUE){
   ee_forward_data <- list()
   ee_backwards_data <- list()
   for(i in 1:length(con)){
-    
+    if(is_shiny) incProgress(1/(length(con)*2), detail = paste0("Reading ensembles from ", con[[i]]))
      
     ee_paths <- list.files(path = file.path(f$project$path, con),
                            recursive = TRUE,
@@ -192,30 +192,42 @@ avg_ensembles <- function(f, is_shiny = TRUE){
     ee_con_data <- lapply(ee_paths , ee_fread) %>% 
       data.table::rbindlist()
     
-    ee_forward_data[[i]] <- ee_con_data[direction == 'forward',  
-                                        .(avg = mean(data, na.rm = T),
+    ee_forward_data[[i]] <- ee_con_data[direction == "forward",  
+                                        .(avg = mean(data, na.rm = TRUE),
                                           n = .N,
-                                          sd = sd(data, na.rm = T),
-                                          se = plotrix::std.error(data, na.rm = T)), 
+                                          sd = sd(data, na.rm = TRUE),
+                                          se = plotrix::std.error(data, na.rm = TRUE)), 
                                         by = .(conditions, direction, ensemble_index, forward_backward_index)]
     
-    ee_backwards_data[[i]] <- ee_con_data[direction == 'backwards',  
-                                          .(avg = mean(data, na.rm = T),
+    ee_backwards_data[[i]] <- ee_con_data[direction == "backwards",  
+                                          .(avg = mean(data, na.rm = TRUE),
                                             n = .N,
-                                            sd = sd(data, na.rm = T),
-                                            se = plotrix::std.error(data, na.rm = T)), 
+                                            sd = sd(data, na.rm = TRUE),
+                                            se = plotrix::std.error(data, na.rm = TRUE)), 
                                           by = .(conditions, direction, ensemble_index, forward_backward_index)]
     rm(ee_con_data)
     
   }
+  if(is_shiny) incProgress(1/(length(con)*2), detail = paste0("Combining all data", con[[i]]))
   ee_backwards_data <- data.table::rbindlist(ee_backwards_data)
   ee_forward_data <- data.table::rbindlist(ee_forward_data)
   forward_backward <- rbind(ee_forward_data, ee_backwards_data)
   
+  if(is_shiny) incProgress(1/(length(con)*2), message = paste0("Plotting...", con[[i]]))
   ggplot(data = forward_backward)+
-    geom_point(aes(x = forward_backward_index, y = avg, color = conditions))+
-    facet_wrap(~conditions)+
-    theme_cowplot()
+    geom_point(aes(x = forward_backward_index, 
+                   y = avg, 
+                   color = conditions), 
+               alpha = 0.3,
+               shape = 16)+
+    facet_wrap(~conditions, scales = "free_x")+
+    xlab("Displacement (nm)")+
+    
+    theme_cowplot()+
+    theme(
+      strip.background = element_rect(fill = "transparent"),
+      legend.position = "none"
+    )
   
   #ee_forward_data <- data.table::rbindlist(ee_forward_data)
   # 

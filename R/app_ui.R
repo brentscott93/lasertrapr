@@ -31,8 +31,8 @@ app_ui <- function(request) {
           menuItem(text = 'Analyzers', icon = icon('microscope'),
            menuSubItem(text = 'HM-Model/Changepoint', tabName = 'hm_model'),
            menuSubItem(text = 'Mini-Ensemble', tabName = 'mini_ensemble')),
-          menuItem(text = 'Ensemble Average', tabName = 'ensemble_average', icon = icon('align-left')),
-          menuItem(text = 'Summarize', tabName = 'summarize', icon = icon('sort'))
+          menuItem(text = 'Summarize', tabName = 'summarize', icon = icon('sort')),
+          menuItem(text = 'Ensemble Average', tabName = 'ensemble_average', icon = icon('align-left'))
          
           #menuItem(text = 'Mean-Variance', tabName = 'mv')
         
