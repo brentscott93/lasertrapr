@@ -164,6 +164,130 @@ get_info_table <- function(f_date, f_date_input){
   }
 }
 
+t1 <- fread("~/lasertrapr/project_myoV-phosphate/myoV-WT_pH-7.0_0mM-Pi/2020-06-25/obs-14/trap-data.csv")
+t2 <- fread("~/lasertrapr/project_myoV-phosphate/myoV-WT_pH-7.0_0mM-Pi/2020-06-25/obs-14/measured-events.csv")
+
+#' Plot trap data with ID'd events
+#'
+#' @param obs_path 
+#' @param time_period_dp 
+#' @param color 
+#' @param axes 
+#'
+#' @return
+#' @export
+#'
+#' @examples
+plot_overlay <- function(obs_path, time_period_dp, color){
+   # obs_path <- "~/lasertrapr/project_myoV-phosphate/myoV-WT_pH-7.0_0mM-Pi/2020-06-25/obs-14"
+   # time_period_dp <- c(500/5000, 25000/5000)
+   # color = "red"
+  options_path <-  measured_events <-  list.files(obs_path,
+                                                  pattern = "options.csv",
+                                                  full.names = TRUE)
+  
+  options <- data.table::fread(options_path)
+  
+  hz <- options$hz
+  
+  time_period_dp <- c(round_any(time_period_dp[[1]], 1/hz, f = round),
+                      round_any(time_period_dp[[2]], 1/hz, f = round))
+  
+  time_period_dp <- time_period_dp*hz
+   
+   nrows <- length(time_period_dp[[1]]:time_period_dp[[2]]) 
+   if(time_period_dp[[1]] <= 1){
+     nskip <- 0 
+    } else {
+     nskip <- time_period_dp[[1]] - 1
+    }
+  
+   trap_data_path <- list.files(obs_path,
+                           pattern = "trap-data.csv",
+                           full.names = TRUE)
+   
+   measured_events_path <-  list.files(obs_path,
+                                  pattern = "measured-events.csv",
+                                  full.names = TRUE)
+   
+  
+   
+   trap_data <- data.table::fread(trap_data_path, 
+                                  select = "processed_bead")
+   trap_data <- trap_data[time_period_dp[[1]]:time_period_dp[[2]],]
+   
+   trap_data %<>% mutate(real_time_index = time_period_dp[[1]]:time_period_dp[[2]],
+                       new_time_index = 1:nrow(trap_data),
+                       population = "baseline")
+   
+   measured_events <- data.table::fread(measured_events_path)
+   measured_events <- dplyr::filter(measured_events, 
+                                    start >= time_period_dp[[1]],
+                                    stop <= time_period_dp[[2]])
+   
+   events <- list()
+   for(i in 1:nrow(measured_events)){
+      events[[i]] <- 
+        trap_data %>% 
+          dplyr::filter(real_time_index >= measured_events$start[[i]],
+                        real_time_index <= measured_events$stop[[i]]) %>% 
+          mutate(population = paste0("event", measured_events$index[[i]])) %>% 
+        dplyr::select(new_time_index, 
+                      real_time_index, 
+                      processed_bead, 
+                      population)
+   }
+
+events <- data.table::rbindlist(events)
+  
+all_data <- 
+  trap_data %>% 
+   dplyr::select(new_time_index, 
+                 real_time_index, 
+                 processed_bead, 
+                 population) %>% 
+  rbind(events)
+
+
+ggplot(all_data, aes(new_time_index/hz, processed_bead, color = population))+
+  geom_line()+
+  scale_color_manual(values = c("black", rep(color, nrow(measured_events))))+
+  xlab("")+
+  scale_x_continuous(breaks = seq(1, 100, 1))+
+  ylab("")+
+  scale_y_continuous(breaks = seq(-100, 100, by = 20))+
+  theme_minimal_grid()+
+  theme(
+    legend.position = "none",
+    axis.text = element_blank()
+  )
+
+  #  if(axes){
+  #   par(mar=c(2, 2, 2, 2))
+  #   plot(trap_data$processed_bead, type = "l", axes = FALSE, xlab = "", ylab = "")
+  #   axis(2, seq(-100, 100, by = 20))
+  #   axis(1)
+  #   box(bty = "l", lwd = 1.1)
+  # }  else {
+  #   par(mar=c(0, 0, 0, 0))
+  #   plot(trap_data$processed_bead, type = "l", axes = FALSE, xlab = "", ylab = "")
+  # }
+  # 
+  # for(i in 1:nrow(measured_events)){
+  #  start <- measured_events$cp_event_start_dp[[i]]
+  #  stop <- measured_events$cp_event_stop_dp[[i]]
+  #  event_data <-  trap_data[start:stop,]
+  #  lines(start:stop, event_data$processed_bead, col = "red", lwd = 1.25)
+  # }
+}
+    
+    
+    
+    
+    
+
+
+##########################################################################################################################################
 
 
 #' Stops reactivity in shiny app if expression is TRUE

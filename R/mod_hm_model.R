@@ -136,8 +136,9 @@ mod_hm_model_ui <- function(id){
     fluidRow(
       column(12,
       box(width = NULL, title = 'Analyzed Data', collapsible = T, collapsed = T, 
-          actionButton(ns("review_options"), "Review Options"),
-          dygraphs::dygraphOutput(ns('overlay_dygraph'), height = '400px') %>% shinycssloaders::withSpinner(type = 8, color = "#373B38")
+        actionButton(ns("review_options"), "Review Options"),
+        actionButton(ns("snapshot"), "", icon = icon("camera")),
+        dygraphs::dygraphOutput(ns('overlay_dygraph'), height = '400px') %>% shinycssloaders::withSpinner(type = 8, color = "#373B38")
     )
       )
     # ) #rowclose
@@ -596,6 +597,51 @@ mod_hm_model_server <- function(input, output, session, f){
       )
     })
     
+    observeEvent(input$snapshot, {
+      showModal(
+        modalDialog(
+          title = "Snapshot",
+          footer = tagList(modalButton("Cancel"), actionButton(ns("save_plot_overlay"), "Save")),
+          size = "l",
+             fluidRow(
+               column(2,
+                      colourpicker::colourInput(ns("export_plot_event_color"),
+                                                label = "Events Color",
+                                                value = "red",
+                                                showColour = "both"),
+               ),
+               column(4, 
+                      sliderInput(ns("export_plot_height"),
+                                  label = "Height (in)",
+                                  min = 0,
+                                  max = 20,
+                                  step = 0.5,
+                                  value = 2.5),
+               ), 
+               column(4, 
+                      sliderInput(ns("export_plot_width"),
+                                  label = "Width (in)",
+                                  min = 0,
+                                  max = 50,
+                                  step = 1,
+                                  value = 18),
+               ),
+               column(2, 
+                      div(style = "margin-top: 20px;",
+                        checkboxInput(ns("save_as_gg"), 
+                                      "Save as ggplot?", 
+                                      FALSE)
+                      )
+               
+               )
+             ),
+             fluidRow(
+               plotOutput(ns("export_ggplot"))
+             )
+        )
+      )
+    })
+    
     observeEvent(input$set_review_options, {
       ro$front_signal_ratio <- input$front_signal_ratio
       ro$back_signal_ratio <- input$back_signal_ratio
@@ -614,7 +660,55 @@ mod_hm_model_server <- function(input, output, session, f){
       removeModal()
       shinyjs::click("view_results")
     })
-  
+ 
+    observe({
+    output$export_ggplot <- renderPlot(height = 175, {
+      plot_overlay(obs_path = f$obs$path,
+                   time_period_dp = input$overlay_dygraph_date_window,
+                   color = input$export_plot_event_color)
+    })
+    
+    })
+    
+    observeEvent(input$save_plot_overlay,{
+      
+      dir_summary <- file.path(f$project$path, "summary")
+      if(!dir.exists(dir_summary)) dir.create(dir_summary)
+      
+      dir_fig <- file.path(dir_summary, "figures")
+      if(!dir.exists(dir_fig)) dir.create(dir_fig)
+      
+      file_name <- file.path(dir_fig, 
+                             paste0(
+                              f$conditions$name,
+                              "_",
+                              f$date$name,
+                              "_",
+                              f$obs$name,
+                              "_",
+                              round(input$overlay_dygraph_date_window[[1]], 4),
+                              "-",
+                              round(input$overlay_dygraph_date_window[[2]], 4)
+                              )
+                             )
+      
+      gg <- plot_overlay(obs_path = f$obs$path,
+                         time_period_dp = input$overlay_dygraph_date_window,
+                         color = input$export_plot_event_color)
+                              
+      if(input$save_as_gg){
+        saveRDS(gg, file = paste0(file_name, ".rds"))
+      } else {
+        cowplot::ggsave2(file = paste0(file_name, ".pdf"),
+                         plot = gg,
+                         height =  as.numeric(input$export_plot_height),
+                         width = as.numeric(input$export_plot_width),
+                         units = "in")
+      }
+      showNotification("Plot Saved", type = "message")
+      removeModal()
+    })
+    
 }
     
 ## To be copied in the UI
