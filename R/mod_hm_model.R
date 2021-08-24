@@ -78,8 +78,13 @@ mod_hm_model_ui <- function(id){
           )), 
       fluidRow( 
         column(9, 
-             box(width = NULL, title = 'MV Plot',
+             tabBox(width = NULL, title = 'Insights', side = 'right',
+               tabPanel("MV Plot",
                  plotOutput(ns('mv_by_state')) %>% shinycssloaders::withSpinner(type = 8, color = "#373B38")
+               ),
+               tabPanel("Numbers",
+                        plotOutput(ns("numbers"))
+                        )
              )
         ), 
         column(3, 
@@ -707,6 +712,57 @@ mod_hm_model_server <- function(input, output, session, f){
       }
       showNotification("Plot Saved", type = "message")
       removeModal()
+    })
+    
+    output$numbers <- renderPlot({
+      
+      req(trap_data())
+      measured_events <- trap_data()$events
+      step <- 
+        ggplot()+
+        geom_dotplot(data = measured_events, aes(displacement_nm),
+                     fill = "grey40", 
+                     binwidth = 2)+
+        geom_vline(aes(xintercept = mean(measured_events$displacement_nm)), linetype = "dashed")+
+        geom_label(aes(mean(measured_events$displacement_nm), 
+                       y = 1, 
+                       label = paste0("bar(x)==", round(mean(measured_events$displacement_nm), 1))),
+                   parse = TRUE,
+                   size = 6)+
+        ggtitle("Displacements")+
+        xlab("nanometers")+
+        ylab('')+
+        # scale_x_continuous(breaks = sort(c(seq(-100, 100, by = 20), round(mean(measured_events$displacement_nm), 1))))+
+        cowplot::theme_cowplot(18)+
+        theme(
+          axis.text.y = element_blank(),
+          axis.line.y = element_blank(),
+          axis.ticks.y = element_blank()
+        )
+      
+      
+      time_on <- 
+        ggplot()+
+        geom_dotplot(data = measured_events, aes(time_on_ms),
+                     fill = "grey40", 
+                     binwidth = 10)+
+        geom_vline(aes(xintercept = mean(measured_events$time_on_ms)), linetype = "dashed")+
+        geom_label(aes(mean(measured_events$time_on_ms), y = 1, 
+                       label = paste0("bar(x)==", round(mean((measured_events$time_on_ms), 0)))),
+                   parse = TRUE,
+                   size = 6)+
+        ggtitle("Time On")+
+        xlab("milliseconds")+
+        ylab('')+
+        cowplot::theme_cowplot(18)+
+        theme(
+          axis.text.y = element_blank(),
+          axis.line.y = element_blank(),
+          axis.ticks.y = element_blank()
+        )
+      
+      
+      cowplot::plot_grid(step, time_on)
     })
     
 }
