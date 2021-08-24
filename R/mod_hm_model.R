@@ -632,7 +632,7 @@ mod_hm_model_server <- function(input, output, session, f){
                                   value = 18),
                ),
                column(2, 
-                      div(style = "margin-top: 20px;",
+                      div(style = "padding-top: 30px;",
                         checkboxInput(ns("save_as_gg"), 
                                       "Save as ggplot?", 
                                       FALSE)
@@ -641,7 +641,7 @@ mod_hm_model_server <- function(input, output, session, f){
                )
              ),
              fluidRow(
-               plotOutput(ns("export_ggplot"))
+               plotOutput(ns("export_ggplot"), height = "175px")
              )
         )
       )
