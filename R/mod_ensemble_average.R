@@ -4,8 +4,8 @@
 #'
 #' @param id,input,output,session Internal parameters for {shiny}.
 #'
-#' @noRd 
 #'
+#' @noRd 
 #' @importFrom shiny NS tagList 
 mod_ensemble_average_ui <- function(id){
   ns <- NS(id)
@@ -43,10 +43,10 @@ mod_ensemble_average_ui <- function(id){
              box(width = NULL,
                  title = "Average Ensembles",
                  fluidRow(
-                   column(6, sliderInput(ns("length_of_ensembles"), "Ensemble Length (sec)", min = 0.1, max = 2, step = 0.05)),
-                   column(2, numericInput(ns("hz"), "Sampling Frequency (hz)", value = 5000)),
-                   column(2, actionButton(ns("options"), "Options"), width = "100%"),
-                   column(2, actionButton(ns("avg_ensembles"), "Avg Ensembles", width = "100%"))
+                   column(6, sliderInput(ns("length_of_ensembles"), "Ensemble Length (sec)", min = 0.1, max = 2, step = 0.05, value = 1)),
+                   column(2, numericInput(ns("hz2"), "Sampling Frequency (hz)", value = 5000)),
+                   column(2, actionButton(ns("options"), "Options", width = "100%", style  = "margin-top: 25px")),
+                   column(2, actionButton(ns("avg_ensembles"), "Avg Ensembles", width = "100%", style  = "margin-top: 25px"))
                  ),
                  fluidRow(
                    column(12, 
