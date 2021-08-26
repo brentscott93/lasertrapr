@@ -164,11 +164,10 @@ prep_ensemble <- function(trap_selected_project,
 
 
 
-#' Title
+#' Ensemble Average
 #'
-#' @param trap_selected_project 
-#' @param hz 
-#' @param is_shiny 
+#' @param trap_selected_project full path to currently selected project
+#' @param is_shiny logical. is function being used in shiny or not. 
 #'
 #' @return
 #' @export
@@ -212,22 +211,23 @@ avg_ensembles <- function(f, is_shiny = TRUE){
   ee_backwards_data <- data.table::rbindlist(ee_backwards_data)
   ee_forward_data <- data.table::rbindlist(ee_forward_data)
   forward_backward <- rbind(ee_forward_data, ee_backwards_data)
-  
-  if(is_shiny) incProgress(1/(length(con)*2), message = paste0("Plotting...", con[[i]]))
-  ggplot(data = forward_backward)+
-    geom_point(aes(x = forward_backward_index, 
-                   y = avg, 
-                   color = conditions), 
-               alpha = 0.3,
-               shape = 16)+
-    facet_wrap(~conditions, scales = "free_x")+
-    xlab("Displacement (nm)")+
-    
-    theme_cowplot()+
-    theme(
-      strip.background = element_rect(fill = "transparent"),
-      legend.position = "none"
-    )
+
+   return(forward_backward)
+  #if(is_shiny) incProgress(1/(length(con)*2), message = paste0("Plotting...", con[[i]]))
+  # ggplot(data = forward_backward)+
+  #   geom_point(aes(x = forward_backward_index, 
+  #                  y = avg, 
+  #                  color = conditions), 
+  #              alpha = 0.3,
+  #              shape = 16)+
+  #   facet_wrap(~conditions, scales = "free_x")+
+  #   xlab("Displacement (nm)")+
+  #   
+  #   theme_cowplot()+
+  #   theme(
+  #     strip.background = element_rect(fill = "transparent"),
+  #     legend.position = "none"
+  #   )
   
   #ee_forward_data <- data.table::rbindlist(ee_forward_data)
   # 
@@ -247,5 +247,29 @@ avg_ensembles <- function(f, is_shiny = TRUE){
   #   group_by(conditions) %>% 
   #   tidyr::nest(ensemble = c(ensemble_index, avg, sd, se, n))
   
+  
+}
+
+
+fit_ensembles <- function(data, fit, start_list, hz){
+  
+  forward_avg <- 
+    data %>% 
+      filter(direction == "forward") %>% 
+      as_tibble() %>% 
+      dplyr::select(conditions, ensemble_index, avg, sd, se, n) %>% 
+      group_by(conditions) %>% 
+      tidyr::nest(ensemble = c(ensemble_index, avg, sd, se, n)) %>% 
+      mutate(ensemble_k1 = map(ensemble, ~prep_forward_ensemble_exp(., hz = hz)),
+             avg_tail = map_dbl(ensemble, ~mean(tail(.$avg, -100))),
+             n = map(ensemble, ~unique(.$n)),
+             k1_nls = map(ensemble_k1, ~nls(avg ~ (d1*(1 - exp(-k0 * time))) + (d2*(1 - exp(-k1 * time))),
+                                                         data = .x,
+                                                         start = start_list,
+                                                         control = nls.control(maxiter = 10000, minFactor = 1/5000000))),
+                          predict_k1 = map(k1_nls, ~predict(.x, newdata=data.frame(time=seq(0, 2, by=1/hz))) %>%
+                                             as_tibble() %>%
+                                             mutate(x = seq(0, 2, by=1/hz))),
+                          k1_df = map(k1_nls, broom::tidy))
   
 }

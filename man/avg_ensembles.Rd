@@ -2,20 +2,18 @@
 % Please edit documentation in R/fct_ensemble_average.R
 \name{avg_ensembles}
 \alias{avg_ensembles}
-\title{Title}
+\title{Ensemble Average}
 \usage{
 avg_ensembles(f, is_shiny = TRUE)
 }
 \arguments{
-\item{is_shiny}{}
+\item{is_shiny}{logical. is function being used in shiny or not.}
 
-\item{trap_selected_project}{}
-
-\item{hz}{}
+\item{trap_selected_project}{full path to currently selected project}
 }
 \value{
 
 }
 \description{
-Title
+Ensemble Average
 }

@@ -43,21 +43,10 @@ mod_ensemble_average_ui <- function(id){
              box(width = NULL,
                  title = "Average Ensembles",
                  fluidRow(
-                   column(5, 
-                          sliderInput(ns("forward_signal_ratio"), 
-                                      "Forward Signal Ratio",
-                                      value = 0, 
-                                      min = 0 , 
-                                      max = 3, 
-                                      step = 0.25)),
-                   column(5, 
-                          sliderInput(ns("backwards_signal_ratio"), 
-                                      "Backwards Signal Ratio",
-                                      value = 0, 
-                                      min = 0 , 
-                                      max = 3, 
-                                      step = 0.25)),
-                   column(2, actionButton(ns("avg_ensembles"), "Avg Ensembles"))
+                   column(6, sliderInput(ns("length_of_ensembles"), "Ensemble Length (sec)", min = 0.1, max = 2, step = 0.05)),
+                   column(2, numericInput(ns("hz"), "Sampling Frequency (hz)", value = 5000)),
+                   column(2, actionButton(ns("options"), "Options"), width = "100%"),
+                   column(2, actionButton(ns("avg_ensembles"), "Avg Ensembles", width = "100%"))
                  ),
                  fluidRow(
                    column(12, 
@@ -67,12 +56,12 @@ mod_ensemble_average_ui <- function(id){
              )
     ),
     fluidRow(
-      column(6, 
-             box(width = NULL, 
-                 title = "Forward Fits")),
-      column(6, 
-             box(width = NULL, 
-                 title = "Backwards Fit"))
+      # column(6, 
+      #        box(width = NULL, 
+      #            title = "Forward Fits")),
+      # column(6, 
+      #        box(width = NULL, 
+      #            title = "Backwards Fit"))
     )
   )
 }
@@ -98,18 +87,106 @@ mod_ensemble_average_server <- function(input, output, session, f){
     showNotification("Ensembles Prepared", type= "message")
   })
   
-   ee_plot <- eventReactive(input$avg_ensembles, {
+   ee_data <- eventReactive(input$avg_ensembles, {
      defend_if_null(f$project_input, ui = 'Please Select a Project', type = 'error')
      defend_if_blank(f$project_input, ui = "Please Select a Project", type = "error")
+    
      withProgress(message = "Averaging Ensembles", {
-      p <- avg_ensembles(f = f)
+       ee_data <- avg_ensembles(f= f)
+       if(is.null(input$fit) || input$fit == "none"){
+          showNotification("Ensembles Averaged", type = "message")
+          ee_data
+       } else {
+         ee_fits <- fit_ensembles(data = ee_data,
+                                  fit = input$fit, 
+                                  start_list = start_list, 
+                                  hz = input$hz)
+         showNotification("Ensembles Averaged", type = "message")
+         ee_fits
+       }
+     })
+     
    })
-     showNotification("Ensembles Averaged", type = "message")
-     p
+   
+   start_list <- reactiveValues(
+     d1 = 4, 
+     d2 = 2, 
+     k0 = 250, 
+     k1 = 50,
+     k2 = 10
+   )
+   
+   observeEvent(input$set_options, {
+     start_list$d1 <- input$d1
+     start_list$d2 <- input$d2
+     start_list$k0 <- input$k0
+     start_list$k1 <- input$k1
+     start_list$k2 <- input$k2
    })
+   observeEvent(input$options,{
+     showModal(
+       modalDialog(
+         title = "Options",
+         footer = tagList(modalButton("Cancel"), actionButton(ns("set_options"), "OK")),
+         size = "s",
+         radioButtons(ns("fit"), 
+                      "Fit?",
+                      choices = c("none", "1-exp", "2-exp"),
+                      selected = "none",
+                      inline = TRUE),
+         h4(id=ns("starting_title"), "Enter Starting Values:"),
+        
+         numericInput(ns("d1"), "d1", value = start_list$d1 ),
+         numericInput(ns("d2"), "d2", value = start_list$d2),
+         
+      
+         numericInput(ns("k0"), "k0", value = start_list$k0),
+         numericInput(ns("k1"), "k1", value = start_list$k1),
+         numericInput(ns("k2"), "k2", value = start_list$k2),
+        
+       )
+     )
+   })
+   observe({
+     if(is.null(input$fit) || input$fit == "none"){
+       shinyjs::hide("d1")
+       shinyjs::hide("d2")
+       shinyjs::hide("k0")
+       shinyjs::hide("k1")
+       shinyjs::hide("k2")
+       shinyjs::hide("starting_title")
+     } else if(input$fit == "1-exp") {
+       shinyjs::show("d1")
+       shinyjs::show("d2")
+       shinyjs::hide("k0")
+       shinyjs::show("k1")
+       shinyjs::show("k2")
+       shinyjs::show("starting_title")
+       } else  {
+         shinyjs::show("d1")
+         shinyjs::show("d2")
+         shinyjs::show("k0")
+         shinyjs::show("k1")
+         shinyjs::show("k2")
+         shinyjs::show("starting_title")
+       }
+})
+   
  output$forward_backward_ensembles <- renderPlot({
-   req(ee_plot())
-   ee_plot()
+   req(ee_data())
+   ggplot(data = ee_data())+
+     geom_point(aes(x = forward_backward_index, 
+                    y = avg, 
+                    color = conditions), 
+                alpha = 0.3,
+                shape = 16)+
+     facet_wrap(~conditions, scales = "free_x")+
+     xlab("Displacement (nm)")+
+     theme_cowplot()+
+     theme(
+       strip.background = element_rect(fill = "transparent"),
+       legend.position = "none"
+     )
  })
  
 }
