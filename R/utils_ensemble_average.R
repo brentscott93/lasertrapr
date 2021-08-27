@@ -33,14 +33,14 @@ prep_backwards_ensemble_exp <- function(x, hz){
 #' @export
 #'
 #' @examples
-drc_ensemble_average_self_starter <- function(exp2 = TRUE){
+drc_forward_ensemble_average_fit <- function(exp2 = TRUE){
   
   if(exp2){
     # binding_rates <- function(molar_conc, k_adp, k_atp){
     #   (k_adp + (k_atp*molar_conc)) / (k_atp*molar_conc*k_adp)
     # }
     
-    ensemble_average_fit <- function(time_x, d1, d2, k0, k1){
+    ensemble_average_2exp <- function(time_x, d1, d2, k0, k1){
       (d1*(1 - exp(-k0 * time_x))) + (d2*(1 - exp(-k1 * time_x)))
     }
     
@@ -49,17 +49,32 @@ drc_ensemble_average_self_starter <- function(exp2 = TRUE){
     #   binding_rates(molar_conc = x, k_adp = parm[,1], k_atp = parm[,2])
     # }
     fct <- function(x, parm) {
-      binding_rates(time_x = x, d1 = parm[,1], d1 = parm[,2], k0 = d1 = parm[,3], k1 =d1 = parm[,4])
+      ensemble_average_2exp(time_x = x, d1 = parm[,1], d2 = parm[,2], k0 = parm[,3], k1 = parm[,4])
     }
     
-    
     ssfct <- function(data){
-      k_adp <- 500
-      k_atp <- 2*10^6
+      x <- data[, 1]
+      y <- data[, 2]
       
+      d1 <- mean(x[5:15])
+      d2 <- mean(tail(y)) - d1
+      
+      k0 <- 
+      k1 <- 
+        
+        
       start <- c(k_adp, k_atp)
       return(start)
     }
+  
+  
+    # ssfct <- function(data){
+    #   k_adp <- 500
+    #   k_atp <- 2*10^6
+    #   
+    #   start <- c(k_adp, k_atp)
+    #   return(start)
+    # }
     names <- c("k_adp", "k_atp")
     text <- "xDP-release, xTP-binding"
     
