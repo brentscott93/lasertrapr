@@ -7,7 +7,7 @@
 #' @param f the reactiveValues list 'f' with all user selected folder info
 #' @param trap_obs obs folder numbers
 #'
-move_obs <- function(trap_selected_date, trap_selected_obs, trim_from, trim_to, f, trap_obs){
+move_obs <- function(trap_selected_date, trap_selected_obs, trim_from, trim_to, f, trap_obs, hz){
   withProgress(message = 'Moving Data', value = 0, max = 1, min = 0, {
     #for dev   # trap_selected_date <- '/Users/brentscott/Desktop/2020-01-07'
     #for dev    #trap_selected_obs <- "/Users/brentscott/Desktop/2020-01-07/obs-01"
@@ -29,8 +29,8 @@ move_obs <- function(trap_selected_date, trap_selected_obs, trim_from, trim_to, 
     path <- list_files(trap_selected_obs, pattern = 'trap-data.csv')
     data <- data.table::fread(path$path, sep = ",")
     
-    from <- as.integer(trim_from*5000)
-    to <- as.integer(trim_to*5000)
+    from <- as.integer(trim_from*hz)
+    to <- as.integer(trim_to*hz)
     to_move <- data[c(from:to),]
     
     to_move %<>% dplyr::mutate(obs = new_folder)
@@ -57,7 +57,7 @@ move_obs <- function(trap_selected_date, trap_selected_obs, trim_from, trim_to, 
 #' @param trim_to end index to delete
 #' @param f the reactiveValues list 'f' with all user selected folder info
 #'
-trim_obs <- function(trap_selected_obs, trim_from, trim_to, f){
+trim_obs <- function(trap_selected_obs, trim_from, trim_to, f, hz){
   
   #trap_grouped_file <- read.csv("/Users/brentscott/Desktop/myoV-WT_2ndConrtol _obs-01/grouped.csv")
   withProgress(message = "Trimming Data", min= 0, max = 1, value = 0.3, {
@@ -65,8 +65,8 @@ trim_obs <- function(trap_selected_obs, trim_from, trim_to, f){
     path <- list_files(trap_selected_obs, pattern = 'trap-data.csv')
     data <- data.table::fread(path$path, sep = ",")
     
-    from <- as.integer(trim_from*5000)
-    to <- as.integer(trim_to*5000)
+    from <- as.integer(trim_from*hz)
+    to <- as.integer(trim_to*hz)
     trimmed <- data[-c(from:to),]
     
     setProgress("Writing new 'grouped' file", value = 0.8)

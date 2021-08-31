@@ -10,14 +10,14 @@ mod_clean_data_ui <- function(id){
   ns <- NS(id)
   tagList(
    
-    fluidRow(
-      box(width = 12, title = "Selected Folders",
-          verbatimTextOutput(ns('selected_folders'))
-      ),
-      # box(width = 2, title = 'Load Data',
-      #        actionButton(ns('graph'), 'Graph', width = '100%')
-      # )
-    ),
+    # fluidRow(
+    #   box(width = 12, title = "Selected Folders",
+    #       verbatimTextOutput(ns('selected_folders'))
+    #   ),
+    #   # box(width = 2, title = 'Load Data',
+    #   #        actionButton(ns('graph'), 'Graph', width = '100%')
+    #   # )
+    # ),
     
     fluidRow(
       box(width = 9, title = "Graph Options", 
@@ -161,13 +161,13 @@ mod_clean_data_ui <- function(id){
       ) #ox close
     ),#row close
     
-    
+    fluidRow(
     box(title = "Data Trace", width = 12,
     fluidRow(column(12,
  
                dygraphs::dygraphOutput(ns("dygraph_clean")) %>% shinycssloaders::withSpinner(type = 8, color = "#373B38"),
   
-      ))), #col, row, box close
+      )))), #col, row, box close
     
         fluidRow(
           tabBox(id = ns('baseline_tab_box'), width = 8, 
@@ -406,7 +406,8 @@ mod_clean_data_server <- function(input, output, session, f){
              trim_from = trim_from(),
              trim_to = trim_to(),
              f = f,
-             trap_obs = all_obs)
+             trap_obs = all_obs,
+             hz = hz())
              # trap_files = trap_files(),
              # trap_selected_obs = f$obs$path,
              # dygraph_clean_date_window_1 = input$dygraph_clean_date_window[[1]],
@@ -599,39 +600,7 @@ mod_clean_data_server <- function(input, output, session, f){
     req(trap_data_trace())
     trap_data_trace()
   })
-# 
-#
-#   #########
-#
-  # move_from_index <- reactive({
-  #   req(trap_files())
-  #   start_of_file_indices <- seq(0,
-  #                                by = 5,
-  #                                length.out = nrow(trap_files()))
-  # 
-  #   move_files_from <- round_any(input$dygraph_clean_date_window[[1]],
-  #                                5,
-  #                                f = floor)
-  # 
-  #   from_index <- which(start_of_file_indices == move_files_from)
-  #   return(from_index)
-  # 
-  # })
 
-  # move_to_index <- reactive({
-  #   end_of_file_indices <- seq(5,
-  #                              by = 5,
-  #                              length.out = nrow(trap_files()))
-  # 
-  #   move_files_to <- round_any(input$dygraph_clean_date_window[[2]],
-  #                              5,
-  #                              f = ceiling)
-  # 
-  #   to_index <- which(end_of_file_indices == move_files_to)
-  #   return(to_index)
-  # })
-
-  #######
 output$move_files <- renderText({
   validate(need(trim_from(), 'Please load data to clean'))
   paste0("Move data from ",
@@ -642,14 +611,21 @@ output$move_files <- renderText({
          "s"
   )
 })
-#
+
+  hz <- reactive({
+    req(f$obs$path)
+    o <- list.files(path = f$obs$path,
+                    pattern = "options.csv",
+                    full.names = TRUE)
+    as.integer(data.table::fread(o, select = "hz")$hz)
+  })
   trim_from <- reactive({
-    try(round_any(input$dygraph_clean_date_window[[1]], 0.0002, f = round))
+    try(as.numeric(round_any(input$dygraph_clean_date_window[[1]], 1/hz(), f = round)))
   })
 
   trim_to <- reactive({
 
-    try(round_any(input$dygraph_clean_date_window[[2]], 0.0002, f = round))
+    try(as.numeric(round_any(input$dygraph_clean_date_window[[2]], 1/hz(), f = round)))
 
   })
 # 
@@ -691,7 +667,8 @@ output$move_files <- renderText({
         trim_obs(trap_selected_obs = f$obs$path,
                  trim_from = trim_from(),
                  trim_to = trim_to(),
-                 f = f)
+                 f = f, 
+                 hz = hz())
     rv$update_filter <- rv$update_filter + 1
     showNotification("Data trimmed. Graph will refresh.")
     shinyjs::click('graph')

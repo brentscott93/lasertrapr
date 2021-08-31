@@ -4,7 +4,7 @@
 \alias{trim_obs}
 \title{Delete selected data from observation}
 \usage{
-trim_obs(trap_selected_obs, trim_from, trim_to, f)
+trim_obs(trap_selected_obs, trim_from, trim_to, f, hz)
 }
 \arguments{
 \item{trap_selected_obs}{current selected observation}

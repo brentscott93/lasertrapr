@@ -10,7 +10,8 @@ move_obs(
   trim_from,
   trim_to,
   f,
-  trap_obs
+  trap_obs,
+  hz
 )
 }
 \arguments{

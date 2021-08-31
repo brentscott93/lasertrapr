@@ -80,7 +80,7 @@ split_obs <- function(input_data, project, conditions, date, threshold, hz = 500
       create_obs[[row]] <- dplyr::bind_rows(txts[go:halt])
     }
     
-    o <- data.fame(hz = hz)
+    o <- data.frame(hz = hz)
     setProgress(0.9, detail = "Saving Data")
     for(c in seq_along(create_obs)){
       if(c < 10){
