@@ -27,27 +27,100 @@ prep_backwards_ensemble_exp <- function(x, hz){
     mutate(time = sort(seq(0, by = -1/hz, along.with = ensemble_index)))
 }
 
+
+
+
+#' Title
+#'
+#' @return
+#' @export
+#'
+#' @examples
+drc_single_neg_exp <- function(){
+  
+  single_neg_exp <- function(time, a, c){
+    a * (1 - exp (- c * time))
+  }
+  
+  
+  fct <- function(x, parm) {
+    single_neg_exp(time = x, a = parm[,1], c = parm[,2])
+  }
+  
+  ssfct <- function(data){
+    x <- data[, 1]
+    y <- data[, 2]
+    
+    a <- mean(tail(y))
+    c <- 500
+    
+    
+    start <- c(a, c)
+    return(start)
+  }
+  names <- c("Plateua (a)", "Rate (c)")
+  text <- "Negative Single Exponential"
+  
+  ## Returning the function with self starter and names
+  returnList <- list(fct = fct, ssfct = ssfct, names = names, text = text)
+  class(returnList) <- "drcMean"
+  invisible(returnList)
+  
+}
+
+#' Title
+#'
+#' @return
+#' @export
+#'
+#' @examples
+drc_forward_ee_1exp <- function(){
+  
+  forward_ee_1exp <- function(time, d1, d2, k1){
+    d1 + d2 *(1 - exp (- k1 * time))
+  }
+  
+  
+  fct <- function(x, parm) {
+    forward_ee_1exp(time = x, d1 = parm[,1], d2 = parm[,2], k1 = parm[,3])
+  }
+  
+  ssfct <- function(data){
+    x <- data[, 1]
+    y <- data[, 2]
+    
+    d1 <- mean(y[1:5])
+    d2 <- mean(tail(y)) - d1
+    k1 <- 500    
+    
+    start <- c(d1, d2, k1)
+    return(start)
+  }
+  names <- c("d1", "d2", "k1")
+  text <- "Forward Ensemble Average 1-exp"
+  
+  ## Returning the function with self starter and names
+  returnList <- list(fct = fct, ssfct = ssfct, names = names, text = text)
+  class(returnList) <- "drcMean"
+  invisible(returnList)
+  
+}
+
+
+
 #' xDP-release, xTP-binding self-starter (fct) for drm
 #'
 #' @return
 #' @export
 #'
 #' @examples
-drc_forward_ensemble_average_fit <- function(exp2 = TRUE){
-  
-  if(exp2){
-    # binding_rates <- function(molar_conc, k_adp, k_atp){
-    #   (k_adp + (k_atp*molar_conc)) / (k_atp*molar_conc*k_adp)
-    # }
-    
+drc_forward_ee_2exp <- function(){
+ 
     ensemble_average_2exp <- function(time_x, d1, d2, k0, k1){
       (d1*(1 - exp(-k0 * time_x))) + (d2*(1 - exp(-k1 * time_x)))
     }
     
-  
-    # fct <- function(x, parm) {
-    #   binding_rates(molar_conc = x, k_adp = parm[,1], k_atp = parm[,2])
-    # }
+
     fct <- function(x, parm) {
       ensemble_average_2exp(time_x = x, d1 = parm[,1], d2 = parm[,2], k0 = parm[,3], k1 = parm[,4])
     }
@@ -55,59 +128,28 @@ drc_forward_ensemble_average_fit <- function(exp2 = TRUE){
     ssfct <- function(data){
       x <- data[, 1]
       y <- data[, 2]
-      
-      d1 <- mean(x[5:15])
+      df <- data.frame(x = x[1:100],
+                       y = y[1:100])
+      d1 <- mean(y[5:15])
       d2 <- mean(tail(y)) - d1
       
-      k0 <- 
-      k1 <- 
+      estimate_k0 <- drm(y~x, data = df, fct = drc_single_neg_exp())
+      k0 <- estimate_k0$coefficients[["Rate (c):(Intercept)"]]
+      estimate_k1 <- drm(y~x, data = df, fct = drc_forward_ee_1exp())
+      k1 <- estimate_k1$coefficients[["k1:(Intercept)"]]
         
         
-      start <- c(k_adp, k_atp)
+      start <- c(d1, d2, k0, k1)
       return(start)
     }
   
-  
-    # ssfct <- function(data){
-    #   k_adp <- 500
-    #   k_atp <- 2*10^6
-    #   
-    #   start <- c(k_adp, k_atp)
-    #   return(start)
-    # }
-    names <- c("k_adp", "k_atp")
-    text <- "xDP-release, xTP-binding"
+
+    names <- c("d1", "d2", "k0", "k1")
+    text <- "Forward Ensemble Average 2-exp"
     
     ## Returning the function with self starter and names
     returnList <- list(fct = fct, ssfct = ssfct, names = names, text = text)
     class(returnList) <- "drcMean"
     invisible(returnList)
-    
-  } else {
-  ######################################################################################3  
-    binding_rates <- function(molar_conc, k_adp, k_atp){
-      (k_adp + (k_atp*molar_conc)) / (k_atp*molar_conc*k_adp)
-    }
-    
-    
-    fct <- function(x, parm) {
-      binding_rates(molar_conc = x, k_adp = parm[,1], k_atp = parm[,2])
-    }
-    
-    ssfct <- function(data){
-      k_adp <- 500
-      k_atp <- 2*10^6
-      
-      start <- c(k_adp, k_atp)
-      return(start)
-    }
-    names <- c("k_adp", "k_atp")
-    text <- "xDP-release, xTP-binding"
-    
-    ## Returning the function with self starter and names
-    returnList <- list(fct = fct, ssfct = ssfct, names = names, text = text)
-    class(returnList) <- "drcMean"
-    invisible(returnList)
-    
-  }
+ 
 }

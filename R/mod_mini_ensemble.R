@@ -411,7 +411,156 @@ mod_mini_ensemble_server <- function(input, output, session, f){
     cat('Project:', f$project$name, ' | Conditions:', f$conditions$name, ' | Date:', f$date$name, ' | Observation:', ob)
   })
   
- 
+ #### SNAPSHOT ####
+  
+  observeEvent(input$snapshot, {
+    showModal(
+      modalDialog(
+        title = "Snapshot",
+        footer = tagList(modalButton("Cancel"), actionButton(ns("save_plot_overlay"), "Save")),
+        size = "l",
+        fluidRow(
+          column(2,
+                 colourpicker::colourInput(ns("export_plot_event_color"),
+                                           label = "Events Color",
+                                           value = "red",
+                                           showColour = "both"),
+          ),
+          column(4, 
+                 sliderInput(ns("export_plot_height"),
+                             label = "Height (in)",
+                             min = 0,
+                             max = 20,
+                             step = 0.5,
+                             value = 2.5),
+          ), 
+          column(4, 
+                 sliderInput(ns("export_plot_width"),
+                             label = "Width (in)",
+                             min = 0,
+                             max = 50,
+                             step = 1,
+                             value = 18),
+          ),
+          column(2, 
+                 div(style = "padding-top: 30px;",
+                     checkboxInput(ns("save_as_gg"), 
+                                   "Save as ggplot?", 
+                                   FALSE)
+                 )
+                 
+          )
+        ),
+        fluidRow(
+          plotOutput(ns("export_ggplot"), height = "175px")
+        )
+      )
+    )
+  })
+  
+  observe({
+    output$export_ggplot <- renderPlot(height = 175, {
+      plot_overlay(obs_path = f$obs$path,
+                   time_period_dp = input$overlay_dygraph_date_window,
+                   color = input$export_plot_event_color)
+    })
+    
+  })
+  
+  observeEvent(input$save_plot_overlay,{
+    
+    dir_summary <- file.path(f$project$path, "summary")
+    if(!dir.exists(dir_summary)) dir.create(dir_summary)
+    
+    dir_fig <- file.path(dir_summary, "figures")
+    if(!dir.exists(dir_fig)) dir.create(dir_fig)
+    
+    file_name <- file.path(dir_fig, 
+                           paste0(
+                             f$conditions$name,
+                             "_",
+                             f$date$name,
+                             "_",
+                             f$obs$name,
+                             "_",
+                             round(input$overlay_dygraph_date_window[[1]], 4),
+                             "-",
+                             round(input$overlay_dygraph_date_window[[2]], 4)
+                           )
+    )
+    
+    gg <- plot_overlay(obs_path = f$obs$path,
+                       time_period_dp = input$overlay_dygraph_date_window,
+                       color = input$export_plot_event_color)
+    
+    if(input$save_as_gg){
+      saveRDS(gg, file = paste0(file_name, ".rds"))
+    } else {
+      cowplot::ggsave2(file = paste0(file_name, ".pdf"),
+                       plot = gg,
+                       height =  as.numeric(input$export_plot_height),
+                       width = as.numeric(input$export_plot_width),
+                       units = "in")
+    }
+    showNotification("Plot Saved", type = "message")
+    removeModal()
+  })
+  
+  #### NUMBERS ####
+  
+  output$numbers <- renderPlot({
+    
+    req(trap_data())
+    measured_events <- trap_data()$events
+    step <- 
+      ggplot()+
+      geom_dotplot(data = measured_events, aes(displacement_nm),
+                   fill = "grey40", 
+                   binwidth = 2)+
+      geom_vline(aes(xintercept = mean(measured_events$displacement_nm)), linetype = "dashed")+
+      geom_label(aes(mean(measured_events$displacement_nm), 
+                     y = 1, 
+                     label = paste0("bar(x)==", round(mean(measured_events$displacement_nm), 1))),
+                 parse = TRUE,
+                 size = 6)+
+      ggtitle("Displacements")+
+      xlab("nanometers")+
+      ylab('')+
+      # scale_x_continuous(breaks = sort(c(seq(-100, 100, by = 20), round(mean(measured_events$displacement_nm), 1))))+
+      cowplot::theme_cowplot(18)+
+      theme(
+        axis.text.y = element_blank(),
+        axis.line.y = element_blank(),
+        axis.ticks.y = element_blank()
+      )
+    
+    
+    time_on <- 
+      ggplot()+
+      geom_dotplot(data = measured_events, aes(time_on_ms),
+                   fill = "grey40", 
+                   binwidth = 10)+
+      geom_vline(aes(xintercept = mean(measured_events$time_on_ms)), linetype = "dashed")+
+      geom_label(aes(mean(measured_events$time_on_ms), y = 1, 
+                     label = paste0("bar(x)==", round(mean((measured_events$time_on_ms), 0)))),
+                 parse = TRUE,
+                 size = 6)+
+      ggtitle("Time On")+
+      xlab("milliseconds")+
+      ylab('')+
+      cowplot::theme_cowplot(18)+
+      theme(
+        axis.text.y = element_blank(),
+        axis.line.y = element_blank(),
+        axis.ticks.y = element_blank()
+      )
+    
+    
+    cowplot::plot_grid(step, time_on)
+  })
+  
+  
+  
 }
     
 ## To be copied in the UI
