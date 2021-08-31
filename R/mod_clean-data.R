@@ -497,10 +497,8 @@ mod_clean_data_server <- function(input, output, session, f){
         dplyr::pull(path)
 
       data <- data.table::fread(trap_data, sep = ",") %>%
-        #tidyr::unnest(cols = c(grouped)) %>%
-        dplyr::mutate(seconds = 1:nrow(.)/5000,
-                      bead = raw_bead*as.numeric(input$mv2nm)) %>%
-        dplyr::select(seconds, bead)
+        dplyr::mutate(bead = raw_bead*as.numeric(input$mv2nm)) %>%
+        dplyr::select(time_sec, bead)
 
       # if(input$filter_status == FALSE){
       #   data
@@ -526,7 +524,7 @@ mod_clean_data_server <- function(input, output, session, f){
       
     } else if(isolate(input$mode) == 'detrend'){
       
-      break_pts <- seq(25000, nrow(dg_data$data), by = 25000)
+      break_pts <- seq(hz()*5, nrow(dg_data$data), by = hz()*5)
       data <- dg_data$data %>% 
         mutate(bead = as.vector(pracma::detrend(bead, tt = "linear", bp = break_pts)))
       
@@ -540,29 +538,7 @@ mod_clean_data_server <- function(input, output, session, f){
         mutate(bead = bead - base$baseline_fit$estimate[1])
     }
     
-    
-    # number_files <- nrow(data)/25000
-    # 
-    # end_file <- seq(5, by = 5, length.out = number_files)
-    
-    
-    # if(isolate(input$hide_markers) == TRUE){
-    #   
-    # dg <-   dygraphs::dygraph(data,  ylab = "mV", xlab = "Seconds",  main = dg_data$title) %>%
-    #     dygraphs::dySeries("bead", color = "black") %>%
-    #     dygraphs::dyRangeSelector(fillColor ="", strokeColor = "black") %>%
-    #     add_labels(events = end_file, labelLoc = 'bottom', color = "black") %>%
-    #     dygraphs::dyUnzoom() %>%
-    #     dygraphs::dyOptions(axisLabelColor = "black",
-    #                         gridLineColor = "black",
-    #                         axisLineColor = "black",
-    #                         axisLineWidth = 3,
-    #                         axisLabelFontSize = 15,
-    #                         drawGrid = FALSE)
-    #   
-    # } else {
-    
-    if(isolate(input$mv2nm) <= 1){
+    if(isolate(input$mv2nm) == 1){
       
       dg <- dygraphs::dygraph(data,  ylab = "mV", xlab = "Seconds",  main = dg_data$title) %>%
         dygraphs::dySeries("bead", color = "black") %>%
@@ -738,8 +714,8 @@ output$move_files <- renderText({
     req(length(input$dygraph_clean_date_window[[1]]:input$dygraph_clean_date_window[[2]]) <= 10)
     #browser()
    
-    if(var(dg_data$data$bead) <= 5) showNotification('Convert data to nm before removing baseline.', type = 'error')
-    req(var(dg_data$data$bead) > 5)
+     if(var(dg_data$data$bead) == 1) showNotification('Current mV-to-nm is 1. Do you need to enter a conversion value?', type = 'warning')
+    # req(var(dg_data$data$bead) > 5)
     base$range_df <- dg_data$data %>% 
       dplyr::filter(between(seconds, as.numeric(trim_from()), as.numeric(trim_to())))
     
@@ -748,9 +724,7 @@ output$move_files <- renderText({
     base$range_update_graph <-  base$range_update_graph + 1
     base$show_range <- 'yes'
     #shinyjs::show('range')
-  
-    
-    
+
     shinyWidgets::updateRadioGroupButtons(
       session = session,
       inputId = "mode",
@@ -802,8 +776,6 @@ output$move_files <- renderText({
    
        
     observeEvent(input$baseline_graph_mv, {
-      
-      
       #update saving options
       shinyWidgets::updateRadioGroupButtons(
         session = session,
@@ -877,13 +849,9 @@ output$move_files <- renderText({
     baseline <- dplyr::filter(mv_df, dplyr::between(mean, input$mv_brush$xmin, input$mv_brush$xmax) & dplyr::between(var, input$mv_brush$ymin, input$mv_brush$ymax))
     req(!is_empty(baseline$mean))
     baseline_fit <- MASS::fitdistr(baseline$mean, 'normal')
-    
-    
     #return values to reactive list
     base$baseline <- baseline
     base$baseline_fit <- baseline_fit
-    
-    
    # showNotification('Baseline population fit.')
   })
   
@@ -941,25 +909,19 @@ output$move_files <- renderText({
         dplyr::filter(str_detect(name, "trap-data.csv")) %>%
         dplyr::pull(path)
       
-       data <- data.table::fread(trap_data, sep = ",")
-       
-      
-      # grouped <- data %>% 
-         #tidyr::unnest(cols = c(grouped)) %>%
-         #dplyr::select(bead, trap) %>% 
-        data %<>% dplyr::mutate(processed_bead = raw_bead*as.numeric(input$mv2nm))
+       data <- data.table::fread(trap_data, sep = ",") %>% 
+                dplyr::mutate(processed_bead = raw_bead*as.numeric(input$mv2nm))
        
       setProgress(0.3)
       
      if(input$how_to_process == 'detrend'){
        
-       break_pts <- seq(25000, nrow(dg_data$data), by = 25000)
+       break_pts <- seq(hz()*5, nrow(dg_data$data), by = hz()*5)
        
           data %<>% dplyr::mutate(processed_bead = as.vector(pracma::detrend(processed_bead, tt = "linear", bp = break_pts)))
        
      } else if(input$how_to_process == 'remove_base'){
        
-    
          data %<>% dplyr::mutate(processed_bead = processed_bead - base$range)
        
      } else if(input$how_to_process == 'remove_mv'){
@@ -973,14 +935,25 @@ output$move_files <- renderText({
          input_include <- TRUE
        }
       
-     data  %<>% dplyr::mutate(processor = input$how_to_process, 
-                       mv2nm = as.numeric(input$mv2nm),
-                       nm2pn = as.numeric(input$nm2pn),
-                       include = input_include)
+      o <- list.files(path = f$obs$path, 
+                      pattern = "options.csv",
+                      full.names = TRUE)
+      o <- fread(o)
+      
+      o %<>%  dplyr::mutate(processor = input$how_to_process, 
+                            mv2nm = as.numeric(input$mv2nm),
+                            nm2pn = as.numeric(input$nm2pn),
+                            include = input_include)
+      
+     # data  %<>% dplyr::mutate(processor = input$how_to_process, 
+     #                   mv2nm = as.numeric(input$mv2nm),
+     #                   nm2pn = as.numeric(input$nm2pn),
+     #                   include = input_include)
      
      setProgress(0.5)
      
      data.table::fwrite(data, file = file.path(f$obs$path, 'trap-data.csv'), sep = ",")
+     data.table::fwrite(o, file = file.path(f$obs$path, 'options.csv'), sep = ",")
      
      setProgress(0.75)
       # index <- input$save
@@ -991,7 +964,7 @@ output$move_files <- renderText({
      
   
      golem::print_dev( logger[[as.character(input$save)]] )
-     all_trap_paths <- list_files(f$date$path, pattern = 'trap-data.csv', recursive = T)
+     all_trap_paths <- list_files(f$date$path, pattern = 'options.csv', recursive = T)
      
      setProgress(0.9)
     

@@ -106,32 +106,25 @@ add_shades <- function(x, periods, ...){
   x
 }
 
-#' initialize/create a lasertrapr tibble
-#' @description It will be easier to create the initial lasertrapr nested tibble with a function so if/when it changes
-#'     it only has to be updated here and not the 3 places where this can happen (split_obs, move_obs, and trim_obs)
-#' @param project A character vector - The name of a project
-#' @param conditions A character vector - The name of conditions
-#' @param date A character vector - The date
-#' @param obs A character vector - The folder/obs
-#' @param grouped A df/tibble with the trap data
-#'
-#' @noRd
-create_lasertrapr_tibble <- function(project, conditions, date, obs, raw_bead, trap_position){
-  tibble::tibble(project = project,
-                 conditions = conditions,
-                 date = date, 
-                 obs = obs,
-                 raw_bead = raw_bead,
-                 trap_position = trap_position,
-                 processed_bead = NA,
-                 processor = NA,
-                 include = NA,
-                 mv2nm = NA, 
-                 nm2pn = NA,
-                 analyzer = NA,
-                 report = 'not run',
-                 review = NA)
-}
+
+
+# create_lasertrapr_tibble <- function(project, conditions, date, obs, raw_bead, trap_position){
+#   tibble::tibble(project = project,
+#                  conditions = conditions,
+#                  date = date,
+#                  obs = obs,
+#                  raw_bead = raw_bead,
+#                  trap_position = trap_position,
+#                  processed_bead = NA,
+#                  processor = NA,
+#                  include = NA,
+#                  mv2nm = NA,
+#                  nm2pn = NA,
+#                  analyzer = NA,
+#                  report = 'not run',
+#                  review = NA)
+# }
+
 
 #' Read in all trap-data.csv files in an obs folder
 #' @param f_date A list_files/list_dir tibble from the user selected date, literally f$date

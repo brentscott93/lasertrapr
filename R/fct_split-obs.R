@@ -80,30 +80,43 @@ split_obs <- function(input_data, project, conditions, date, threshold, hz = 500
       create_obs[[row]] <- dplyr::bind_rows(txts[go:halt])
     }
     
-    o <- data.frame(hz = hz)
+    o <- data.frame(project = project$name,
+                    conditions = conditions$name,
+                    date = date$name, 
+                    hz = hz,
+                    processor = NA,
+                    include = NA,
+                    mv2nm = NA, 
+                    nm2pn = NA,
+                    analyzer = NA,
+                    report = 'not run',
+                    review = NA)
+    
     setProgress(0.9, detail = "Saving Data")
     for(c in seq_along(create_obs)){
       if(c < 10){
-        t <- create_lasertrapr_tibble( project = project$name,
-                                       conditions = conditions$name,
-                                       date = date$name, 
-                                       obs = paste0('obs-0', c),
-                                       raw_bead = create_obs[[c]]$raw_bead,
-                                       trap_position = create_obs[[c]]$trap_position)
+        t <- data.frame(project = project$name,
+                        conditions = conditions$name,
+                        date = date$name, 
+                        obs = paste0('obs-0', c),
+                        raw_bead = create_obs[[c]]$raw_bead,
+                        trap_position = create_obs[[c]]$trap_position,
+                        time_sec = seq(0, by = 1/hz, length.out = nrow(.)))
         
-        t %<>% mutate(time_sec = seq(0, by = 1/hz, length.out = nrow(.)))
+        o %<>% mutate(obs =  paste0("obs-0", r)) %>% dplyr::select(project, conditions, date, obs, everything())
         
          data.table::fwrite(t, file = file.path(date$path, paste0("obs-0", c), "trap-data.csv"), sep = ",")
          data.table::fwrite(o, file = file.path(date$path, paste0("obs-0", c), "options.csv"), sep = ",")
       } else {
-        t <- create_lasertrapr_tibble( project = project$name,
-                                       conditions = conditions$name,
-                                       date = date$name, 
-                                       obs = paste0('obs-', c),
-                                       raw_bead = create_obs[[c]]$raw_bead,
-                                       trap_position = create_obs[[c]]$trap_position)
+          t <- data.frame(project = project$name,
+                          conditions = conditions$name,
+                          date = date$name, 
+                          obs = paste0('obs-', c),
+                          raw_bead = create_obs[[c]]$raw_bead,
+                          trap_position = create_obs[[c]]$trap_position,
+                          time_sec = seq(0, by = 1/hz, length.out = nrow(.)))
         
-        t %<>% mutate(time_sec = seq(0, by = 1/hz, length.out = nrow(.)))
+          o %<>% mutate(obs =  paste0("obs-", r)) %>% dplyr::select(project, conditions, date, obs, everything())
         
         data.table::fwrite(t, file = file.path(date$path, paste0("obs-", c), "trap-data.csv"), sep = ",")
         data.table::fwrite(o, file = file.path(date$path, paste0("obs-", c), "options.csv"), sep = ",")
@@ -114,6 +127,3 @@ split_obs <- function(input_data, project, conditions, date, threshold, hz = 500
   
   showNotification("Obsevations created")
 }
-  
-  
-  
