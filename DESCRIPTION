@@ -1,5 +1,5 @@
 Package: lasertrapr
-Title: Automating Analysis of Laser Trapping Data
+Title: Automating the Analysis of Laser Trap Data
 Version: 0.0.0.9000
 Authors@R: person('Brent', 'Scott', email = 'brentscott93@gmail.com', role = c('cre', 'aut'))
 Description: The {lasertrapr} package prodives an easy-to-use {shiny} GUI to automate the analysis of laser trap data.
@@ -33,16 +33,13 @@ Imports:
     vroom,
     survival,
     survminer,
-    patchwork,
     cowplot,
     rstatix,
-    ggpubr,
     Hmisc,
     plotrix,
     broom,
     drc,
     truncdist,
-    shinyFiles,
     ggstatsplot,
     colourpicker
 Encoding: UTF-8

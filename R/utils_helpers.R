@@ -125,7 +125,7 @@ add_shades <- function(x, periods, ...){
 #'
 #' @noRd
 #' 
-create_lasertrapr_tibble <- function(project, conditions, date, obs, raw_bead, trap_position, path){
+create_lasertrapr_tibble <- function(project, conditions, date, obs, raw_bead, trap_position){
   tibble::tibble(project = project,
                  conditions = conditions,
                  date = date, 

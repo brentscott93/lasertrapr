@@ -4,11 +4,7 @@
 #' @param f reactive folder list
 #' @param hz sampling frequency
 #' @param factor_order user supplied order of factors
-#'
-#' @return
 #' @export
-#'
-#' @examples
 summarize_trap_data <- function(f, hz, factor_order, is_shiny = T){
   
   trap_selected_project <- f$project$path
@@ -86,11 +82,6 @@ summarize_trap_data <- function(f, hz, factor_order, is_shiny = T){
 #'
 #' @param event_files_filtered 
 #' @param plot_colors 
-#'
-#' @return
-#' @export
-#'
-#' @examples
 stats_plot_step <- function(event_files_filtered, plot_colors){
   # event_files_filtered = rv$data$event_files_filtered
   # plot_colors = plot_colors
@@ -179,11 +170,7 @@ stats_plot_step <- function(event_files_filtered, plot_colors){
 #' @param event_files_filtered 
 #' @param plot_colors 
 #' @param p_adj 
-#'
-#' @return
-#' @export
-#'
-#' @examples
+
 stats_plot_time_on <- function(event_files_filtered, plot_colors, p_adj){
   
   ton_histo <- ggplot(data = event_files_filtered,
@@ -262,11 +249,7 @@ stats_plot_time_on <- function(event_files_filtered, plot_colors, p_adj){
 #'
 #' @param event_files_filtered 
 #' @param plot_colors 
-#'
-#' @return
-#' @export
-#'
-#' @examples
+
 stats_plot_time_off <- function(event_files_filtered, plot_colors){
   toff_histo <- 
     ggplot(data = event_files_filtered,
@@ -351,11 +334,7 @@ stats_plot_time_off <- function(event_files_filtered, plot_colors){
 #'
 #' @param event_files_filtered 
 #' @param plot_colors 
-#'
-#' @return
-#' @export
-#'
-#' @examples
+
 stats_plot_force <- function(event_files_filtered, plot_colors){
   
   force_histo <- ggplot(data = event_files_filtered,
@@ -543,11 +522,6 @@ survival_analysis <- function(event_files_filtered, plot_colors){
 #' @param event_file_paths 
 #' @param factor_order 
 #' @param plot_colors 
-#'
-#' @return
-#' @export
-#'
-#' @examples
 stats_plot_event_frequency <- function(event_file_paths, factor_order, plot_colors){
   ef_paths <- str_replace(event_file_paths, "measured-events", "event-frequency")
   
@@ -646,11 +620,6 @@ stats_plot_event_frequency <- function(event_file_paths, factor_order, plot_colo
 #'
 #' @param event_files_filtered 
 #' @param plot_colors 
-#'
-#' @return
-#' @export
-#'
-#' @examples
 correlations <- function(event_files_filtered, plot_colors){
   step_vs_on <- ggscatter(event_files_filtered,
                           y = "time_on_ms", 
@@ -771,11 +740,6 @@ correlations <- function(event_files_filtered, plot_colors){
 #'
 #' @param event_files_filtered 
 #' @param plot_colors 
-#'
-#' @return
-#' @export
-#'
-#' @examples
 stiffness <- function(event_files_filtered, plot_colors){
   
   stiff_data <- event_files_filtered %>% 

@@ -50,6 +50,7 @@ mod_split_obs_ui <- function(id){
                           #  h5("Selected Files"),
                           # verbatimTextOutput(ns("selected_files_to_upload")), 
                           # 
+                   numericInput(ns("hz"), "Hz", 0),
                           shinyWidgets::prettyCheckbox(ns("ready_for_analysis"), 
                                                        "Ready for Analysis?",
                                                        value = FALSE, 
@@ -108,7 +109,7 @@ mod_split_obs_ui <- function(id){
       ), #box close,
     
   
-            box(title = 'Step Calibration', width = 9,
+            box(title = 'Step Calibration', width = 9, collapsible = T, collapsed = T,
                 fluidRow(column(3, fileInput(ns('step_files'), 
                                              'Upload Step File (.txt)', 
                                              accept = 'text/plain', 
@@ -135,7 +136,7 @@ mod_split_obs_ui <- function(id){
     ), #rowclose
   
     fluidRow(
-            box(title = 'Equipartition', width = 9, height = 350, 
+            box(title = 'Equipartition', width = 9, height = 350,  collapsible = T, collapsed = T,
                                 fluidRow(
                                   column(3, fileInput(ns('equi_file'), 
                                                       'Upload Equi File (.txt)',
@@ -216,13 +217,15 @@ mod_split_obs_server <- function(input, output, session, f){
     defend_if_empty(f$project, "No 'Project' folder selected. Please select a folder with the folder chooser above.")
     defend_if_empty(f$conditions, "No 'Conditions' folder selected. Please select a folder with the folder chooser above.")
     defend_if_empty(f$date, "No 'Date' folder selected. Please select a folder with the folder chooser above.")
+    defend_if_equal(input$hz == 0, "Please enter sampling frequency, Hz.")
     req(nchar(f$date$path>0))
     simple_upload(input_data = input$simple_data_input,
                   project = f$project,
                   conditions = f$conditions,
                   date = f$date,
                   nm2pn = input$nm_to_pn, 
-                  ready_for_analysis = input$ready_for_analysis)
+                  ready_for_analysis = input$ready_for_analysis,
+                  hz = input$hz)
     f$new_obs_from_split <- f$new_obs_from_split + 1
   })
   #check if a date folder is properly selected

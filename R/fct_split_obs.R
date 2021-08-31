@@ -8,81 +8,17 @@
 #' @noRd
 
 
-split_obs <- function(input_data, project, conditions, date, threshold){
-    
-  golem::print_dev('starting split_obs')
-  # for dev
-   # input_data <- tibble::tibble(name = list.files('~/Desktop/03122020',full.names = F),
-   #                    datapath = list.files('~/Desktop/03122020', full.names = T))
-   # date <- '~/Desktop'
-   # threshold <- 20
-
-  #convert to csv and move to box sync
+split_obs <- function(input_data, project, conditions, date, threshold, hz = 5000){
+  
   withProgress(message = 'Uploading trap data', value = 0, max = 1, min = 0, {
     
- #    incProgress(amount = .3, detail = "Reading Files")
- #    
- #    input_data <- dplyr::arrange(input_data, name)
- #    
- #  #  
- #   # s <- c( '~/Desktop/Data_2019_02_27_14_50_34.txt',
- #   #  '~/Desktop/Data_2019_02_27_14_50_37.csv')
- # 
- #  #try <-   purrr::map(s, ~tibble::as_tibble(data.table::fread(.x, col.names = c('bead', 'trap'))))
- # 
- # # try2 <- purrr::map(try, tibble::as_tibble)
- #    #READ
- #    trap_txts <- purrr::map(input_data$datapath,  ~tibble::as_tibble(data.table::fread(.x, col.names = c("bead", "trap"))))
- #    
- #    incProgress(amount = .6, detail = "Moving to 'lasertrapr' folder")
- #    
- #    #ss <- stringr::str_sub(s, 1, -4)
- #    ss <- stringr::str_sub(input_data$name, 1, -4)
- #    new_csv_filename <- stringr::str_c(ss, 'csv')
- #    
- #    
- #    new_name <- file.path(date$path, new_csv_filename)
- #    #for dev new_name <- paste0(date, "/", new_csv_filename)
- #   # purrr::walk2(try, new_csv_filename, readr::write_csv, col_names = TRUE)
- #    purrr::walk2(trap_txts, new_name, readr::write_csv, col_names = TRUE)
- #    
- #    incProgress(1, detail = "Done")
- #  })
- #  
- # # showNotification("Trap Data Uploaded", type = "message")
- #  
- #  #split obs
- #  withProgress(message = 'Making Observations', value = 0, max = 1, min = 0, {
- #    incProgress(amount = .25, detail = "Reading Data")
- #    
- #    all_files <-  list_files(date$path) %>%
- #      arrange(name)
- #    
- #    
- #    file_tibble <- all_files %>%
- #      dplyr::filter(str_detect(name, "Data"))
- #    
-    
-  
-    #trap_txts <- purrr::map(input_data$datapath,  ~tibble::as_tibble(data.table::fread(.x, col.names = c("bead", "trap"))))
-   #head(data.table::fread('/Users/brentscott/Desktop/mutant-pi/Data_2019_12_17_15_03_11.csv', col.names = c('raw_bead', 'trap_position')))
-    
-    #txts <- purrr::map(file_tibble$path, readr::read_csv, col_names = T)
     setProgress(0.3, detail = "Reading Files")
-    #input_data <- list_files('/Users/brentscott/Desktop/2019-02-27/obs-01')
-    #input_data <- dplyr::arrange(input_data, path)
     input_data <- dplyr::arrange(input_data, name)
-    #txts <- purrr::map(input_data$path,  ~vroom::vroom(.x, col_names = T))
     txts <- purrr::map(input_data$datapath,  ~tibble::as_tibble(data.table::fread(.x, col.names = c("raw_bead", "trap_position"))))
     incProgress(0.5, detail = "Determining Observations")
     extract_numbers <- purrr::map(input_data$name, str_trap)
     datetime <- purrr::map(extract_numbers, lubridate::ymd_hms, tz = "EST")
     
-    
-    
-    #for dev
-    #threshold <- 20
-    #dif2 <- vector("list") #for troubleshooting
     diff_vector <- vector()
     for(i in seq_along(datetime[-length(datetime)])){
       
@@ -95,26 +31,10 @@ split_obs <- function(input_data, project, conditions, date, threshold){
       }
     }  
     
-    #dif2 <- vector("list") #for troubleshooting
-    # diff_vector <- vector()
-    # for(i in seq_along(extract_numbers[-length(extract_numbers)])){
-    #   dif <- extract_numbers[[i+1]] - extract_numbers[[i]]
-    #   dif2[[i]] <- extract_numbers[[i+1]] - extract_numbers[[i]] #for troubleshooting
-    
-    #   if(dif > cutoff){
-    #    diff_vector[[i]] <- "end_observation"
-    #  } else {
-    #    diff_vector[[i]] <- "observing"
-    #  }
-    # }
-    
     diff_vector[[length(datetime)]] <- "end_observation"
-    
     
     diff_tibble2 <- tibble(index = 1:length(diff_vector),
                            observation = diff_vector)
-    
-    
     
     incomplete_obs <- filter(diff_tibble2, observation == "end_observation" & lag(observation) == "end_observation") %>%
       pull(index)
@@ -127,8 +47,6 @@ split_obs <- function(input_data, project, conditions, date, threshold){
       diff_tibble2 <- slice(diff_tibble2, -1)
     }
   
-    
-    
     diff_tibble2$observation[[1]] <- "begin_observation"
     for(x in 2:(nrow(diff_tibble2)-1)){
       if(diff_tibble2$observation[[(x-1)]] == "end_observation"){
@@ -143,49 +61,16 @@ split_obs <- function(input_data, project, conditions, date, threshold){
     
     setProgress(0.75, detail = "Arranging Folders")
     
-   # obs_file_names <- vector("list")
-    #make new folders
-    #date <- '/Users/brentscott/Desktop/2019-02-27/test'
     for(r in 1:nrow(diff_tibble2)){
-      
       if(r < 10){
-        #dev
-        #dir.create(paste0(date, "/obs-0", r))
         dir.create(paste0(date$path, "/obs-0", r))
       } else {
-        #dev
-        #dir.create(paste0(date,"/obs-", r))
         dir.create(paste0(date$path,"/obs-", r))
       }
       start <-  diff_tibble2$begin_observation.index[[r]] 
       stop <- diff_tibble2$end_observation.index[[r]]
-      
-      #obs_file_names[[r]] <- file_tibble$name[start:stop]
+
     }
-    
-   
-    
-    #move files
-    
-    # for(o in seq_along(obs_file_names)){
-    #   for(file in seq_along(obs_file_names[[o]])){
-    #     if(o < 10){
-    #       file.rename(from =  paste0(date$path, "/", obs_file_names[[o]][[file]]),
-    #                   to = paste0(date$path, "/obs-0", o, "/", obs_file_names[[o]][[file]]))
-    #       
-    #       #dev
-    #       # file.rename(from =  paste0(date, "/", obs_file_names[[o]][[file]]),
-    #       #             to = paste0(date, "/obs-0", o, "/", obs_file_names[[o]][[file]]))
-    #     } else {
-    #       file.rename(from = paste0(date$path, "/", obs_file_names[[o]][[file]]),
-    #                   to = paste0(date$path, "/obs-", o, "/", obs_file_names[[o]][[file]]))
-    # 
-    #       #dev
-    #       # file.rename(from = paste0(date, "/", obs_file_names[[o]][[file]]),
-    #       #             to = paste0(date, "/obs-", o, "/", obs_file_names[[o]][[file]]))
-    #     }
-    #   }}
-    
     
     #create obs
     create_obs <- vector("list")
@@ -195,11 +80,10 @@ split_obs <- function(input_data, project, conditions, date, threshold){
       create_obs[[row]] <- dplyr::bind_rows(txts[go:halt])
     }
     
+    o <- data.fame(hz = hz)
     setProgress(0.9, detail = "Saving Data")
-    # writeLines("Saving Data")
     for(c in seq_along(create_obs)){
       if(c < 10){
-        
         t <- create_lasertrapr_tibble( project = project$name,
                                        conditions = conditions$name,
                                        date = date$name, 
@@ -207,14 +91,11 @@ split_obs <- function(input_data, project, conditions, date, threshold){
                                        raw_bead = create_obs[[c]]$raw_bead,
                                        trap_position = create_obs[[c]]$trap_position)
         
+        t %<>% mutate(time_sec = seq(0, by = 1/hz, length.out = nrow(.)))
+        
          data.table::fwrite(t, file = file.path(date$path, paste0("obs-0", c), "trap-data.csv"), sep = ",")
-         # write_csv(create_obs[[c]],
-         #           path = paste0(date, "/obs-0", c, "/grouped.csv"),
-         #           col_names = TRUE)
-        
+         data.table::fwrite(o, file = file.path(date$path, paste0("obs-0", c), "options.csv"), sep = ",")
       } else {
-        
-        
         t <- create_lasertrapr_tibble( project = project$name,
                                        conditions = conditions$name,
                                        date = date$name, 
@@ -222,17 +103,12 @@ split_obs <- function(input_data, project, conditions, date, threshold){
                                        raw_bead = create_obs[[c]]$raw_bead,
                                        trap_position = create_obs[[c]]$trap_position)
         
-        data.table::fwrite(t, file = file.path(date$path, paste0("obs-", c), "trap-data.csv"), sep = ",")
-        # write_csv(create_obs[[c]],
-        #           path = paste0(date, "/obs-", c, "/grouped.csv"),
-        #           col_names = TRUE)
+        t %<>% mutate(time_sec = seq(0, by = 1/hz, length.out = nrow(.)))
         
+        data.table::fwrite(t, file = file.path(date$path, paste0("obs-", c), "trap-data.csv"), sep = ",")
+        data.table::fwrite(o, file = file.path(date$path, paste0("obs-", c), "options.csv"), sep = ",")
       }
     }
-    
-   
-    
-    
     setProgress(1, detail = "Done")
   })
   

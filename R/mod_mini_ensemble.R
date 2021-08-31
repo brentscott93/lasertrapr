@@ -100,7 +100,10 @@ mod_mini_ensemble_ui <- function(id){
           fluidRow( 
             column(9, 
                    box(width = NULL, title = 'Analyzed Data',
+                       fluidRow(actionButton(ns("snapshot"), "", icon = icon("camera"))),
+                       fluidRow(
                        dygraphs::dygraphOutput(ns('mini_dygraph')) %>% shinycssloaders::withSpinner(type = 8, color = "#373B38")
+                       )
                    )
             ), 
             column(3, 
