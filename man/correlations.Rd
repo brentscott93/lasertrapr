@@ -11,9 +11,6 @@ correlations(event_files_filtered, plot_colors)
 
 \item{plot_colors}{}
 }
-\value{
-
-}
 \description{
 Title
 }

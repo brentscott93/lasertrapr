@@ -165,14 +165,9 @@ prep_ensemble <- function(trap_selected_project,
 
 
 #' Ensemble Average
-#'
 #' @param trap_selected_project full path to currently selected project
 #' @param is_shiny logical. is function being used in shiny or not. 
-#'
-#' @return
-#' @export
-#'
-#' @examples
+#' @noRd
 avg_ensembles <- function(f, is_shiny = TRUE){
   
   con <-  list_dir(path = f$project$path)

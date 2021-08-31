@@ -13,9 +13,6 @@ summarize_trap_data(f, hz, factor_order, is_shiny = T)
 
 \item{factor_order}{user supplied order of factors}
 }
-\value{
-
-}
 \description{
 Summarize trap project
 }

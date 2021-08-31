@@ -30,12 +30,8 @@ prep_backwards_ensemble_exp <- function(x, hz){
 
 
 
-#' Title
-#'
-#' @return
-#' @export
-#'
-#' @examples
+#' Ensemble average self starter
+#' @noRd
 drc_single_neg_exp <- function(){
   
   single_neg_exp <- function(time, a, c){
@@ -68,12 +64,8 @@ drc_single_neg_exp <- function(){
   
 }
 
-#' Title
-#'
-#' @return
-#' @export
-#'
-#' @examples
+#' Ensemble average self starter
+#' @noRd
 drc_forward_ee_1exp <- function(){
   
   forward_ee_1exp <- function(time, d1, d2, k1){
@@ -108,12 +100,8 @@ drc_forward_ee_1exp <- function(){
 
 
 
-#' xDP-release, xTP-binding self-starter (fct) for drm
-#'
-#' @return
-#' @export
-#'
-#' @examples
+#' Ensemble average self starter
+#' @noRd
 drc_forward_ee_2exp <- function(){
  
     ensemble_average_2exp <- function(time_x, d1, d2, k0, k1){

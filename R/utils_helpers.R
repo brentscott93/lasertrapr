@@ -2,7 +2,6 @@
 #'
 #' @param x a millisecond value
 #' @noRd
-#' 
 ms_to_dp <- function(x, hz = 5000){
   sec <- x/1000 #to seconds
   hz <- 1/hz # datapoints per second
@@ -16,7 +15,6 @@ ms_to_dp <- function(x, hz = 5000){
 #'
 #' @return a 2 column tibble
 #' @noRd
-
 list_files <- function(...){
   tibble(name = list.files(full.names = FALSE, ...),
          path = list.files(full.names = TRUE, ...))
@@ -26,7 +24,6 @@ list_files <- function(...){
 #'
 #' @param ... arguments to dir function
 #' @noRd
-
 list_dir <- function(path){
   tibble(name = list.dirs(path = path, full.names = FALSE, recursive = F),
          path = list.dirs(path = path, full.names = TRUE, recursive = F))
@@ -36,7 +33,6 @@ list_dir <- function(path){
 #'
 #' @param x A laser trap raw data file name
 #' @noRd
-
 str_trap <- function(x){
   
   substring <- str_sub(x, c(6, 11, 14, 17, 20, 23), c(9, 12, 15, 18, 21, 24))
@@ -53,7 +49,6 @@ str_trap <- function(x){
 #' @param f function to use to round (defaults to round)
 #' 
 #' @export
-
 round_any <- function(x, accuracy, f=round){
   
   f(x/accuracy) * accuracy
@@ -69,7 +64,6 @@ round_any <- function(x, accuracy, f=round){
 #' @param ... additional arguments to dyEvent
 #' 
 #' @export
-
 add_labels <- function(x, events, ...){
   for(event in 1:length(events)){
     x <- dygraphs::dyEvent(x, events[[event]], paste0("F", event), ...)
@@ -105,8 +99,6 @@ add_labels_mini <- function(x, events, hz, ...){
 #' @param ... additional arguments to dyEvent
 #'
 #' @export
-#'
-
 add_shades <- function(x, periods, ...){
   for(p in 1:nrow(periods)){
     x <- dygraphs::dyShading(x, from = periods$start[[p]], to = periods$stop[[p]], color = periods$color[[p]], ...)
@@ -124,7 +116,6 @@ add_shades <- function(x, periods, ...){
 #' @param grouped A df/tibble with the trap data
 #'
 #' @noRd
-#' 
 create_lasertrapr_tibble <- function(project, conditions, date, obs, raw_bead, trap_position){
   tibble::tibble(project = project,
                  conditions = conditions,
@@ -173,11 +164,7 @@ t2 <- fread("~/lasertrapr/project_myoV-phosphate/myoV-WT_pH-7.0_0mM-Pi/2020-06-2
 #' @param time_period_dp 
 #' @param color 
 #' @param axes 
-#'
-#' @return
 #' @export
-#'
-#' @examples
 plot_overlay <- function(obs_path, time_period_dp, color){
    # obs_path <- "~/lasertrapr/project_myoV-phosphate/myoV-WT_pH-7.0_0mM-Pi/2020-06-25/obs-14"
    # time_period_dp <- c(500/5000, 25000/5000)

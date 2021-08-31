@@ -15,9 +15,6 @@ plot_overlay(obs_path, time_period_dp, color)
 
 \item{axes}{}
 }
-\value{
-
-}
 \description{
 Plot trap data with ID'd events
 }

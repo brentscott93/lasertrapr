@@ -477,7 +477,7 @@ time_off_ecdf <- function(event_files_filtered, plot_colors){
 #' @export
 #'
 #' @noRd
-#' @import survminer survival patchwork
+#' @import survminer survival
 survival_analysis <- function(event_files_filtered, plot_colors){
   
   fit <- survival::survfit(survival::Surv(time_on_ms) ~ conditions, data = event_files_filtered)

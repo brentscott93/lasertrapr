@@ -1,12 +1,9 @@
 #' mini_ensemble UI Function
 #'
 #' @description A shiny Module.
-#'
 #' @param id,input,output,session Internal parameters for {shiny}.
-#'
-#' @noRd 
-#'
 #' @importFrom shiny NS tagList 
+#' @noRd
 mod_mini_ensemble_ui <- function(id){
   ns <- NS(id)
   tagList(
@@ -172,8 +169,8 @@ mod_mini_ensemble_ui <- function(id){
 }
     
 #' mini_ensemble Server Function
+#' @noRd
 #' @param input,output,session,f module parameters
-#' @noRd 
 mod_mini_ensemble_server <- function(input, output, session, f){
   ns <- session$ns
   

@@ -67,7 +67,7 @@ mod_summarize_ui <- function(id){
 #' summarize Server Function
 #'
 #' @noRd
-#' @import data.table ggpubr cowplot rstatix survival survminer patchwork
+#' @import data.table cowplot rstatix
 mod_summarize_server <- function(input, output, session, f){
  ns <- session$ns
   # 

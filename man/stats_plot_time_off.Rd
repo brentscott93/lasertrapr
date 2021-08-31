@@ -11,9 +11,6 @@ stats_plot_time_off(event_files_filtered, plot_colors)
 
 \item{plot_colors}{}
 }
-\value{
-
-}
 \description{
 Title
 }

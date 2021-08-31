@@ -13,9 +13,6 @@ stats_plot_time_on(event_files_filtered, plot_colors, p_adj)
 
 \item{p_adj}{}
 }
-\value{
-
-}
 \description{
 Title
 }

@@ -14,15 +14,10 @@ params:
 
 ```{r setup, include=FALSE}
 library(flexdashboard)
-#library(biophysr)
 library(lasertrapr)
-#library(aomisc)
-#devtools::install_github("onofriAndreaPG/aomisc")
 library(tidyverse)
 library(cowplot)
-library(ggpubr)
 library(DT)
-library(plotly)
 
 ```
     

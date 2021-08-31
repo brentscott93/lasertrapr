@@ -1,12 +1,8 @@
 #' hm_model UI Function
-#'
 #' @description A shiny Module.
-#'
 #' @param id,input,output,session Internal parameters for {shiny}.
-#'
-#' @noRd 
-#'
 #' @importFrom shiny NS tagList 
+#' @noRd 
 mod_hm_model_ui <- function(id){
   ns <- NS(id)
   tagList(
@@ -153,9 +149,9 @@ mod_hm_model_ui <- function(id){
 }
     
 #' hm_model Server Function
+#' @noRd
 #' @importFrom magrittr "%<>%"
 #' @param input,output,session,f module parameters
-#' @noRd 
 mod_hm_model_server <- function(input, output, session, f){
  ns <- session$ns
  

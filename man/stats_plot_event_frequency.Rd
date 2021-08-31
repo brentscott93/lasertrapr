@@ -13,9 +13,6 @@ stats_plot_event_frequency(event_file_paths, factor_order, plot_colors)
 
 \item{plot_colors}{}
 }
-\value{
-
-}
 \description{
 Title
 }

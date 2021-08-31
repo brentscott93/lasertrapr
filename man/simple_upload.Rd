@@ -4,7 +4,15 @@
 \alias{simple_upload}
 \title{Simple Upload of laser trap data}
 \usage{
-simple_upload(input_data, project, conditions, date, ready_for_analysis, nm2pn)
+simple_upload(
+  input_data,
+  project,
+  conditions,
+  date,
+  ready_for_analysis,
+  nm2pn,
+  hz
+)
 }
 \arguments{
 \item{input_data}{uploaded data to app from fileInput}

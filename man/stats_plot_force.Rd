@@ -11,9 +11,6 @@ stats_plot_force(event_files_filtered, plot_colors)
 
 \item{plot_colors}{}
 }
-\value{
-
-}
 \description{
 Title
 }
