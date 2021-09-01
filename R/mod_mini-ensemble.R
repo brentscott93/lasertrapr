@@ -54,11 +54,6 @@ mod_mini_ensemble_ui <- function(id){
                              min = 1, 
                              max = 30, 
                              step = 1),
-                 
-                 numericInput(inputId = ns('hz'),
-                              label = 'Sampling Frequency (Hz)', 
-                              value = 5000),
-                 
                 
                  actionButton(inputId = ns("analyze_trap"),
                               label = "Run Analysis",
@@ -211,12 +206,6 @@ mod_mini_ensemble_server <- function(input, output, session, f){
     # }
     
     golem::print_dev('setting default parms ')
-    if(is.null(input$hz)){
-      hz <- 5000
-    } else {
-      hz <- input$hz
-    }
-    
     if(is.null(input$w_width)){
       w_width <- 50
     } else {

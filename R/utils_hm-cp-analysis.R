@@ -277,7 +277,7 @@ measure_hm_events <- function(processed_data, hm_model_results, conversion, hz, 
 #' Runs changepoint analysis, estimates more accurate event measurements, and saves data for ensemble averaging.
 #'
 #' @param measured_hm_events the results from measure_hm_events()
-#' @param hz sampling frequency in Hz (default is 5000)
+#' @param hz sampling frequency in Hz
 #' @param conversion 
 #'
 #' @return
@@ -506,113 +506,19 @@ changepoint_analysis <- function(measured_hm_events,
       keep_event[[i]] <- TRUE
     }
     
-    # if(length_of_event >= ensemble_length){
-    #   #if event longer than 1sec take first 5000ms of event starting from the newly found start of event
-    #   forward_5000 <- tibble(data = trap_data$data[ cp_start : (cp_start + (ensemble_length - 1)) ],
-    #                          ensemble_index = 0:(hz-1),
-    #                          event = i,
-    #                          keep = keep)
-    # } else {
-    #   
-    #   #take average of 10ms from 12ms-8ms before cp ID end to extend events shorter than 1 second to 1 second
-    #   #OR 
-    #   #take the mean calcualted from the changepoint object
-    #   i1 <- 0.003*hz
-    #   i2 <- 0.001*hz
-    #   
-    #   golem::print_dev("forward")
-    #   
-    #   front_avg <- mean(trap_data$data[(cp_off-i1) : (cp_off-1) ])
-    #   #front_avg <- processed_data_tibble$data[cp_off-1]
-    #   time_diff <- ensemble_length - length_of_event
-    #   extend_event <- c(trap_data$data[ cp_start : (cp_off-1) ], rep(front_avg, time_diff))
-    #   
-    #   forward_5000 <- tibble(data = extend_event,
-    #                          ensemble_index = 0:(hz-1),
-    #                          event = i,
-    #                          keep = keep)
-    # }
-    
     ms_5 <- 5*hz/1000
     before_data <- trap_data$data[ (cp_start - ms_5) : (cp_start - 1) ]
     before_var <- var(before_data)
     first_25 <-  trap_data$data[ (cp_start + ms1_dp) : (cp_start + (ms_5 + ms1_dp)) ]
     front_var <- var(first_25)
     front_var_ratio[[i]] <- before_var/front_var
-    # 
-    # before_event <- tibble(data = before_data,
-    #                        ensemble_index = -ms_5:-1,
-    #                        event = i,
-    #                        keep = keep)
-    # 
-    # #get baseline mean prior to event from changepoint object and subtract mean from all values to center at 0
-    # # baseline_mean_prior <- forward_cpt_obj@param.est$mean[[1]]
-    # 
-    # forward_5000 %<>% 
-    #   rbind(before_event) %>% 
-    #   dplyr::mutate(is_positive = is_positive[[i]],
-    #                 direction = 'forward',
-    #                 signal_noise_ratio = front_var_ratio[[i]]) %>% 
-    #   # data = data - baseline_mean_prior) %>%
-    #   dplyr::arrange(ensemble_index)
-    # 
-    # forward_ensemble_average_data[[i]] <- forward_5000
-    # 
-    # golem::print_dev("backwards")
-    # 
-    # if(length_of_event >= ensemble_length){
-    #   golem::print_dev("backwards-longer-1-sec")
-    #   b1 <- hz/1000
-    #   backwards_5000 <- tibble(data = trap_data$data[ (cp_off - ensemble_length) : (cp_off-1) ],
-    #                            ensemble_index = hz:((2*hz)-1),
-    #                            event = i, 
-    #                            keep = keep)
-    # } else {
-    #   golem::print_dev("backwards-shorter-1-sec")
-    #   #get average of 3ms to extend backwards in time to 1 second
-    #   b1 <- 3*hz/1000 #0.002*hz
-    #   b2 <- 0.006*hz
-    #   back_avg <- mean(trap_data$data[(cp_start+1):(cp_start+b1)])
-    #   # back_avg <- mean(processed_data_tibble$data[cp_start+2])
-    #   #replace first 1ms (5 datapoints) with 5ms average
-    #   time_diff <- (ensemble_length-length_of_event) + 1
-    #   
-    #   extend_event_back <- c(rep(back_avg, time_diff), trap_data$data[ (cp_start +1) : (cp_off-1) ])
-    #   golem::print_dev(paste0("time diff: ", time_diff, " length of extension: ", length(extend_event_back)))
-    #   backwards_5000 <- tibble::tibble(data = extend_event_back,
-    #                                    ensemble_index = hz:((2*hz)-1),
-    #                                    event = i,
-    #                                    keep = keep)
-    # }
-    # 
-    # golem::print_dev("backwards-after-event")
-    # 
+   
     event_back_25 <- trap_data$data[ (cp_off - (ms_5 + (ms1_dp + 1 ))) : (cp_off - (ms1_dp + 1)) ]
     event_back_var <- var(event_back_25)
     after_25 <- trap_data$data[ cp_off : (cp_off + (ms_5-1)) ]
     after_25_var <- var(after_25)
 
     back_var_ratio[[i]] <- after_25_var/event_back_var
-    # 
-    # after_event <- tibble::tibble(data = after_25,
-    #                               ensemble_index = (2*hz):((2*hz) + (ms_5 - 1)),
-    #                               event = i,
-    #                               keep = keep)
-    # 
-    # 
-    # backwards_5000 %<>% 
-    #   rbind(after_event) %>%
-    #   mutate(is_positive = is_positive[[i]],
-    #          direction = 'backwards', 
-    #          signal_noise_ratio = back_var_ratio[[i]]) %>% 
-    #   # data = data - baseline_mean_after) %>%
-    #   arrange(ensemble_index)
-    # 
-    # backwards_ensemble_average_data[[i]] <- backwards_5000
-    
-    #get better displacements 
-    #exact_event_chunk <- trap_data$data[cp_start : cp_off]
-    #percent10 <- length_of_event*
 
     if(displacement_type == "avg"){
       mean_event_step <-  mean(trap_data$data[(cp_start + ms_5):((cp_off-1) - ms_5)])
@@ -661,15 +567,6 @@ changepoint_analysis <- function(measured_hm_events,
     }
     
   } #loop close
-  # forward_ensemble_df <- dplyr::bind_rows(forward_ensemble_average_data)
-  # 
-  # backwards_ensemble_df <- dplyr::bind_rows(backwards_ensemble_average_data)
-  # 
-  # ensemble_avg_df <- rbind(forward_ensemble_df, backwards_ensemble_df) %>%
-  #   mutate(conditions = conditions) %>% 
-  #   arrange(event)
-  
-
   
   cp_transitions <- tibble(start = better_time_on_starts,
                            stop = better_time_on_stops,
@@ -699,7 +596,7 @@ changepoint_analysis <- function(measured_hm_events,
 #' @param rle_object A run-length-encoding object
 #' @param conversion The conversion between running window time and 5kHz
 
-event_frequency <- function(processed_data, rle_object, conversion, hz = 5000, ends_in_state_1, project, conditions, date, obs){
+event_frequency <- function(processed_data, rle_object, conversion, hz, ends_in_state_1, project, conditions, date, obs){
   #return a dataframe of event frequencies per each second
   #get the number of seconds in the trace
   seconds_in_trace <- length(processed_data)/hz
@@ -738,13 +635,13 @@ event_frequency <- function(processed_data, rle_object, conversion, hz = 5000, e
   #2) the index of the start of each second in datapoint
   #3) the index of the end of each second in datapoint
   freq_df <- purrr::map_dfr(start_event, ~tibble::tibble(start_event = .x,
-                                                         begin = ((seq_len(seconds_in_trace)*5000)-4999),
-                                                         end = seq_len(seconds_in_trace)*5000))
+                                                         begin = ((seq_len(seconds_in_trace) * hz) - (hz - 1)),
+                                                         end = seq_len(seconds_in_trace) * hz))
   
   
-  end_freq_df <- purrr::map_dfr(end_event, ~tibble::tibble(end_event = .x,
-                                                           begin = ((seq_len(seconds_in_trace)*5000)-4999),
-                                                           end = seq_len(seconds_in_trace)*5000))
+  # end_freq_df <- purrr::map_dfr(end_event, ~tibble::tibble(end_event = .x,
+  #                                                          begin = ((seq_len(seconds_in_trace) * hz) - (1- hz)),
+  #                                                          end = seq_len(seconds_in_trace) * hz))
   
   
   #test to see if the event is 'between' or in what second interval
@@ -760,12 +657,12 @@ event_frequency <- function(processed_data, rle_object, conversion, hz = 5000, e
                   obs = obs)
   
   
-  find_it_end <- end_freq_df %>%
-    dplyr::mutate(is_in = purrr::pmap_lgl(end_freq_df, ~dplyr::between(..1, ..2, ..3))) %>%
-    dplyr::group_by(begin, end) %>%
-    dplyr::summarize(freq_stop = sum(is_in)) %>%
-    tibble::rownames_to_column('second') %>%
-    dplyr::mutate(second = as.numeric(second))
+  # find_it_end <- end_freq_df %>%
+  #   dplyr::mutate(is_in = purrr::pmap_lgl(end_freq_df, ~dplyr::between(..1, ..2, ..3))) %>%
+  #   dplyr::group_by(begin, end) %>%
+  #   dplyr::summarize(freq_stop = sum(is_in)) %>%
+  #   tibble::rownames_to_column('second') %>%
+  #   dplyr::mutate(second = as.numeric(second))
   
   
   

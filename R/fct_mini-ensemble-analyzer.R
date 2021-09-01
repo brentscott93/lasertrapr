@@ -1,5 +1,5 @@
 
-mini_ensemble_analyzer <- function(trap_data, w_width_ms = 10, hz = 5000, displacement_threshold = 8, time_threshold_ms = 10, f){
+mini_ensemble_analyzer <- function(trap_data, w_width_ms = 10, displacement_threshold = 8, time_threshold_ms = 10, f){
   #for dev
   # trap_data <- read_tsv("/Users/brentscott/Documents/silver_flash/azo-TP_trapping_stuff/raw_data/mini_ensemble/6-28-19_100uMORTHAZTP_25ugMYO/observation_one/processed.txt",
   #                       col_names = "processed_bead")
@@ -11,12 +11,26 @@ mini_ensemble_analyzer <- function(trap_data, w_width_ms = 10, hz = 5000, displa
   # obs = 'obs'
   # date = 'date'
   # w_width_ms = 10; hz = 5000; displacement_threshold = 8; time_threshold_ms = 50
-  project <-  unique(trap_data$project)
+  project <- unique(trap_data$project)
   conditions <- unique(trap_data$conditions)
   date <- unique(trap_data$date)
-  obs <-  unique(trap_data$obs)
-  include <- unique(trap_data$include)
-  nm2pn <- unique(trap_data$nm2pn)
+  obs <- unique(trap_data$obs)
+  
+  o_path <- file.path(path.expand("~"),
+                      "lasertrapr", 
+                      project,
+                      conditions,
+                      date,
+                      obs, 
+                      "options.csv")
+  
+  o <- data.table::fread(o_path)
+  
+  include <- o$include
+  if(is.na(include)) include <- FALSE
+  mv2nm <-  o$mv2nm
+  nm2pn <- o$nm2pn
+  hz <- o$hz
   #browser()
   error_file <- file(file.path(f$date$path, "error-log.txt"), open = "a")
   tryCatch({
@@ -134,7 +148,7 @@ mini_ensemble_analyzer <- function(trap_data, w_width_ms = 10, hz = 5000, displa
     final_events <-  rescaled_events %>%
       mutate(off_time_prior_dp = c(NA, off_time_index$off_time_dp),
              off_time_prior_sec = off_time_prior_dp/hz,
-             time_off_prior_ms = off_time_prior_sec*1000,
+             time_off_ms = off_time_prior_sec * 1000,
              time_on_dp = state_2_end - state_1_end,
              time_on_sec = time_on_dp/hz,
              time_on_ms = time_on_sec * 1000,
@@ -149,7 +163,18 @@ mini_ensemble_analyzer <- function(trap_data, w_width_ms = 10, hz = 5000, displa
              peak_nm_index = peak_nm_index,
              index = 1:nrow(rescaled_events)) %>% 
       rename("event_stop" = state_2_end) %>% 
-      dplyr::select(project, conditions, date, obs, time_off_prior_ms, time_on_ms,displacement_nm, force, index, event_start, event_stop, peak_nm_index)
+      dplyr::select(project,
+                    conditions,
+                    date, 
+                    obs, 
+                    time_off_ms, 
+                    time_on_ms,
+                    displacement_nm, 
+                    force, 
+                    index, 
+                    event_start, 
+                    event_stop, 
+                    peak_nm_index)
     
     setProgress(0.85, detail = 'Calculating event frequency')
    event_freq <- mini_event_frequency(rescaled_raw_data$data,  
@@ -162,22 +187,25 @@ mini_ensemble_analyzer <- function(trap_data, w_width_ms = 10, hz = 5000, displa
    report_data = 'success'
    
    setProgress(0.95, detail = 'Saving Data')
-   trap_data %<>% mutate(rescaled_mini_data = rescaled_raw_data$data,
-                         run_mean_overlay = c(run_mean_rescaled0, rep(0, times)),
-                         analyzer = "mini", 
-                         hz = hz, 
-                         report = report_data)
+   trap_data %<>% 
+     mutate(rescaled_mini_data = rescaled_raw_data$data,
+            run_mean_overlay = c(run_mean_rescaled0, rep(0, times)))
    
-    data_to_save <- list(final_events, event_freq, trap_data)
+   options_df <-
+     o %>% 
+      dplyr::mutate(analyzer = "mini", 
+                    report = report_data,
+                    w_width_ms = w_width_ms, 
+                    displacement_threshold = displacement_threshold, 
+                    time_threshold_ms = time_threshold_ms)
+   
+    data_to_save <- list(final_events, event_freq, trap_data, options_df)
     filenames <- c('mini-measured-events.csv',
                    'mini-event-frequency.csv',
-                   'trap-data.csv')
+                   'trap-data.csv',
+                   'options.csv')
     path <- file.path(path.expand('~'), 'lasertrapr', project, conditions, date, obs)
-    #path <- '~/Desktop'
     purrr::walk2(data_to_save, filenames, ~data.table::fwrite(.x, file = file.path(path, .y), sep = ","))
-    
-   
-    
     
      }, error=function(e){
        if(!include){
@@ -231,7 +259,7 @@ id_mini_events <- function(run_mean, displacement_threshold, time_threshold){
       rle_object<- as_tibble(do.call("cbind", rle(on_off)))
       
       if(length(unique(rle_object$values)) == 1){
-        stop('No events in trace. There is either on events or the thresholds are too stringent.')
+        stop('No events in trace. There is either one events or the thresholds are too stringent.')
       }
       #if starts in state2/event get rid of it
       if(rle_object$values[[1]] == 2){
@@ -259,7 +287,7 @@ id_mini_events <- function(run_mean, displacement_threshold, time_threshold){
       regroup_data <- bind_cols(state_1_end = split_data[[1]]$cumsum, state_2_end = split_data[[2]]$cumsum) %>%
         mutate(event_duration_dp = state_2_end - state_1_end)
       
-      #filter out state 2s that are less than 10 ms (50 data points)
+      #filter out state 2s that are less than threshold
       events <- regroup_data %>%
         filter(event_duration_dp > time_threshold)
       
@@ -274,7 +302,7 @@ id_mini_events <- function(run_mean, displacement_threshold, time_threshold){
 #' @param rle_object A run-length-encoding object
 #' @param conversion The conversion between running window time and 5kHz
 
-mini_event_frequency <- function(rescaled_raw_data, events, conversion, hz = 5000, ends_in_state_1){
+mini_event_frequency <- function(rescaled_raw_data, events, conversion, hz, ends_in_state_1){
   #mini-ensemble dev
   # rescaled_raw_data <- rescaled_raw_data$data 
   # events <- id_rescaled_events$rle_object 
@@ -291,8 +319,8 @@ mini_event_frequency <- function(rescaled_raw_data, events, conversion, hz = 500
   #2) the index of the start of each second in datapoint
   #3) the index of the end of each second in datapoint
   freq_df <- purrr::map_dfr(start_event, ~tibble::tibble(start_event = .x,
-                                                         begin = ((seq_len(seconds_in_trace)*5000)-4999),
-                                                         end = seq_len(seconds_in_trace)*5000))
+                                                         begin = ((seq_len(seconds_in_trace)*hz)-(hz-1)),
+                                                         end = seq_len(seconds_in_trace)*hz))
   
   
   #test to see if the event is 'between' or in what second interval

@@ -407,7 +407,6 @@ mod_hm_model_server <- function(input, output, session, f){
                         w_slide = "1/2",
                         em_random_start = FALSE, 
                         use_channels = "Mean/Var",
-                        hz = 5000,
                         front_cp_method = "Mean/Var",
                         back_cp_method = "Mean/Var",
                         cp_running_var_window = 5,
@@ -418,7 +417,6 @@ mod_hm_model_server <- function(input, output, session, f){
       a$w_slide <- input$w_slide
       a$em_random_start <- input$em_random_start
       a$use_channels <- input$use_channels
-      a$hz <- input$hz
       a$front_cp_method <-input$front_cp_method
       a$back_cp_method <-input$back_cp_method
       a$cp_running_var_window <- input$cp_running_var_window
@@ -506,16 +504,10 @@ mod_hm_model_server <- function(input, output, session, f){
                                              "Peak" = "peak"),
                               inline = TRUE,
                               selected = a$displacement_type)
-        ),
-        tabPanel("Hz",
-                 numericInput(inputId = ns('hz'),
-                              label = 'Sampling Frequency (Hz)', 
-                              value = a$hz)
+         )
         )
-                 
-        )
+       )
       )
-    )
     
     observe({
       if(is.null(input$back_cp_method)){

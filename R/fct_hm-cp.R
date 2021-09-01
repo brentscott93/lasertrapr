@@ -7,7 +7,6 @@
 #' 
 hidden_markov_changepoint_analysis <- function(trap_data,
                                                f = f,
-                                               hz = 5000,
                                                w_width = 150,
                                                w_slide = "1/2",
                                                use_channels,
@@ -19,22 +18,26 @@ hidden_markov_changepoint_analysis <- function(trap_data,
                                                is_shiny = F, 
                                                opt,
                                                ...){
- 
-  # dev_path <- '~/lasertrapr/project_myoV-phosphate/myoV-S217A_pH-7.0_30mM-Pi/2020-11-01/obs-19/trap-data.csv'
-  # trap_data <- read_csv(dev_path)
-  # w_width = 150
-  # em_random_start = F
-  #w_slide <- "1/2"
-  #use_channels <- "Mean/Var"
-  #hz <- 5000
-  
-  nm2pn <- unique(trap_data$nm2pn)
   project <- unique(trap_data$project)
   conditions <- unique(trap_data$conditions)
   date <- unique(trap_data$date)
   obs <- unique(trap_data$obs)
-  include <- unique(trap_data$include)
-  mv2nm <-  unique(trap_data$mv2nm)
+  
+  o_path <- file.path(path.expand("~"),
+                    "lasertrapr", 
+                    project,
+                    conditions,
+                    date,
+                    obs, 
+                    "options.csv")
+  
+  o <- data.table::fread(o_path)
+  
+  include <- o$include
+  if(is.na(include)) include <- FALSE
+  mv2nm <-  o$mv2nm
+  nm2pn <- o$nm2pn
+  hz <- o$hz
   
   path <- file.path(path.expand("~"),
                     "lasertrapr", 
@@ -52,7 +55,8 @@ hidden_markov_changepoint_analysis <- function(trap_data,
   error_file <- file(file.path(f$date$path, "error-log.txt"), open = "a")
       tryCatch({
         if(!include){
-          obs_trap_data_exit <- trap_data  %>%
+          obs_trap_data_exit <- 
+            o %>%
             dplyr::mutate(report = 'user-excluded',
                           analyzer = 'none',
                           review = F)
@@ -64,12 +68,11 @@ hidden_markov_changepoint_analysis <- function(trap_data,
                                               conditions,
                                               date,
                                               obs, 
-                                              "trap-data.csv"),
+                                              "options.csv"),
                               sep = ",")
           stop("User Excluded")
         }
-        
-        
+      
         not_ready <- is_empty(trap_data$processed_bead)
         if(not_ready){
           if(is_shiny) showNotification(paste0(trap_data$obs, ' not processed. Skipping...'), type = 'warning')
@@ -83,16 +86,15 @@ hidden_markov_changepoint_analysis <- function(trap_data,
   
         processed_data <- trap_data$processed_bead
 
-        
         #### RUNNING MEAN & VAR ####
         if(w_slide == "1-pt"){
           ws <- 1 
         } else if(w_slide == "1/4"){
-          ws <- w_width*0.25
+          ws <- round_any(w_width*0.25, 1)
         } else if(w_slide == "1/2"){
-          ws <- w_width*0.5
+          ws <- round_any(w_width*0.5, 1)
         } else if(w_slide == "3/4"){
-          ws <- w_width*0.75
+          ws <- round_any(w_width*0.75, 1)
         } else if(w_slide == "No-overlap"){
           ws <- w_width
         }
@@ -102,7 +104,6 @@ hidden_markov_changepoint_analysis <- function(trap_data,
         run_mean <- na.omit(RcppRoll::roll_meanl(processed_data, n = w_width, by = ws))
         run_var <- na.omit(RcppRoll::roll_varl(processed_data, n = w_width, by = ws))
       
-       
         #### HMM ####
         if(is_shiny) setProgress(0.25, detail = "HM-Model")
         
@@ -118,12 +119,11 @@ hidden_markov_changepoint_analysis <- function(trap_data,
                                          obs = obs)
         
         #### MEASURE EVENTS ####
-        conversion <- ws
         if(is_shiny) setProgress(0.5, detail = "Measuring")
         
         measured_hm_events <- measure_hm_events(processed_data = processed_data, 
                                                 hm_model_results = hm_model_results, 
-                                                conversion = conversion, 
+                                                conversion = ws, 
                                                 hz = hz,
                                                 nm2pn = nm2pn)
         #### CHANGEPOINT ####
@@ -140,9 +140,6 @@ hidden_markov_changepoint_analysis <- function(trap_data,
                                          ws = ws,
                                          displacement_type = displacement_type)
                                     
-                                            
-      
-     
         #add better on times & displacements to final table
         single_molecule_results <- measured_hm_events$measured_events_hm_estimates %>% 
           dplyr::full_join(cp_data$cp_event_transitions) %>%
@@ -216,24 +213,21 @@ hidden_markov_changepoint_analysis <- function(trap_data,
         
         overlay <- c(overlay, rep(overlay[length(overlay)], length(processed_data) - length(overlay)))
         
-        
         if(measured_hm_events$did_it_flip) hm_model_results %<>% mutate(run_mean = run_mean * -1)
   
         report_data  <- "success"
         
         trap_data %<>% 
           dplyr::mutate(processed_bead =  measured_hm_events$flip_raw,
-                        hm_overlay = overlay,
-                        report = report_data,
-                        hz = hz, 
-                        analyzer = 'hm/cp',
-                        status = 'analyzed')
+                        hm_overlay = overlay)
         
-        options_df <- as.data.frame(opt) %>% 
-          dplyr::mutate(project = project,
-                 conditions = conditions, 
-                 date = date, 
-                 obs = obs) %>% 
+        opt_df <- as.data.frame(opt)
+        options_df <- 
+          o %>% 
+            cbind(opt_df) %>% 
+            dplyr::mutate(  report = report_data,
+                            analyzer = 'hm/cp',
+                            status = 'analyzed' ) %>% 
           dplyr::select(project, conditions, date, obs, everything())
         
         if(is_shiny == T) setProgress(0.95, detail = 'Saving Data')
