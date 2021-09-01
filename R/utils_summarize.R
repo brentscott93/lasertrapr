@@ -11,7 +11,7 @@ summarize_trap_data <- function(f, hz, factor_order, is_shiny = T){
   #browser()
   trap_data_paths <- 
     list_files(trap_selected_project,
-               pattern = "trap-data.csv",
+               pattern = "options.csv",
                recursive = TRUE)
   
  if(is_shiny) setProgress(0.05, detail = 'Reading Data')
@@ -20,8 +20,8 @@ summarize_trap_data <- function(f, hz, factor_order, is_shiny = T){
   
   trap_data <-
     lapply(trap_data_paths$path, data.table::fread, nrows = 1) %>% 
-    data.table::rbindlist(fill = T) %>% 
-    dplyr::filter(report == "success" & review == T & include == T)
+    data.table::rbindlist(fill = TRUE) %>% 
+    dplyr::filter(report == "success" & review == TRUE & include == TRUE)
   
   
   event_file_paths <- 
@@ -32,24 +32,24 @@ summarize_trap_data <- function(f, hz, factor_order, is_shiny = T){
   
   event_files_filtered <- 
     lapply(event_file_paths, data.table::fread) %>%
-    data.table::rbindlist(fill = T) %>% 
-    dplyr::filter(keep == T & event_user_excluded == F)
+    data.table::rbindlist(fill = TRUE) %>% 
+    dplyr::filter(keep == TRUE & event_user_excluded == FALSE)
   
+  if(factor_order != ""){
   event_files_filtered$conditions <- 
     factor(event_files_filtered$conditions,
            levels = factor_order)
+  }
+  
+  trap_data_filtered_paths <- str_replace(event_file_paths, "measured-events.csv", "trap-data.csv")
   
   get_time <- 
-    lapply(trap_data_paths$path,
+    lapply(trap_data_filtered_paths,
            function(x){ 
              if(is_shiny)   incProgress(0.0025)
-              data.table::fread(x, 
-                                select = c('conditions',
-                                           'report', 
-                                           'review',
-                                           'include'))} ) %>%
-              data.table::rbindlist(fill = T) %>% 
-              .[report == "success" & review == T & include == T, .N, by = conditions] %>% 
+              data.table::fread(x) } ) %>%
+              data.table::rbindlist(fill = TRUE) %>% 
+              .[, .N, by = conditions] %>% 
               dplyr::mutate(minutes = round((N/hz)/60, 2))
   
   summarize_trap <- event_files_filtered %>%
