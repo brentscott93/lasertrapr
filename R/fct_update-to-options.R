@@ -31,24 +31,20 @@ update_to_options <- function(project_path){
 
 
 
-#' Add a time column to all trap-data.csv
-#'
-#' @param project_path project folder path
-#' @param hz 
-#' @export
-add_time_column <- function(project_path, hz = 5000){
-  
-  path <- list.files(project_path, 
-                      "trap-data.csv",
-                      recursive = TRUE,
-                      full.names = TRUE)
-  
-  add_time <- function(path, hz){
-    trap_data <- data.table::fread(path)
-    from_by <- 1/hz
-    trap_data[, time_sec := seq(from = from_by, by = from_by, length.out = nrow(trap_data))]
-    data.table::fwrite(trap_data, path)
-  }
-  
-  purrr::walk(path, ~add_time(.,hz = hz))
-}
+
+# add_time_column <- function(project_path, hz = 5000){
+#   
+#   path <- list.files(project_path, 
+#                       "trap-data.csv",
+#                       recursive = TRUE,
+#                       full.names = TRUE)
+#   
+#   add_time <- function(path, hz){
+#     trap_data <- data.table::fread(path)
+#     from_by <- 1/hz
+#     trap_data[, time_sec := seq(from = from_by, by = from_by, length.out = nrow(trap_data))]
+#     data.table::fwrite(trap_data, path)
+#   }
+#   
+#   purrr::walk(path, ~add_time(.,hz = hz))
+# }
