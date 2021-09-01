@@ -100,8 +100,7 @@ split_obs <- function(input_data, project, conditions, date, threshold, hz = 500
                         date = date$name, 
                         obs = paste0('obs-0', c),
                         raw_bead = create_obs[[c]]$raw_bead,
-                        trap_position = create_obs[[c]]$trap_position,
-                        time_sec = seq(0, by = 1/hz, length.out = nrow(.)))
+                        trap_position = create_obs[[c]]$trap_position)
         
         o %<>% mutate(obs =  paste0("obs-0", r)) %>% dplyr::select(project, conditions, date, obs, everything())
         
@@ -113,8 +112,7 @@ split_obs <- function(input_data, project, conditions, date, threshold, hz = 500
                           date = date$name, 
                           obs = paste0('obs-', c),
                           raw_bead = create_obs[[c]]$raw_bead,
-                          trap_position = create_obs[[c]]$trap_position,
-                          time_sec = seq(0, by = 1/hz, length.out = nrow(.)))
+                          trap_position = create_obs[[c]]$trap_position)
         
           o %<>% mutate(obs =  paste0("obs-", r)) %>% dplyr::select(project, conditions, date, obs, everything())
         

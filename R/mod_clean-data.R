@@ -360,7 +360,8 @@ mod_clean_data_server <- function(input, output, session, f){
         dplyr::pull(path)
 
       data <- data.table::fread(trap_data, sep = ",") %>%
-        dplyr::mutate(bead = raw_bead*as.numeric(input$mv2nm)) %>%
+        dplyr::mutate(bead = raw_bead*as.numeric(input$mv2nm),
+                      time_sec = 1:nrow(.)/hz()) %>%
         dplyr::select(time_sec, bead)
 
       f1 <- input$trap_filter_sliderInput[[1]]

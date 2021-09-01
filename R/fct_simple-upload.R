@@ -33,8 +33,7 @@ simple_upload <- function(input_data, project, conditions, date, ready_for_analy
                     conditions = conditions$name,
                     date = date$name, 
                     raw_bead =  data_traces[[r]][[1]],
-                    trap_position = 0,
-                    time_sec = seq(0, by = 1/hz, length.out = nrow(.)))
+                    trap_position = 0)
     #t %<>% dplyr::mutate(processed_bead = data_traces[[r]][[1]]) untested change
     if(ready_for_analysis){
       t %<>% dplyr::mutate(processed_bead = data_traces[[r]][[1]])
