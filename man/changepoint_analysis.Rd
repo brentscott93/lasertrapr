@@ -20,7 +20,7 @@ changepoint_analysis(
 \arguments{
 \item{measured_hm_events}{the results from measure_hm_events()}
 
-\item{hz}{sampling frequency in Hz (default is 5000)}
+\item{hz}{sampling frequency in Hz}
 
 \item{conversion}{}
 }

@@ -85,15 +85,20 @@ mod_summarize_server <- function(input, output, session, f){
   })
   
   colorz <- reactive({
-      if(length(conditions()) <= 2){
+    if(length(conditions()) == 1){
+         "#002cd3"
+    } else if(length(conditions()) == 2){
         c("#002cd3", "#d30000")
       } else {
         RColorBrewer::brewer.pal(length(conditions()), 'Set1')
       }
   })
+  
   output$user_defaults <- renderUI({
     req(conditions())
+    if(length(conditions()) >= 2){
     tagList(
+    
       selectInput(ns('factor_order'),
                   label = 'Factor Order',
                   multiple = T,
@@ -104,20 +109,26 @@ mod_summarize_server <- function(input, output, session, f){
                                              label = paste('Color', .x),
                                              value = .y)))
           )
+    } else {
+      div(style = 'display:inline-block', colourpicker::colourInput(ns('color1'),
+                                                                    label = 'Color 1',
+                                                                    value = colorz()))
+    }
   })
-  # 
-  # 
+  
   rv <- reactiveValues(summary = data.frame(x = letters),
                          save = 0)
-  # 
+
   observeEvent(input$go, {
-    golem::print_dev('summary go clicked')
+    #browser()
     defend_if_null(f$project_input, ui = 'Please Select a Project', type = 'error')
     defend_if_blank(f$project_input, ui = "Please Select a Project", type = "error")
     withProgress(message = 'Summarizing Project', {
+      golem::print_dev("before sum")
       rv$data <- summarize_trap_data(f = f,
                                      hz = input$hz,
                                      factor_order = input$factor_order)
+      golem::print_dev("before colors")
       plot_colors <- purrr::map_chr(paste0('color', seq_along(conditions())), ~input[[.x]])
       setProgress(0.6, detail = "Step Stats")
         rv$step <-  ggstatsplot::ggbetweenstats(rv$data$event_files_filtered,
@@ -183,11 +194,11 @@ mod_summarize_server <- function(input, output, session, f){
       #                                     factor_order = input$factor_order,
       #                                     plot_colors = plot_colors)
       setProgress(0.9, detail = "Correlations")
-      rv$correlations <- correlations(event_files_filtered = rv$data$event_files_filtered,
-                                      plot_colors = plot_colors)
+      # rv$correlations <- correlations(event_files_filtered = rv$data$event_files_filtered,
+      #                                 plot_colors = plot_colors)
       setProgress(0.95, detail = "Stiffness")
-      rv$stiffness <- stiffness(event_files_filtered = rv$data$event_files_filtered,
-                                   plot_colors = plot_colors)
+      # rv$stiffness <- stiffness(event_files_filtered = rv$data$event_files_filtered,
+      #                              plot_colors = plot_colors)
     })
   })
 

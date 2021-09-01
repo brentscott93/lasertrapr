@@ -33,7 +33,7 @@ summarize_trap_data <- function(f, hz, factor_order, is_shiny = T){
     data.table::rbindlist(fill = TRUE) %>% 
     dplyr::filter(keep == TRUE & event_user_excluded == FALSE)
   
-  if(factor_order != ""){
+  if(!is.null(factor_order)){
   event_files_filtered$conditions <- 
     factor(event_files_filtered$conditions,
            levels = factor_order)
