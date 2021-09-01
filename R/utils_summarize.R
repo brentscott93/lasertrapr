@@ -8,15 +8,13 @@
 summarize_trap_data <- function(f, hz, factor_order, is_shiny = T){
   
   trap_selected_project <- f$project$path
-  #browser()
+  
   trap_data_paths <- 
     list_files(trap_selected_project,
                pattern = "options.csv",
                recursive = TRUE)
   
  if(is_shiny) setProgress(0.05, detail = 'Reading Data')
-  # trap_data <- purrr::map(trap_data_paths$path, function(x){ incProgress(0.0025)
-  #   data.table::fread(x)} )
   
   trap_data <-
     lapply(trap_data_paths$path, data.table::fread, nrows = 1) %>% 
