@@ -818,15 +818,22 @@ mod_split_obs_server <- function(input, output, session, f){
        obs_name <- paste0("obs-", num_obs_folders)
      }
      setProgress(0.5, detail = "Preparing Data")
-     data_to_save <- sim_data() %>% 
+     trap_data_to_save <- sim_data() %>% 
        dplyr::mutate(project = f$project_input,
                 conditions = f$conditions_input,
                 date = f$date_input,
                 obs = obs_name, 
-                include = TRUE, 
+                raw_bead = data, 
+                processed_bead = data)
+                
+     options_to_save <- data.frame(
+                project = f$project_input,
+                conditions = f$conditions_input,
+                date = f$date_input,
+                obs = obs_name, 
                 mv2nm = 1,
                 nm2pn = 1,
-                processed_bead = data,
+                include = TRUE, 
                 processor = "sim",
                 report = "not run",
                 analyzer = NA,
@@ -860,7 +867,11 @@ mod_split_obs_server <- function(input, output, session, f){
      sim_save_folder <- file.path(f$date$path, obs_name)
      setProgress(0.9, detail = "Writing")
      dir.create(sim_save_folder)
-     data.table::fwrite(data_to_save, file = file.path(sim_save_folder, "trap-data.csv"))
+     filenames <- c("trap-data.csv", "options.csv")
+     data_to_save <- list(trap_data_to_save, options_to_save)
+     
+     walk2(data_to_save, filenames, ~data.table::fwrite(.x, file = file.path(sim_save_folder, .y)))
+     
     })
     showNotification(ui = "Simulation data saved", type = "message")
     
