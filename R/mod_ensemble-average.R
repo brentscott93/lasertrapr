@@ -92,7 +92,7 @@ mod_ensemble_average_server <- function(input, output, session, f){
      defend_if_blank(f$project_input, ui = "Please Select a Project", type = "error")
     
      withProgress(message = "Averaging Ensembles", {
-       ee_data <- avg_ensembles(f= f)
+       ee_data <- avg_ensembles(f = f)
        if(is.null(input$fit) || input$fit == "none"){
           showNotification("Ensembles Averaged", type = "message")
           ee_data

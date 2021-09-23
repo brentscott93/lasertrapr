@@ -18,6 +18,7 @@ hidden_markov_changepoint_analysis <- function(trap_data,
                                                is_shiny = F, 
                                                opt,
                                                ...){
+ # browser()
   project <- unique(trap_data$project)
   conditions <- unique(trap_data$conditions)
   date <- unique(trap_data$date)
@@ -119,11 +120,11 @@ hidden_markov_changepoint_analysis <- function(trap_data,
                                          obs = obs)
         
         #### MEASURE EVENTS ####
+        conversion <- ws
         if(is_shiny) setProgress(0.5, detail = "Measuring")
-        
         measured_hm_events <- measure_hm_events(processed_data = processed_data, 
                                                 hm_model_results = hm_model_results, 
-                                                conversion = ws, 
+                                                conversion = conversion, 
                                                 hz = hz,
                                                 nm2pn = nm2pn)
         #### CHANGEPOINT ####
@@ -222,13 +223,25 @@ hidden_markov_changepoint_analysis <- function(trap_data,
                         hm_overlay = overlay)
         
         opt_df <- as.data.frame(opt)
+        
+        if(names(opt_df) %in% names(o)) {
         options_df <- 
           o %>% 
+           dplyr::select(-c(names(opt_df))) %>% 
             cbind(opt_df) %>% 
-            dplyr::mutate(  report = report_data,
-                            analyzer = 'hm/cp',
-                            status = 'analyzed' ) %>% 
+            dplyr::mutate( analyzer = 'hm/cp',
+                           status = 'analyzed',
+                           report = report_data,) %>% 
           dplyr::select(project, conditions, date, obs, everything())
+        } else {
+          options_df <- 
+            o %>% 
+            cbind(opt_df) %>% 
+            dplyr::mutate( analyzer = 'hm/cp',
+                           status = 'analyzed',
+                           report = report_data,) %>% 
+            dplyr::select(project, conditions, date, obs, everything())
+        }
         
         if(is_shiny == T) setProgress(0.95, detail = 'Saving Data')
         file_names <-  c('trap-data.csv', 

@@ -47,4 +47,28 @@ update_to_options <- function(project_path){
 #   }
 #   
 #   purrr::walk(path, ~add_time(.,hz = hz))
+# }update_to_options <- function(project_path){
+#project_path <- "~/lasertrapr/project_myoV-subset"
+
+
+# folders_path <- list.dirs("~/lasertrapr/project_Cardiac")
+# obs_path <- folders_path[grep("obs-", folders_path)]
+# 
+# transfer <- function(obs_path){
+#   print(obs_path)
+#   path <- obs_path
+#   name <- c("trap-data.csv", "options.csv")
+#   file_names <- file.path(path, name)
+# 
+#   trap_data <- data.table::fread(file_names[[1]], nrows = 1)
+# 
+#   info_to_transfer <-  suppressWarnings(
+#     trap_data[, "review"]
+#   )
+#     existing_options <- data.table::fread(file_names[[2]])
+#     new_options <- existing_options %>% mutate(review = trap_data$review)
+#  
+#   data.table::fwrite(new_options, file = file_names[[2]])
 # }
+# purrr::walk(obs_path, transfer)
+
