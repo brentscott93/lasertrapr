@@ -26,31 +26,44 @@ prep_ensemble <- function(trap_selected_project,
   
   file.remove(old_files$path)
                       
-  trap_data_paths <- 
+  # trap_data_paths <- 
+  #   lasertrapr:::list_files(
+  #     trap_selected_project,
+  #     pattern = "trap-data.csv",
+  #     recursive = TRUE)
+  
+  options_data_paths <- 
     lasertrapr:::list_files(
       trap_selected_project,
-      pattern = "trap-data.csv",
+      pattern = "options.csv",
       recursive = TRUE)
   
-  trap_data <- 
+  options_data <- 
     data.table::rbindlist(
       lapply(
-        trap_data_paths$path, 
-        data.table::fread, 
-        nrows = 1), 
+        options_data_paths$path, 
+        data.table::fread),
       fill = TRUE)
+    
+  # trap_data <- 
+  #   data.table::rbindlist(
+  #     lapply(
+  #       trap_data_paths$path, 
+  #       data.table::fread, 
+  #       nrows = 1), 
+  #     fill = TRUE)
   
-  trap_data %<>%
+  options_data %<>%
     dplyr::filter(
       report == "success",
       review == T,
       include == T)
   
   event_file_paths <- 
-    trap_data %>% 
-    unite('path', c(project, conditions, date, obs), sep = "/") %>% 
-    pull(path) %>% 
-    paste0("~/lasertrapr/", ., '/measured-events.csv')
+    options_data %>% 
+      unite('path', c(project, conditions, date, obs), sep = "/") %>% 
+      pull(path) %>% 
+      paste0("~/lasertrapr/", ., '/measured-events.csv')
   
   event_files_filtered <- 
     data.table::rbindlist(
@@ -59,7 +72,7 @@ prep_ensemble <- function(trap_selected_project,
         data.table::fread
         )
     )
-  
+ 
   longest_event_df <- 
     event_files_filtered %>%
     dplyr::filter(keep == TRUE & event_user_excluded == FALSE) %>% 
@@ -69,15 +82,15 @@ prep_ensemble <- function(trap_selected_project,
   dp_extend_s2 <- ms_extend_s2*hz/1000
   dp_extend_s1 <- ms_extend_s1*hz/1000
   
-  for(i in seq_len(nrow(trap_data))){
+  for(i in seq_len(nrow(options_data))){
     print(paste0("i=", i))
-    if(is_shiny) incProgress(1/nrow(trap_data), detail = paste0(i, " of ", nrow(trap_data)))
+    if(is_shiny) incProgress(1/nrow(options_data), detail = paste0(i, " of ", nrow(options_data)))
     path <- file.path(path.expand("~"), 
                       "lasertrapr",
-                      trap_data$project[[i]],
-                      trap_data$conditions[[i]],
-                      trap_data$date[[i]],
-                      trap_data$obs[[i]])
+                      options_data$project[[i]],
+                      options_data$conditions[[i]],
+                      options_data$date[[i]],
+                      options_data$obs[[i]])
     trap_data_path <- file.path(path, "trap-data.csv")
     trap_trace <- data.table::fread(trap_data_path, select = "processed_bead")$processed_bead
     measured_events_path <- file.path(path, "measured-events.csv")
@@ -88,11 +101,11 @@ prep_ensemble <- function(trap_selected_project,
                                                      "keep",
                                                      "front_signal_ratio",
                                                      "back_signal_ratio",
-                                                     "is_positive"))
-    measured_events %<>% filter(keep == TRUE, 
-                                event_user_excluded == FALSE
-                               # is_positive = TRUE
-                                )
+                                                     "is_positive",
+                                                     "event_user_excluded"))
+    
+    measured_events %<>% dplyr::filter(keep == TRUE & event_user_excluded == FALSE)
+    
     event_ensembles <- list()
     for(event in seq_len(nrow(measured_events))){
       #print(paste0("event=", event))
@@ -123,32 +136,32 @@ prep_ensemble <- function(trap_selected_project,
       
       ms_10 <- 10*hz/1000
       end_forward_base <- start - 1
-      before_forwards <- data.frame(data = trap_trace[((end_forward_base - ms_10)+1):end_forward_base],
-                                    ensemble_index = -ms_10:-1)
+      before_forwards <- data.frame(data = trap_trace[(end_forward_base - ((ms_10*5)-1)):end_forward_base],
+                                    ensemble_index = -(ms_10*5):-1)
       start_backwards_base <- stop + 1
-      after_backwards <- data.frame(data = trap_trace[start_backwards_base:(start_backwards_base + (ms_10-1))],
-                                    ensemble_index = 1:ms_10)
+      after_backwards <- data.frame(data = trap_trace[start_backwards_base:(start_backwards_base + ((ms_10*5)-1))],
+                                    ensemble_index = 1:(ms_10*5))
       
       forward_ensemble <- 
         rbind(before_forwards, forward_event) %>% 
         mutate(direction = "forward",
-               forward_backward_index = -ms_10:(longest_event-1),
+               forward_backward_index = -(ms_10*5):(longest_event-1),
                event_index = event,
                signal_ratio =  measured_events$front_signal_ratio[[event]])
       
       backwards_ensemble <- 
         rbind(backwards_event, after_backwards) %>% 
         mutate(direction = "backwards",
-               forward_backward_index = longest_event:((2*longest_event)+(ms_10-1)),
+               forward_backward_index = longest_event:((2*longest_event)+((ms_10*5)-1)),
                event_index = event,
                signal_ratio = measured_events$back_signal_ratio[[event]])
       
       ensemble <- 
         rbind(forward_ensemble, backwards_ensemble) %>% 
-        mutate(project = trap_data$project[[i]],
-               conditions = trap_data$conditions[[i]],
-               date = trap_data$date[[i]],
-               obs = trap_data$obs[[i]]) %>% 
+        mutate(project = options_data$project[[i]],
+               conditions = options_data$conditions[[i]],
+               date = options_data$date[[i]],
+               obs = options_data$obs[[i]]) %>% 
         arrange(forward_backward_index)
       
       event_ensembles[[event]] <- ensemble

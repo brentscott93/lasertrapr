@@ -343,7 +343,7 @@ mod_hm_model_server <- function(input, output, session, f){
   info <- eventReactive(input$info_table, {
     defend_if_empty(f$date, ui = 'Please select a date folder', type = 'error')
     showNotification('Refreshing table', type = 'message')
-    files <- list_files(f$date$path, pattern = 'trap-data.csv', recursive = T)
+    files <- list_files(f$date$path, pattern = 'options.csv', recursive = T)
     map_df(files$path, ~data.table::fread(.,
                                           select = c("obs", "include", "analyzer", "report", "review"),
                                            nrows = 1))
@@ -378,13 +378,13 @@ mod_hm_model_server <- function(input, output, session, f){
   
     withProgress(message = 'Saving Review', {
       
-      td <- list_files(f$obs$path, pattern = 'trap-data.csv')
+      td <- list_files(f$obs$path, pattern = 'options.csv')
       trap <- data.table::fread(td$path)
       setProgress(0.7)
       trap_reviewed <- trap %>% 
         dplyr::mutate(review = input$quality_control)
       
-      data.table::fwrite(trap_reviewed, file = file.path(f$obs$path, 'trap-data.csv'))
+      data.table::fwrite(trap_reviewed, file = file.path(f$obs$path, 'options.csv'))
       setProgress(1, detail = 'Done')
     })
      showNotification('Review saved' , type = 'message')
