@@ -2,7 +2,6 @@
 
 export(add_labels)
 export(add_shades)
-export(add_time_column)
 export(allow_if)
 export(changepoint_analysis)
 export(defend_if)
