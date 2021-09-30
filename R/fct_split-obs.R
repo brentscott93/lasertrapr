@@ -102,7 +102,7 @@ split_obs <- function(input_data, project, conditions, date, threshold, hz = 500
                         raw_bead = create_obs[[c]]$raw_bead,
                         trap_position = create_obs[[c]]$trap_position)
         
-        o %<>% mutate(obs =  paste0("obs-0", r)) %>% dplyr::select(project, conditions, date, obs, everything())
+        o %<>% mutate(obs =  paste0("obs-0", c)) %>% dplyr::select(project, conditions, date, obs, everything())
         
          data.table::fwrite(t, file = file.path(date$path, paste0("obs-0", c), "trap-data.csv"), sep = ",")
          data.table::fwrite(o, file = file.path(date$path, paste0("obs-0", c), "options.csv"), sep = ",")
@@ -114,7 +114,7 @@ split_obs <- function(input_data, project, conditions, date, threshold, hz = 500
                           raw_bead = create_obs[[c]]$raw_bead,
                           trap_position = create_obs[[c]]$trap_position)
         
-          o %<>% mutate(obs =  paste0("obs-", r)) %>% dplyr::select(project, conditions, date, obs, everything())
+          o %<>% mutate(obs =  paste0("obs-", c)) %>% dplyr::select(project, conditions, date, obs, everything())
         
         data.table::fwrite(t, file = file.path(date$path, paste0("obs-", c), "trap-data.csv"), sep = ",")
         data.table::fwrite(o, file = file.path(date$path, paste0("obs-", c), "options.csv"), sep = ",")
