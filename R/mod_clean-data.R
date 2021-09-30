@@ -511,7 +511,7 @@ output$move_files <- renderText({
    
    defend_if_empty(dg_data$data, ui = 'Graph obs before continuing', type = 'error')
   
-  vbase$mv_df <- tibble(mean = RcppRoll::roll_mean(dg_data$data$bead, n = 30, align = 'left', fill = NULL),
+  base$mv_df <- tibble(mean = RcppRoll::roll_mean(dg_data$data$bead, n = 30, align = 'left', fill = NULL),
                         var = RcppRoll::roll_var(dg_data$data$bead, n = 30, align = 'left', fill = NULL))
     
     if(input$mv2nm == 1)  showNotification('Current mV-to-nm is 1. Do you need to enter a conversion value?', type = 'warning')
@@ -553,7 +553,7 @@ output$move_files <- renderText({
      if(var(dg_data$data$bead) == 1) showNotification('Current mV-to-nm is 1. Do you need to enter a conversion value?', type = 'warning')
     # req(var(dg_data$data$bead) > 5)
     base$range_df <- dg_data$data %>% 
-      dplyr::filter(between(seconds, as.numeric(trim_from()), as.numeric(trim_to())))
+      dplyr::filter(between(time_sec, as.numeric(trim_from()), as.numeric(trim_to())))
     
     base$range <- mean(base$range_df$bead)
     
@@ -626,7 +626,7 @@ output$move_files <- renderText({
     req(base$range_df)
     
     ggplot(isolate(base$range_df))+
-      geom_line(aes(x = seconds, y = bead), color = 'black')+
+      geom_line(aes(x = time_sec, y = bead), color = 'black')+
       geom_hline(yintercept = isolate(base$range), color = 'firebrick', size = 2)+
       ylab('nm')+
       xlab('Seconds')+
