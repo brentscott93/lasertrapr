@@ -119,6 +119,7 @@ drive_read_trap <- function(obs){
 #' created automatically if it does not exist. 
 #' @param email a character string. Email associated with your google drive account. 
 #' @export
+#' @example lasertrapr_cloud("something_at_gmail.com")
 lasertrapr_cloud <- function(email){
   
   library(shiny)
