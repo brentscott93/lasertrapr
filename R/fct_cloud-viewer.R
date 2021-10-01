@@ -9,7 +9,7 @@
 #' @return nothing
 #' @export
 #'
-#' @examples archive_project_to_googledrive("project_something, "myemail")
+#' @examples push_project_to_lasertrapr_cloud("project_something", "myemail")
 push_project_to_lasertrapr_cloud <- function(project, email){
   
   orig_wd <- getwd()
