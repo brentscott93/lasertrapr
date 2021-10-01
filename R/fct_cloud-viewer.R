@@ -1,7 +1,7 @@
-#' Archive a lasertrapr project to googledrive.
+#' Upload a project to be used with lasertrapr cloud
 #' @description Originally created for use with the lasertrapr cloud viewer, but can be used to backup data to goolge drive as well. 
 #' If local changes are made and you want to update the google drive archive, running this function again will trash the old project folder on googledrive
-#' and recreate it from scratch. Data is placed in a folder called "lasertrapr-cloud-storage" on googledrive. If this folder does not exist it will be created.
+#' and recreate it from scratch. Data is placed in a shared drive called "lasertrapr-cloud" on googledrive. If this folder does not exist it will be created.
 #' 
 #' @param project a character string. a lasertrapr project folder.
 #' @param email a character string. email account associated with your google drive.
@@ -10,7 +10,7 @@
 #' @export
 #'
 #' @examples archive_project_to_googledrive("project_something, "myemail")
-archive_project_to_googledrive <- function(project, email){
+push_project_to_lasertrapr_cloud <- function(project, email){
   
   orig_wd <- getwd()
  
@@ -90,13 +90,7 @@ archive_project_to_googledrive <- function(project, email){
 }
 
 #' Reads data from google drive for the cloud viewer
-#'
-#' @param obs 
-#'
-#' @return
-#' @export
-#'
-#' @examples
+#' @noRd
 drive_read_trap <- function(obs){
   incProgress(0.25)
   trap_zip <- drive_ls(obs$id, pattern = "trap.zip")
@@ -117,6 +111,14 @@ drive_read_trap <- function(obs){
 }
 
 
+#' Shiny app for viewing lasertrapr data in the "cloud"
+#' @description This is a one line shiny app. Literally, all that is required is to 
+#' make a new shiny app project and in the app.R call this single function and then push
+#' the app into production. Requires putting data in a lasertrapr-cloud shared google drive which 
+#' can be accomplished with lasertrapr::push_project_to_lasertrapr_cloud(). The shared drive will be 
+#' created automatically if it does not exist. 
+#' @param email a character string. Email associated with your google drive account. 
+#' @export
 lasertrapr_cloud <- function(email){
   
   library(shiny)
@@ -128,7 +130,9 @@ lasertrapr_cloud <- function(email){
   library(tidyverse)
   
   googledrive::drive_auth(email = email, cache = ".secrets")
+  
   lasertrapr_drive <- shared_drive_get("lasertrapr-cloud")
+  
   if(nrow(lasertrapr_drive) == 0){
     lasertrapr_drive <- shared_drive_create("lasertrapr-cloud")
   }
