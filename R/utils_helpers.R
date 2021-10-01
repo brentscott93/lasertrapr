@@ -148,9 +148,6 @@ get_info_table <- function(f_date, f_date_input){
   }
 }
 
-t1 <- fread("~/lasertrapr/project_myoV-phosphate/myoV-WT_pH-7.0_0mM-Pi/2020-06-25/obs-14/trap-data.csv")
-t2 <- fread("~/lasertrapr/project_myoV-phosphate/myoV-WT_pH-7.0_0mM-Pi/2020-06-25/obs-14/measured-events.csv")
-
 #' Plot trap data with ID'd events
 #'
 #' @param obs_path 
