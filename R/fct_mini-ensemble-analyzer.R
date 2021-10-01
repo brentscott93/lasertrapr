@@ -1,52 +1,61 @@
 
-mini_ensemble_analyzer <- function(trap_data, w_width_ms = 10, displacement_threshold = 8, time_threshold_ms = 10, f){
+#' Mini Ensemble Analyzer
+#'
+#' @param opt an options.csv file
+#' @param w_width_ms window width in ms
+#' @param displacement_threshold minimum displacement threshold
+#' @param time_threshold_ms minimum time on threshold
+#' @param f f reactive from shiny app
+mini_ensemble_analyzer <- function(opt, w_width_ms = 10, displacement_threshold = 8, time_threshold_ms = 10, f){
   #for dev
-  # trap_data <- read_tsv("/Users/brentscott/Documents/silver_flash/azo-TP_trapping_stuff/raw_data/mini_ensemble/6-28-19_100uMORTHAZTP_25ugMYO/observation_one/processed.txt",
-  #                       col_names = "processed_bead")
-  # trap_data <- list_files("~/lasertrapr/project_mini/mini/2020-08-04/obs-01", pattern = 'trap-data.csv')
-  # trap_data <- vroom::vroom(trap_data$path, delim = ",")
-  # processed_data <- trap_data$processed_bead
-  # conditions = 'conditions'
-  # project = "project"
-  # obs = 'obs'
-  # date = 'date'
-  # w_width_ms = 10; hz = 5000; displacement_threshold = 8; time_threshold_ms = 50
-  project <- unique(trap_data$project)
-  conditions <- unique(trap_data$conditions)
-  date <- unique(trap_data$date)
-  obs <- unique(trap_data$obs)
+  # opt <- data.table::fread("/home/brent/lasertrapr/project_tm-mutants/eWT_pH-7.4_pCa-6.5/2021-09-20/obs-01/options.csv")
+  # w_width_ms = 10
+  # displacement_threshold = 8
+  # time_threshold_ms = 10
   
-  o_path <- file.path(path.expand("~"),
-                      "lasertrapr", 
-                      project,
-                      conditions,
-                      date,
-                      obs, 
-                      "options.csv")
   
-  o <- data.table::fread(o_path)
-  
-  include <- o$include
+  project <- unique(opt$project)
+  conditions <- unique(opt$conditions)
+  date <- unique(opt$date)
+  obs <- unique(opt$obs)
+  include <- unique(opt$include)
   if(is.na(include)) include <- FALSE
-  mv2nm <-  o$mv2nm
-  nm2pn <- o$nm2pn
-  hz <- o$hz
-  #browser()
+  mv2nm <-  opt$mv2nm
+  nm2pn <- opt$nm2pn
+  hz <- opt$hz
+  
+  
   error_file <- file(file.path(f$date$path, "error-log.txt"), open = "a")
   tryCatch({
     # files <- list_files("~/lasertrapr/project_mini/mini/2020-08-04", pattern = 'trap-data.csv', recursive = T)
     # trap_data <- purrr::map(files$path, vroom::vroom)
     # trap_data <- trap_data[[1]]
     if(!include){
-      obs_trap_data_exit <- trap_data  %>%
+      obs_opt_data_exit <-
+        opt  %>%
         dplyr::mutate(report = 'user-excluded',
                       analyzer = 'none',
                       review = F)
       
-      data.table::fwrite(obs_trap_data_exit, path = file.path(path.expand('~'), 'lasertrapr', project, conditions, date, obs, 'trap-data.csv'), sep = ",")
+      data.table::fwrite(obs_opt_data_exit, path = file.path(path.expand('~'),
+                                                             'lasertrapr', 
+                                                             project,
+                                                             conditions, 
+                                                             date, 
+                                                             obs, 
+                                                             'options.csv'), 
+                         sep = ",")
+      
       stop("User Excluded")
     }
-    
+    trap_data_path <- file.path(path.expand('~'),
+                               'lasertrapr', 
+                               project,
+                               conditions, 
+                               date, 
+                               obs, 
+                               'trap-data.csv')
+    trap_data <- data.table::fread(trap_data_path)
     not_ready <- is_empty(trap_data$processed_bead)
     if(not_ready){
       if(is_shiny) showNotification(paste0(trap_data$obs, ' not processed. Skipping...'), type = 'warning')
@@ -57,7 +66,6 @@ mini_ensemble_analyzer <- function(trap_data, w_width_ms = 10, displacement_thre
      w_width <- ms_to_dp(w_width_ms, hz = hz)
      time_threshold <- ms_to_dp(time_threshold_ms, hz = hz)
      processed_data <- trap_data$processed_bead
-     nm2pn <- unique(trap_data$nm2pn)
    
     #calculate running mean
     setProgress(0.25, detail = 'Calculating Running Mean')
@@ -104,6 +112,12 @@ mini_ensemble_analyzer <- function(trap_data, w_width_ms = 10, displacement_thre
       rescaled_raw_data <-  unlist(rescaled_vectors)
     }
     
+    if(length(rescaled_raw_data) != length(processed_data)){
+      p1 <- length(rescaled_raw_data) + 1
+      p2 <- length(processed_data)
+      rescaled_raw_data <- c(rescaled_raw_data, processed_data[p1:p2])
+    }
+    
     rescaled_raw_data <- tibble(data = rescaled_raw_data, 
                                 index = 1:length(data))
     
@@ -122,7 +136,8 @@ mini_ensemble_analyzer <- function(trap_data, w_width_ms = 10, displacement_thre
     minus1 <- rescaled_events$state_1_end[-1]
     minus2 <- rescaled_events$state_2_end[-length(rescaled_events$state_2_end)]
     
-    off_time_index <- bind_cols(state_1_start = minus2 + 1, state_1_end = minus1) %>%
+    off_time_index <- 
+      bind_cols(state_1_start = minus2 + 1, state_1_end = minus1) %>%
       mutate(off_time_dp = (state_1_end - state_1_start) +1,
              off_time_sec = off_time_dp/hz,
              off_time_ms = off_time_sec*1000)
@@ -145,7 +160,8 @@ mini_ensemble_analyzer <- function(trap_data, w_width_ms = 10, displacement_thre
     ##### COMBINE ALL EVENT DATA ####
     rescaled_events$force <-  peak_displacement*nm2pn
    
-    final_events <-  rescaled_events %>%
+    final_events <-  
+      rescaled_events %>%
       mutate(off_time_prior_dp = c(NA, off_time_index$off_time_dp),
              off_time_prior_sec = off_time_prior_dp/hz,
              time_off_ms = off_time_prior_sec * 1000,
@@ -177,7 +193,7 @@ mini_ensemble_analyzer <- function(trap_data, w_width_ms = 10, displacement_thre
                     peak_nm_index)
     
     setProgress(0.85, detail = 'Calculating event frequency')
-   event_freq <- mini_event_frequency(rescaled_raw_data$data,  
+    event_freq <- mini_event_frequency(rescaled_raw_data$data,  
                                       id_rescaled_events$events, 
                                       conversion = 1,
                                       hz = hz, 
@@ -192,7 +208,7 @@ mini_ensemble_analyzer <- function(trap_data, w_width_ms = 10, displacement_thre
             run_mean_overlay = c(run_mean_rescaled0, rep(0, times)))
    
    options_df <-
-     o %>% 
+     opt %>% 
       dplyr::mutate(analyzer = "mini", 
                     report = report_data,
                     w_width_ms = w_width_ms, 
@@ -263,20 +279,24 @@ id_mini_events <- function(run_mean, displacement_threshold, time_threshold){
       }
       #if starts in state2/event get rid of it
       if(rle_object$values[[1]] == 2){
+        add_to_s1 <- rle_object$lengths[[1]]
         rle_object %<>% slice(2:nrow(rle_object))
+        rle_object$lengths[[1]] <- rle_object$lengths[[1]] + add_to_s1
       }
       
       ends_in_s1 <- rle_object$values[length(rle_object$values)] == 1
       
       #find initial event start/stop
       #If the rle_object's last row is in state 1, get rid of that last row. This needs to end in state 2 to capture the end of the last event
-      mini_rle_object <- if(tail(rle_object, 1)$values == 1){
+      mini_rle_object <- 
+        if(tail(rle_object, 1)$values == 1){
         slice(rle_object, -length(rle_object$values))
-      } else {
+         } else {
         rle_object
       }
       
-      split_data <- mini_rle_object %>%
+      split_data <- 
+        mini_rle_object %>%
         dplyr::mutate(cumsum = cumsum(lengths)) %>%
         dplyr::group_by(values) %>%
         split(mini_rle_object$values)
@@ -288,7 +308,8 @@ id_mini_events <- function(run_mean, displacement_threshold, time_threshold){
         mutate(event_duration_dp = state_2_end - state_1_end)
       
       #filter out state 2s that are less than threshold
-      events <- regroup_data %>%
+      events <- 
+        regroup_data %>% 
         filter(event_duration_dp > time_threshold)
       
       return(list(events = events, 

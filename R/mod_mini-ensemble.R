@@ -190,21 +190,13 @@ mod_mini_ensemble_server <- function(input, output, session, f){
    # browser()
     golem::print_dev('getting file ')
     if(input$which_obs =='single'){
-      file <- list_files(f$obs$path, pattern = 'trap-data.csv')
-      trap_data <- purrr::map(file$path, data.table::fread, sep = ",")
+      file <- list_files(f$obs$path, pattern = 'options.csv')
+      opt <- purrr::map(file$path, data.table::fread, sep = ",")
     } else {
-      files <- list_files(f$date$path, pattern = 'trap-data.csv', recursive = T)
-      trap_data <- purrr::map(files$path, data.table::fread, sep = ",")
+      files <- list_files(f$date$path, pattern = 'options.csv', recursive = T)
+      opt <- purrr::map(files$path, data.table::fread, sep = ",")
     }
-    
-    # if(c('run_mean_overlay', 'rescaled_mini_data' %not_in% colnames(trap_data)){
-    #   trap_data %<>% 
-    #     tidyr::nest(data = c(raw_bead, processed_bead)) 
-    # } else {
-    #   trap_data %<>% 
-    #     tidyr::nest(data = c(raw_bead, processed_bead, run_mean_overlay)) 
-    # }
-    
+
     golem::print_dev('setting default parms ')
     if(is.null(input$w_width)){
       w_width <- 50
@@ -226,12 +218,11 @@ mod_mini_ensemble_server <- function(input, output, session, f){
     golem::print_dev('starting mini')
     
    withProgress(message = 'Analyzing trap data', value = 0, max = 1, min = 0, {
-   purrr::walk(trap_data, ~mini_ensemble_analyzer(trap_data = .x,
-                                                  w_width_ms = w_width,
-                                                  hz = hz,
-                                                  displacement_threshold =  displacement_threshold ,
-                                                  time_threshold_ms = time_threshold_ms,
-                                                  f = f)
+   purrr::walk(opt, ~mini_ensemble_analyzer(opt = .x,
+                                            w_width_ms = w_width,
+                                            displacement_threshold =  displacement_threshold ,
+                                            time_threshold_ms = time_threshold_ms,
+                                            f = f)
    )
    })
     
@@ -251,13 +242,14 @@ mod_mini_ensemble_server <- function(input, output, session, f){
     
     withProgress(message = 'Saving Review', {
       
-      td <- list_files(f$obs$path, pattern = 'trap-data.csv')
-      trap <- data.table::fread(td$path)
+      o <- list_files(f$obs$path, pattern = 'options.csv')
+      opt <- data.table::fread(o$path)
       setProgress(0.7)
-      trap_reviewed <- trap %>% 
+      opt_reviewed <-
+        opt %>% 
         dplyr::mutate(review = input$quality_control)
       
-      data.table::fwrite(trap_reviewed, file = file.path(f$obs$path, 'trap-data.csv'), sep = ",")
+      data.table::fwrite(opt_reviewed, file = file.path(f$obs$path, 'options.csv'), sep = ",")
       setProgress(1, detail = 'Done')
     })
     showNotification('Review saved' , type = 'message')
@@ -267,7 +259,7 @@ mod_mini_ensemble_server <- function(input, output, session, f){
   info <- eventReactive(input$info_table, {
     defend_if_empty(f$date, ui = 'Please select a date folder', type = 'error')
     showNotification('Refreshing table', type = 'message')
-    files <- list_files(f$date$path, pattern = 'trap-data.csv', recursive = T)
+    files <- list_files(f$date$path, pattern = 'options.csv', recursive = TRUE)
     map_df(files$path, ~data.table::fread(., 
                                           sep = ",",
                                           select = c("obs", "include", "analyzer", "report", "review"),
@@ -301,10 +293,10 @@ mod_mini_ensemble_server <- function(input, output, session, f){
     defend_if_empty(f$obs, ui = 'Please select an obs folder', type = 'error')
     defend_if_blank(f$obs_input, ui = 'Please select an obs folder', type = 'error')
     
-    filenames <- c('trap-data.csv', 'measured-events.csv')
+    filenames <- c('trap-data.csv', 'measured-events.csv', 'options.csv')
     paths <- map(filenames, ~list_files(f$obs$path, pattern = .x))
     data <-  map(paths, ~data.table::fread(.x$path))
-    names(data) <- c('trap', 'events')
+    names(data) <- c('trap', 'events', 'options')
     data
   })
   
@@ -313,7 +305,7 @@ mod_mini_ensemble_server <- function(input, output, session, f){
   output$mini_dygraph <- dygraphs::renderDygraph({
     req(trap_data())
     
-    hz <- as.numeric(unique(trap_data()$trap$hz))
+    hz <- as.numeric(unique(trap_data()$options$hz))
     d <- data.frame(index = (1:nrow(trap_data()$trap)/hz),
                     raw = trap_data()$trap$rescaled_mini_data,
                     run_mean = trap_data()$trap$run_mean_overlay)
