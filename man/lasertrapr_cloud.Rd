@@ -16,3 +16,6 @@ the app into production. Requires putting data in a lasertrapr-cloud shared goog
 can be accomplished with lasertrapr::push_project_to_lasertrapr_cloud(). The shared drive will be 
 created automatically if it does not exist.
 }
+\examples{
+lasertrapr_cloud("something_at_gmail.com")
+}
