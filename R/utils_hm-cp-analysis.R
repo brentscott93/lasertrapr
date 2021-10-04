@@ -46,7 +46,7 @@ fit_hm_model <- function(trap_data, run_mean, run_var, use_channels, em_random_s
     hmm_fit <- depmixS4::fit(hmm, emcontrol = depmixS4::em.control(random.start = FALSE))
   }
   
-  hmm_posterior <- depmixS4::posterior(hmm_fit)
+  hmm_posterior <- depmixS4::posterior(hmm_fit, type = "viterbi")
   
   #make sure HMM starts in state 2 this will reset seed and try to refit 10 times
   #should really never have to do this with the em.control set
