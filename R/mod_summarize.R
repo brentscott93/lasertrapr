@@ -249,8 +249,7 @@ mod_summarize_server <- function(input, output, session, f){
                   dom = 't',
                   scrollX = TRUE,
                   fixedColumns = list(leftColumns = 2)
-                )
-    )
+                ))
   })
   output$step <- renderPlot({
     req(rv$step)

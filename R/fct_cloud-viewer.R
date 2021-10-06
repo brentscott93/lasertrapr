@@ -32,6 +32,12 @@ push_project_to_lasertrapr_cloud <- function(project, email){
     map_df(options, data.table::fread) %>% 
     dplyr::filter(include == TRUE, report == "success", review == TRUE) 
   
+  events <-
+    included %>% 
+    mutate(path = file.path(path.expand("~"), "lasertrapr", project, conditions, date, obs, "measured-events.csv")) %>% 
+    pull(path) %>% 
+    map_df(., data.table::fread)
+    
   folders <- 
     included %>% 
     dplyr::select(conditions, date, obs)
@@ -84,10 +90,18 @@ push_project_to_lasertrapr_cloud <- function(project, email){
     
     zip(trap_zip_path, files)
     drive_upload(trap_zip_path, drive_obs_path)
-    
   }
+  
+  #upload events
+  drive_summary_path <- drive_mkdir("summary", drive_project)
+  temp_summary_path <- file.path(temp_project, "all-events.csv")
+  data.table::fwrite(events, file = temp_summary_path)
+  drive_upload(temp_summary_path, drive_summary_path, type = "spreadsheet")
+  
   setwd(orig_wd)
 }
+
+
 
 #' Reads data from google drive for the cloud viewer
 #' @noRd
@@ -129,7 +143,10 @@ lasertrapr_cloud <- function(email){
   library(data.table)
   library(magrittr)
   library(tidyverse)
+  library(ggstatsplot)
+  library(cowplot)
   
+  email <- "bscott@umass.edu"
   googledrive::drive_auth(email = email, cache = ".secrets")
   
   lasertrapr_drive <- shared_drive_get("lasertrapr-cloud")
@@ -140,29 +157,55 @@ lasertrapr_cloud <- function(email){
   
   projects <- drive_ls(shared_drive = lasertrapr_drive, recursive = FALSE, pattern = "project")
   
-  ui <- fluidPage(
-    
-    titlePanel("lasertrapr Cloud"),
-    sidebarLayout(
-      sidebarPanel(width = 3,
-                   uiOutput("projects")
-                   ,
-                   conditionalPanel("input.project != 'Choose...'",
-                                    uiOutput("conditions")
-                   ),
-                   conditionalPanel("input.conditions != 'Choose...'",
-                                    uiOutput("dates")
-                   ),
-                   conditionalPanel("input.date != 'Choose...'",
-                                    uiOutput("obs")
-                   ),
-                   conditionalPanel("input.obs != null",
-                                    actionButton("go", "Go")
-                   )
-      ),
-      mainPanel(width = 9,
-                dygraphs::dygraphOutput('graph') %>% shinycssloaders::withSpinner(type = 8, color = "#373B38")
-      )
+  ui <- navbarPage(
+    title = "Lasertrapr Cloud",
+    tabPanel("Summary",
+             sidebarPanel(width = 3,
+                          uiOutput("projects_summary"),
+                          actionButton("go_summary", "Go")
+             ),
+             mainPanel(
+               fluidRow(
+                 h4("Event Summary Table"),
+                 DT::DTOutput('table') %>% shinycssloaders::withSpinner(type = 8, color = '#373B38'),
+                 br()
+               ),
+               fluidRow(
+                 tabsetPanel(
+                   tabPanel("Displacements", plotOutput('step', height = '600px') %>% shinycssloaders::withSpinner(type = 8, color = '#373B38')),
+                   tabPanel("Force",  plotOutput('force', height = '600px') %>% shinycssloaders::withSpinner(type = 8, color = '#373B38')),
+                   tabPanel("Time On",  plotOutput('ton', height = '600px') %>% shinycssloaders::withSpinner(type = 8, color = '#373B38')),
+                   tabPanel("Time Off", plotOutput('toff', height = '600px') %>% shinycssloaders::withSpinner(type = 8, color = '#373B38'))
+                   #tabPanel("ECDF", plotOutput(ns('ecdf'), height = '600px') %>% shinycssloaders::withSpinner(type = 8, color = '#373B38')),
+                   #tabPanel("Event Frequency", plotOutput(ns('ef'), height = '600px') %>% shinycssloaders::withSpinner(type = 8, color = '#373B38')),
+                   #tabPanel("Stiffness", plotOutput(ns('stiffness'), height = '600px') %>% shinycssloaders::withSpinner(type = 8, color = '#373B38')),
+                   # tabPanel("Correlations", plotOutput(ns('correlations'), height = '600px') %>% shinycssloaders::withSpinner(type = 8, color = '#373B38'))
+                 )
+               )
+             )
+    ),
+    tabPanel("Traces",
+             sidebarLayout(
+               sidebarPanel(width = 3,
+                            uiOutput("projects")
+                            ,
+                            conditionalPanel("input.project != 'Choose...'",
+                                             uiOutput("conditions")
+                            ),
+                            conditionalPanel("input.conditions != 'Choose...'",
+                                             uiOutput("dates")
+                            ),
+                            conditionalPanel("input.date != 'Choose...'",
+                                             uiOutput("obs")
+                            ),
+                            conditionalPanel("input.obs != null",
+                                             actionButton("go", "Go")
+                            )
+               ),
+               mainPanel(width = 9,
+                         dygraphs::dygraphOutput('graph') %>% shinycssloaders::withSpinner(type = 8, color = "#373B38")
+               )
+             )
     )
   )
   
@@ -173,6 +216,13 @@ lasertrapr_cloud <- function(email){
     output$projects <- renderUI({
       req(projects)
       selectInput("project",
+                  "Project",
+                  c("Choose...", projects$name))
+    })
+    
+    output$projects_summary <- renderUI({
+      req(projects)
+      selectInput("projects_summary",
                   "Project",
                   c("Choose...", projects$name))
     })
@@ -217,7 +267,7 @@ lasertrapr_cloud <- function(email){
                   c("Choose...", obs$name))
     })
     
-    #### read selected data ####
+    #### read selected trace data ####
     
     rv <- reactiveValues()
     observeEvent(input$go, {
@@ -259,6 +309,146 @@ lasertrapr_cloud <- function(email){
           dygraphs::dyAxis('y', label = 'nm', drawGrid = FALSE) %>%
           dygraphs::dyUnzoom()
       })
+    
+    #### summarize ####
+    events <- eventReactive(input$go_summary, {
+      selected_project <- dplyr::filter(projects, name == input$projects_summary)
+      
+      summary_dribble <- 
+        drive_ls(selected_project$id) %>% 
+        dplyr::filter(name == "summary")
+      
+      all_events_dribble <- 
+        drive_ls(summary_dribble, pattern = "all-events")
+      
+      googlesheets4::gs4_auth(email = email, token = drive_token())
+      googlesheets4::read_sheet(all_events_dribble)
+    })
+    output$table <- DT::renderDT({
+      validate(need(is_tibble(events()), "Please Select a Project"))
+      events() %>%
+        dplyr::group_by(conditions) %>%
+        dplyr::summarize(time_on_avg = mean(time_on_ms, na.rm = TRUE),
+                         time_on_se = plotrix::std.error(time_on_ms, na.rm = TRUE),
+                         time_on_sd = sd(time_on_ms, na.rm = TRUE),
+                         time_on_median = median(time_on_ms, na.rm = TRUE),
+                         time_off_avg = mean(time_off_ms, na.rm = TRUE),
+                         time_off_se = plotrix::std.error(time_off_ms, na.rm = TRUE),
+                         time_off_sd = sd(time_off_ms, na.rm = TRUE),
+                         time_off_median = median(time_off_ms, na.rm = TRUE), 
+                         displacement_avg = mean(displacement_nm, na.rm = TRUE),
+                         displacement_se = plotrix::std.error(displacement_nm, na.rm = TRUE),
+                         displacement_sd = sd(displacement_nm, na.rm = TRUE),
+                         force_avg = mean(force, na.rm = TRUE),
+                         force_se = plotrix::std.error(force, na.rm = TRUE),
+                         force_sd = sd(force, na.rm = TRUE),
+                         trap_stiffness = mean(trap_stiffness, na.rm = T),
+                         myo_stiffness = mean(myo_stiffness, na.rm = T),
+                         num_events = n()) %>% 
+        mutate(across(where(is.numeric), ~round(., 2))) %>% 
+        dplyr::select("Conditions" = conditions, 
+                      "Step Size (nm)" = displacement_avg,
+                      "SE Step Size" = displacement_se,
+                      "Force (pN)" = force_avg,
+                      "SE Force" = force_se, 
+                      "Avg Time On (ms)" = time_on_avg,
+                      "SE Ton" = time_on_se, 
+                      'Median Time on (ms)' = time_on_median,
+                      "Time Off (ms)" = time_off_avg,
+                      "SE Toff" = time_off_se, 
+                      "No. Events" = num_events) %>% 
+        DT::datatable(
+          extensions = 'FixedColumns',
+          options = list(
+            dom = 't',
+            scrollX = TRUE,
+            fixedColumns = list(leftColumns = 2)
+          ))
+    })
+    
+    
+    output$step <- renderPlot({
+      req(events())
+      ggstatsplot::ggbetweenstats(events(),
+                                  x = conditions, 
+                                  y = displacement_nm,
+                                  ylab = "nanometers",
+                                  xlab = "",
+                                  title = "Displacements",
+                                  #ggplot.component = list(scale_color_manual(values = plot_colors)),
+                                  centrality.point.args = list(size = 5, color = "grey10"),
+                                  ggtheme = theme_cowplot(16))
+    }) 
+    
+    
+    output$ton <- renderPlot({
+      req(events())
+      ggstatsplot::ggbetweenstats(events(),
+                                  x = conditions,
+                                  y = time_on_ms,
+                                  ylab = "milliseconds",
+                                  xlab = "",
+                                  title = "Attachment Times",
+                                  centrality.point.args = list(size = 5, color = "grey10"),
+                                  ggtheme = theme_cowplot(16),
+                                  type = "nonparametric",
+                                  ggstatsplot.layer = F,
+                                  ggsignif.args = list(step_increase = 1),
+                                  ggplot.component = list(
+                                    scale_y_continuous(breaks = scales::trans_breaks("log10", function(x) 10^x),
+                                                       labels = scales::trans_format("log10", scales::math_format(10^.x))),
+                                    coord_trans(y = "log10")))
+      
+    })
+    
+    output$toff <- renderPlot({
+      ggstatsplot::ggbetweenstats(events(),
+                                  x = conditions,
+                                  y = time_off_ms,
+                                  ylab = "milliseconds",
+                                  xlab = "",
+                                  title = "Time Between Events",
+                                  centrality.point.args = list(size = 5, color = "grey10"),
+                                  ggtheme = theme_cowplot(16),
+                                  type = "nonparametric",
+                                  ggstatsplot.layer = F,
+                                  ggsignif.args = list(step_increase = 1),
+                                  ggplot.component = list(
+                                    scale_y_continuous(breaks = scales::trans_breaks("log10", function(x) 10^x),
+                                                       labels = scales::trans_format("log10", scales::math_format(10^.x))),
+                                    coord_trans(y = "log10")))
+    })
+    
+    output$force <- renderPlot({
+      ggstatsplot::ggbetweenstats(events(),
+                                  x = conditions,
+                                  y = force,
+                                  ylab = "piconewtons",
+                                  xlab = "",
+                                  title = "Forces",
+                                  #ggplot.component = list(scale_color_manual(values = plot_colors)),
+                                  centrality.point.args = list(size = 5, color = "grey10"),
+                                  ggtheme = theme_cowplot(16))
+      
+    })
+    
+    #     rv$ton_ecdf <- time_on_ecdf(event_files_filtered = rv$data$event_files_filtered,
+    #                                 plot_colors = plot_colors)
+    #     setProgress(0.85, detail = "Time Off ECDF")
+    #     rv$toff_ecdf <- time_off_ecdf(event_files_filtered = rv$data$event_files_filtered,
+    #                                   plot_colors = plot_colors)
+    #     # setProgress(0.85, detail = "Event Frequency")
+    #     # rv$ef <- stats_plot_event_frequency(event_file_path = rv$data$event_file_path, 
+    #     #                                     factor_order = input$factor_order,
+    #     #                                     plot_colors = plot_colors)
+    #     setProgress(0.9, detail = "Correlations")
+    #     # rv$correlations <- correlations(event_files_filtered = rv$data$event_files_filtered,
+    #     #                                 plot_colors = plot_colors)
+    #     setProgress(0.95, detail = "Stiffness")
+    #     # rv$stiffness <- stiffness(event_files_filtered = rv$data$event_files_filtered,
+    #     #                              plot_colors = plot_colors)
+    #   })
+    # })
   }
   
   shinyApp(ui, server)
