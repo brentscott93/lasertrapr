@@ -146,7 +146,6 @@ lasertrapr_cloud <- function(email){
   library(ggstatsplot)
   library(cowplot)
   
-  email <- "bscott@umass.edu"
   googledrive::drive_auth(email = email, cache = ".secrets")
   
   lasertrapr_drive <- shared_drive_get("lasertrapr-cloud")
