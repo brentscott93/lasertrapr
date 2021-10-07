@@ -225,13 +225,13 @@ lasertrapr_cloud <- function(email){
   )
   
   server <- function(input, output) {
-    #### login ####
-    # observe({
-    #   if(input$go_login == 0){
-    #     hideTab(inputId = "tabs", target = "Summary")
-    #     hideTab(inputId = "tabs", target = "Traces")
-    #   }
-    # })
+    ### login ####
+    observe({
+      if(input$go_login == 0){
+        hideTab(inputId = "tabs", target = "Summary")
+        hideTab(inputId = "tabs", target = "Traces")
+      }
+    })
     
     observeEvent(input$go_login, {
       if(input$login == "tr@p"){
