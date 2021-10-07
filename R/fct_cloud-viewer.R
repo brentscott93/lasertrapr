@@ -121,6 +121,10 @@ drive_read_trap <- function(obs){
   data <- lapply(files_to_read, fread)
   names(data) <- c("events", "options", "trap")
   incProgress(0.25)
+  if(data$options$analyzer == "hm/cp"){
+    running_data <- local_data[grep("*hm-model-data*", local_data)]
+    data$running <- data.table::fread(running_data)
+  }
   return(data)
 }
 
@@ -157,7 +161,14 @@ lasertrapr_cloud <- function(email){
   projects <- drive_ls(shared_drive = lasertrapr_drive, recursive = FALSE, pattern = "project")
   
   ui <- navbarPage(
+    id = "tabs",
     title = "Lasertrapr Cloud",
+    tabPanel("Login", 
+             column(4),
+             column(3, passwordInput("login", "Enter Passcode", width = "100%")),
+             column(1, actionButton("go_login", "Go", width = "100%", style = "margin-top: 25px")),
+             column(4)
+    ),
     tabPanel("Summary",
              sidebarPanel(width = 3,
                           uiOutput("projects_summary"),
@@ -184,6 +195,7 @@ lasertrapr_cloud <- function(email){
              )
     ),
     tabPanel("Traces",
+             
              sidebarLayout(
                sidebarPanel(width = 3,
                             uiOutput("projects")
@@ -202,13 +214,36 @@ lasertrapr_cloud <- function(email){
                             )
                ),
                mainPanel(width = 9,
-                         dygraphs::dygraphOutput('graph') %>% shinycssloaders::withSpinner(type = 8, color = "#373B38")
+                         plotOutput("mv_plot") %>% shinycssloaders::withSpinner(type = 8, color = "#373B38")
                )
+             ),
+             
+             fluidRow(
+               dygraphs::dygraphOutput('graph') %>% shinycssloaders::withSpinner(type = 8, color = "#373B38")
              )
     )
   )
   
   server <- function(input, output) {
+    #### login ####
+    # observe({
+    #   if(input$go_login == 0){
+    #     hideTab(inputId = "tabs", target = "Summary")
+    #     hideTab(inputId = "tabs", target = "Traces")
+    #   }
+    # })
+    
+    observeEvent(input$go_login, {
+      if(input$login == "tr@p"){
+        showTab(inputId = "tabs", target = "Summary")
+        showTab(inputId = "tabs", target = "Traces")
+        hideTab(inputId = "tabs", target = "Login")
+      } else {
+        hideTab(inputId = "tabs", target = "Summary")
+        hideTab(inputId = "tabs", target = "Traces")
+      }
+    })
+    
     
     #### file selectors ####
     
@@ -229,7 +264,8 @@ lasertrapr_cloud <- function(email){
     conditions <- reactive({
       req(input$project != "Choose...")
       selected_project <- dplyr::filter(projects, name == input$project)
-      drive_ls(selected_project$id)
+      drive_ls(selected_project$id) %>% 
+        dplyr::filter(str_detect(name, "summary", negate = TRUE))
     })
     
     output$conditions <- renderUI({
@@ -279,7 +315,7 @@ lasertrapr_cloud <- function(email){
     
     output$graph <- 
       renderDygraph({
-        validate(need(rv$data$trap, message = "Please Select Data to View"))
+        req(rv$data$trap)
         hz <- rv$data$options$hz[[1]]
         d <- data.frame(index = (1:nrow(rv$data$trap)/hz),
                         raw = rv$data$trap$processed_bead,
@@ -309,6 +345,35 @@ lasertrapr_cloud <- function(email){
           dygraphs::dyUnzoom()
       })
     
+    output$mv_plot <- 
+      renderPlot({
+        validate(need(rv$data$trap, message = "Please Select Data to View"))
+        mv_data <- rv$data$running
+        mv_data$state <- factor(mv_data$state, levels = c(1, 2))
+        
+        mv1 <- 
+          ggplot2::ggplot(mv_data)+
+          geom_point(aes(x = run_mean, y = run_var, color = state), size = 3, shape = 16, alpha = 0.5)+
+          scale_color_manual(values = c("#1B9E77", "#D95F02"))+
+          ggtitle('Mean-Variance (overlayed)')+
+          ylab('Variance')+
+          xlab('Mean (nm)')+
+          theme_linedraw(base_size = 18)+
+          theme(legend.position = 'none')
+        
+        mv2 <- 
+          ggplot(mv_data)+
+          geom_point(aes(x = run_mean, y = run_var, color = state), size = 3, shape = 16, alpha = 0.5)+
+          scale_color_manual(values = c("#1B9E77", "#D95F02"))+
+          facet_wrap(~state)+
+          ggtitle('Mean-Variance (by state)')+
+          ylab('')+
+          xlab('Mean (nm)')+
+          theme_linedraw(base_size = 18)
+        
+        cowplot::plot_grid(mv1, mv2, nrow = 1)
+      })
+    
     #### summarize ####
     events <- eventReactive(input$go_summary, {
       selected_project <- dplyr::filter(projects, name == input$projects_summary)
@@ -323,9 +388,11 @@ lasertrapr_cloud <- function(email){
       googlesheets4::gs4_auth(email = email, token = drive_token())
       googlesheets4::read_sheet(all_events_dribble)
     })
+    
     output$table <- DT::renderDT({
       validate(need(is_tibble(events()), "Please Select a Project"))
       events() %>%
+        dplyr::filter(event_user_excluded == FALSE) %>% 
         dplyr::group_by(conditions) %>%
         dplyr::summarize(time_on_avg = mean(time_on_ms, na.rm = TRUE),
                          time_on_se = plotrix::std.error(time_on_ms, na.rm = TRUE),
@@ -448,7 +515,11 @@ lasertrapr_cloud <- function(email){
     #     #                              plot_colors = plot_colors)
     #   })
     # })
+    
+    
+    
   }
+  
   
   shinyApp(ui, server)
   
