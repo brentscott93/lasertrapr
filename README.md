@@ -23,7 +23,7 @@ Current stable version will be hosted on my `drat` repo.
 ``` r
 # install.packages("drat")
 drat::addRepo("brentscott93")
-install.packages("pagecryptr")
+install.packages("lasertrapr")
 ```
 
 You can install the development version of lasertrapr from GitHub with. 
