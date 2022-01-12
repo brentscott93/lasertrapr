@@ -18,8 +18,17 @@ the [website](https://lasertrapr.app).
 
 ## Installation
 
-You can install the released version of lasertrapr from GitHub with:
+Current stable version will be hosted on my `drat` repo. 
 
 ``` r
+# install.packages("drat")
+drat::addRepo("brentscott93")
+install.packages("pagecryptr")
+```
+
+You can install the development version of lasertrapr from GitHub with. 
+``` r
+# install.packages("devtools")
 devtools::install_github("brentscott93/lasertrapr")
 ```
+Note: This will install a random snapshot from my last commit. 
