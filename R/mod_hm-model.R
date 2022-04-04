@@ -434,7 +434,7 @@ mod_hm_model_server <- function(input, output, session, f){
           tabPanel("HM-Model",
                        fluidRow(
                          column(6, 
-                                sliderInput(ns("w_width"), "Window Width", min = 50, max = 300, value = a$w_width, width = "100%",step = 5)
+                                sliderInput(ns("w_width"), "Window Width", min = 10, max = 300, value = a$w_width, width = "100%",step = 5)
                          ), 
                          column(6, 
                                 shinyWidgets::sliderTextInput(ns("w_slide"), 
