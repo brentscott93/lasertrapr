@@ -92,10 +92,8 @@ mod_mini_ensemble_ui <- function(id){
           fluidRow( 
             column(9, 
                    box(width = NULL, title = 'Analyzed Data',
-                       fluidRow(actionButton(ns("snapshot"), "", icon = icon("camera"))),
-                       fluidRow(
+                       actionButton(ns("snapshot"), "", icon = icon("camera")),
                        dygraphs::dygraphOutput(ns('mini_dygraph')) %>% shinycssloaders::withSpinner(type = 8, color = "#373B38")
-                       )
                    )
             ), 
             column(3, 
@@ -371,7 +369,7 @@ mod_mini_ensemble_server <- function(input, output, session, f){
   
   output$seconds <- renderValueBox({
     req(trap_data())
-    hz <- unique(trap_data()$trap$hz)
+    hz <- unique(trap_data()$options$hz)
     valueBox(
       round(nrow(trap_data()$trap)/hz, 1),
       "Seconds",
