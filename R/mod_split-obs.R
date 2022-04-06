@@ -11,7 +11,7 @@
 mod_split_obs_ui <- function(id){
   ns <- NS(id)
   tagList(
-    
+     
     fluidRow(box(width = 3, collapsible = TRUE, collapsed = FALSE,
                            title = "Upload Data",
                            #h4(strong("Make Trap Observations")),
@@ -838,6 +838,7 @@ mod_split_obs_server <- function(input, output, session, f){
                 report = "not run",
                 analyzer = NA,
                 review = NA,
+                hz = input$sim_hz, 
                 sim_baseline_mean = sim$baseline_mean,
                 sim_baseline_sd =  sim$baseline_sd,
                 
