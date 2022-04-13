@@ -46,6 +46,8 @@ app_server <- function( input, output, session ) {
   
   callModule(mod_summarize_server, "summarize", f = f)
   
+  callModule(mod_figures_server, "figures", f = f)
+  
   
   
 }
