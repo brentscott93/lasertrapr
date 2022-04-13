@@ -18,6 +18,14 @@ mod_summarize_ui <- function(id){
                  verbatimTextOutput(ns('current_project')),
                  uiOutput(ns('user_defaults')),
                  numericInput(ns("hz"), "Sampling Frequency", value = 5000, min = 0, max = 20000),
+                 shinyWidgets::materialSwitch(ns('split_conditions'), 
+                                              'Split Conditions',
+                                              value = FALSE, 
+                                              status = 'primary'),
+                 
+                 conditionalPanel(condition = "input.split_conditions === true", ns = ns,
+                                  uiOutput(ns('split_conditions_options')),             
+                 ),
                  actionButton(ns('go'),
                               'Summarize',
                               icon = icon('calculator'),
@@ -114,6 +122,15 @@ mod_summarize_server <- function(input, output, session, f){
                                                                     label = 'Color 1',
                                                                     value = colorz()))
     }
+  })
+  
+  output$split_conditions_options <- renderUI({
+    tagList(
+      purrr::map(seq_along(conditions()),
+                  ~div(style = 'display:inline-block', textInput(ns(paste0('var', .x)),
+                                                                  label = paste('Variable', .x)))
+      )
+      )
   })
   
   rv <- reactiveValues(summary = data.frame(x = letters),

@@ -32,8 +32,8 @@ app_ui <- function(request) {
            menuSubItem(text = 'HM-Model/Changepoint', tabName = 'hm_model'),
            menuSubItem(text = 'Mini-Ensemble', tabName = 'mini_ensemble')),
           menuItem(text = 'Summarize', tabName = 'summarize', icon = icon('sort')),
-          menuItem(text = 'Ensemble Average', tabName = 'ensemble_average', icon = icon('align-left'))
-         
+          menuItem(text = 'Ensemble Average', tabName = 'ensemble_average', icon = icon('align-left')),
+          menuItem(text = 'Figures', tabName = 'figures', icon = icon('chart-column'))
           #menuItem(text = 'Mean-Variance', tabName = 'mv')
         
         )
@@ -50,7 +50,8 @@ app_ui <- function(request) {
           tabItem('hm_model', mod_hm_model_ui("hm_model_ui")),
           tabItem('mini_ensemble', mod_mini_ensemble_ui("mini_ensemble")),
           tabItem('ensemble_average', mod_ensemble_average_ui("ensemble_average")),
-          tabItem('summarize', mod_summarize_ui("summarize"))
+          tabItem('summarize', mod_summarize_ui("summarize")),
+          tabItem('figures', mod_summarize_ui("figures"))
          
         #tabItem(tabName = 'mv', mod_mv_ui('mv'))
         )#tab itens close
