@@ -33,7 +33,7 @@ app_ui <- function(request) {
            menuSubItem(text = 'Mini-Ensemble', tabName = 'mini_ensemble')),
           menuItem(text = 'Summarize', tabName = 'summarize', icon = icon('sort')),
           menuItem(text = 'Ensemble Average', tabName = 'ensemble_average', icon = icon('align-left')),
-          menuItem(text = 'Figures', tabName = 'figures', icon = icon('chart-column'))
+          menuItem(text = 'Figures', tabName = 'figures', icon = icon('chart-bar'))
           #menuItem(text = 'Mean-Variance', tabName = 'mv')
         
         )
@@ -51,7 +51,7 @@ app_ui <- function(request) {
           tabItem('mini_ensemble', mod_mini_ensemble_ui("mini_ensemble")),
           tabItem('ensemble_average', mod_ensemble_average_ui("ensemble_average")),
           tabItem('summarize', mod_summarize_ui("summarize")),
-          tabItem('figures', mod_summarize_ui("figures"))
+          tabItem('figures', mod_figures_ui("figures"))
          
         #tabItem(tabName = 'mv', mod_mv_ui('mv'))
         )#tab itens close
