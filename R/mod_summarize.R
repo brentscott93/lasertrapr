@@ -146,7 +146,12 @@ mod_summarize_server <- function(input, output, session, f){
     defend_if_blank(f$project_input, ui = "Please Select a Project", type = "error")
     withProgress(message = 'Summarizing Project', {
       golem::print_dev("before sum")
-     
+      
+      summary_folder <- file.path("~", "lasertrapr", f$project_input, "summary")
+      if(!dir.exists(summary_folder)){
+        dir.create(summary_folder)
+      }
+      
       if(input$split_conditions){
         variables <- strsplit(conditions(), "_")
         number_variables <- sapply(variables, length)
@@ -157,6 +162,15 @@ mod_summarize_server <- function(input, output, session, f){
         
         summary_data <- summarize_trap(all_measured_events, by = c("conditions", var_names))
         
+        sc <- split_conditions_column(data.frame(conditions=summary_data$conditions), var_names = var_names, sep = "_")
+        data.table::fwrite(sc, 
+                           file.path(summary_folder, 
+                                     paste(Sys.Date(), 
+                                           f$project_input, 
+                                           "split-conditions.csv", 
+                                           sep = "_")
+                                     )
+                                )
       } else {
         all_measured_events <- rbind_measured_events(project = f$project_input, save_to_summary = TRUE)
         summary_data <- summarize_trap(all_measured_events, by = "conditions")
@@ -165,12 +179,6 @@ mod_summarize_server <- function(input, output, session, f){
       tt <- total_trap_time(f$project_input, is_shiny = TRUE)
       
       summary_data <- merge(summary_data, tt, by = "conditions", all = TRUE)
-      
-      
-      summary_folder <- file.path("~", "lasertrapr", f$project_input, "summary")
-      if(!dir.exists(summary_folder)){
-        dir.create(summary_folder)
-      }
       
       walk2(list(all_measured_events, summary_data), 
             c("all-measured-events.csv", "summary-data.csv"),
@@ -255,6 +263,7 @@ mod_summarize_server <- function(input, output, session, f){
       # rv$stiffness <- stiffness(event_files_filtered = rv$all_measured_events,
       #                              plot_colors = plot_colors)
     })
+    showNotification("Summary data saved!")
   })
 
   observeEvent(input$export, ignoreInit = T,  {

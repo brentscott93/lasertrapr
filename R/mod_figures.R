@@ -39,11 +39,19 @@ mod_figures_ui <- function(id){
            ),
            tabPanel(
              title = "Aes",
-             uiOutput(ns("aes"))
+             uiOutput(ns("aes_var")),
+             uiOutput(ns("aes_factor_order")),
+             uiOutput(ns("aes_fill_by")),
+             uiOutput(ns("aes_colors")),
+             
+             
+             
            ), 
            tabPanel(
              title = "Scales",
-             uiOutput(ns("scales"))
+            textInput(ns("title"), "Title", value = ""),
+            uiOutput(ns("xy_labels"))
+           
            ),
            tabPanel(
              title = "Facet",
@@ -68,10 +76,10 @@ mod_figures_ui <- function(id){
 mod_figures_server <- function(input, output, session, f){
     ns <- session$ns
  
-    rv <- reactiveValues(all_measured_events = data.frame(),
-                         split_conditions = NULL)
+    fig <- reactiveValues(all_measured_events = data.frame(),
+                          split_conditions = NULL)
     observeEvent(input$load_data, ignoreInit = TRUE, {
-      req(f$project$path)
+      req(f$project_input)
       summary_folder <- file.path(f$project$path, "summary")
       defend_if(!dir.exists(summary_folder), 
                 ui = "This project does not have a 'summary' folder. Please Summarize data before making a graph.", 
@@ -85,16 +93,17 @@ mod_figures_server <- function(input, output, session, f){
       full_path <- list.files(summary_folder, 
                               pattern = path,
                               full.names = TRUE)
-      rv$all_measured_events <- fread(full_path)
+      fig$data <- fread(full_path)
       split_conditions <- list.files(f$project$path, pattern = "split-conditions.csv", recursive = TRUE, full.names = TRUE)
       if(length(split_conditions) == 0){
-        rv$data_summary <- summarize_trap(rv$all_measured_events, by = "conditions")
-        rv$split_conditions <- data.frame(conditions = unique(rv$all_measured_events$conditions))
+        fig$data_summary <- summarize_trap(fig$data, by = "conditions")
+        fig$split_conditions <- data.frame(conditions = fig$data_summary$conditions)
       } else {
         split_conditions <- fread(split_conditions)
-        rv$data_summary <- summarize_trap(rv$all_measured_events, by = names(split_conditions))
-        rv$split_conditions <- split_conditions
+        fig$data_summary <- summarize_trap(fig$data, by = names(split_conditions))
+        fig$split_conditions <- split_conditions
       }
+      showNotification("Data Loaded.", type = "message")
     })
     
     # output$facet_options <- renderUI({
@@ -120,88 +129,118 @@ mod_figures_server <- function(input, output, session, f){
     })
     
     
-    output$aes <- renderUI({
-      validate(need(nrow(rv$split_conditions) > 0, "Select project & upload data to graph"))
+    output$aes_var <- renderUI({
+      validate(need(nrow(fig$split_conditions) > 0, "Select project & upload data to graph"))
       req(input$gg_type)
             
-      var <-  if(input$gg_type == "Histogram"){
+      if(input$gg_type == "Histogram"){
          selectInput(ns("x"), "X-Axis Variable", choices = c("displacement_nm", "force", "time_on_ms", "time_off_ms"))
          } else {
-          choices <- names(rv$all_measured_events)
+          choices <- names(fig$data)
           tagList(
             selectInput(ns("x"), "X-axis Variable", choices = choices, selected = "conditions"),
             selectInput(ns("y"), "Y-axis Variable", choices = choices, selected = "displacement_nm")
            )
          }
+    })
 
-      fill_by <- if(is.null(rv$split_conditions)){
-       selectInput(ns("fill_by"), "Fill By", choices = "conditions")
-       } else {
-        selectInput(ns("fill_by"), "Fill By", choices = names(rv$split_conditions))
-      }
-       
-      factor_order <-  selectInput(ns('factor_order'),
-                                   label = 'Factor Order',
-                                   multiple = T,
-                                   choices = rv$split_conditions[[input$x]])
-        
-      to_color <- unique(rv$split_conditions[[input$fill_by]])
+    output$aes_fill_by <- renderUI({
+      req(fig$split_conditions)
+      selectInput(ns("fill_by"), "Fill By", choices = c(NULL, names(fig$split_conditions)))
+    })
+    
+    output$aes_factor_order <- renderUI({
+          req(input$x %in%names(fig$split_conditions))
+            selectInput(ns('factor_order'),
+                        label = 'Factor Order',
+                        multiple = T,
+                        choices = fig$split_conditions[[input$x]])
+    })
+    
+    
+    output$aes_colors <- renderUI({
+      req(input$x)
+      req(input$fill_by)
+      to_color <- unique(fig$split_conditions[[input$fill_by]]) 
       
-      colorz <- if(length(to_color) == 1){
+      colorz <-  if(length(to_color) == 1){
                   "#002cd3"
-            } else if(length(to_color) == 2){
-              c("#002cd3", "#d30000")
-            } else {
-              RColorBrewer::brewer.pal(length(conditions()), 'Set1')
-            }
-      
-      col_picker <- purrr::map2(seq_along(to_color),
-                                colorz,
-                                ~div(style = 'display:inline-block', colourpicker::colourInput(ns(paste0('color', .x)),
-                                                                                               label = paste('Color', .x),
-                                                                                               value = .y)))
-      
-      
-      #need factor_order
-      tagList(var, factor_order, fill_by, col_picker)
-     
+                   } else if(length(to_color) == 2){
+                    c("#002cd3", "#d30000")
+                  } else {
+                     RColorBrewer::brewer.pal(length(to_color), 'Set1')
+                  }
+
+    
+      purrr::map2(seq_along(to_color),
+                            colorz,
+                            ~div(style = 'display:inline-block', colourpicker::colourInput(ns(paste0('color', .x)),
+                                                                                           label = paste('Color', .x),
+                                                                                           value = .y
+                                                                                           )
+                            )
+      )
+    })
+ 
+
+    output$xy_labels <- renderUI({
+      req(input$x)
+      req(input$y)
+      tagList(
+      textInput(ns("xlab"), "X Label", value = input$x),
+      textInput(ns("ylab"), "Y Label", value = input$y)
+      )
     })
     
     observe({
-      #  req(f$project$path)
-      #  req(conditions())
-      #  plot_colors <- purrr::map_chr(paste0('color', seq_along(conditions())), ~input[[.x]])
-      # if(input$gg_type == "Bar"){
-      #   rv$plot <- ggbarplot(
-      #     data = step_size_sim,
-      #     x =  input$x,
-      #     y = input$y,
-      #     size = 1,
-      #     fill = input$fill,
-      #     position = position_dodge(),
-      #     add = "mean_se",
-      #     add.params = list(size = 1),
-      #     error.plot = "upper_errorbar",
-      #     order = input$factor_order,
-      #     title = input$title,
-      #     xlab = input$xlab,
-      #     ylab = input$ylab
-      #   )+scale_y_continuous(expand = expansion(c(0, 0.1)))
-      # 
-      # } else if(input$gg_type == "Box"){
-      #   rv$plot <-  ggpubr::ggboxplot()
-      # } else if(input$gg_type == "Histogram"){
-      #   rv$plot <- ggpubr::gghistogram()
-      # } else if(input$gg_type == "Scatter"){
-      #   rv$plot <- ggpubr::ggscatter()
-      # } else if(input$gg_type == "Violin"){
-      #   rv$plot <- ggpubr::ggviolin()
-      # }
+       req(nrow(fig$split_conditions) > 0)
+      req(input$gg_type)
+      req(input$x)
+      if(input$gg_type == "Bar"){
+        fig$plot <- 
+          fig$data_summary %>% 
+          mutate(ymin = input$y - paste0(input$y, "_se"),
+                 ymax = input$y + paste0(input$y, "_se")) %>% 
+          ggplot()+
+             geom_col(data = .,
+                      aes(x = input$x, 
+                          y = input$y, 
+                          fill = input$fill_by),
+                      color = "black")+
+          geom_errorbar(data = ., 
+                        aes(x = input$x,
+                            ymin = ymin,
+                            ymax = ymax))
+        #   ggpubr::ggbarplot(
+        #   data = fig$data,
+        #   x =  input$x,
+        #   y = input$y,
+        #   size = 1,
+        #   fill = input$fill_by,
+        #   position = position_dodge(),
+        #   add = "mean_se",
+        #   add.params = list(size = 1),
+        #   error.plot = "upper_errorbar",
+        #   order = input$factor_order,
+        #   title = input$title,
+        #   xlab = input$xlab,
+        #   ylab = input$ylab
+        # )+ggplot2::scale_y_continuous(expand = expansion(c(0, 0.1)))
+
+      } else if(input$gg_type == "Box"){
+    #    rv$plot <-  ggpubr::ggboxplot()
+      } else if(input$gg_type == "Histogram"){
+    #   rv$plot <- ggpubr::gghistogram()
+      } else if(input$gg_type == "Scatter"){
+     #   rv$plot <- ggpubr::ggscatter()
+      } else if(input$gg_type == "Violin"){
+     #   rv$plot <- ggpubr::ggviolin()
+      }
         
     })
     output$gg <- renderPlot({
-      validate(need(nrow(rv$split_conditions) > 0, "Upload data to begin"))
-      rv$plot
+      validate(need(input$x, "Upload data to begin"))
+      fig$plot
     })
     
 }
