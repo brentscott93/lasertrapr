@@ -980,10 +980,9 @@ rbind_measured_events <- function(project, save_to_summary = FALSE){
                                                         sep = "_")
                                )
                      ) 
-    return(invisible())
-  } else {
-    return(measured_events_filtered)
- }
+  
+  } 
+  return(measured_events_filtered)
 }
 
 #' Quick Summary 
@@ -1012,24 +1011,70 @@ all_measured_events[,
 }
 
 
+#' Calculate Total Time of Data Collection for each condition
+#' @param project character. a lasertrapr project name
+#' @param is_shiny logical
+#' @export
+total_trap_time <- function(project, is_shiny = FALSE){
+  
+  project_path <- file.path("~", "lasertrapr", project)
+  
+  #get options.csv to see what data should be included
+  options_paths <- 
+    list.files(project_path,
+               pattern = "options.csv",
+               recursive = TRUE,
+               full.names = TRUE)
+  
+  options_data <- data.table::rbindlist(lapply(options_paths, data.table::fread), fill = TRUE) 
+  filtered_options <- options_data[include == TRUE & report == "success" & review == TRUE]
+  
+  filtered_options[, trap_data_path := file.path("~", 
+                                                "lasertrapr", 
+                                                project, 
+                                                conditions, 
+                                                date, 
+                                                obs, 
+                                               "trap-data.csv")] 
+  
+  get_time <- vector("list")
+  for(r in 1:nrow(filtered_options)){
+    if(is_shiny){incProgress(0.0025)}
+    print(paste("Reading", r, "/", nrow(filtered_options)))
+    td <- data.table::fread(filtered_options$trap_data_path[[r]])
+    dp <- nrow(td)
+    hz <- filtered_options$hz[[r]]
+    
+    get_time[[r]] <- data.frame(conditions = filtered_options$conditions[[r]],
+                                minutes = round((dp/hz)/60, 2))
+    
+  }
+
+    get_time <- data.table::rbindlist(get_time, fill = TRUE)
+    
+    sum_time <- get_time[, 
+                         .(minutes = sum(minutes)), 
+                         by = conditions]
+    return(sum_time)
+}
 
 #' Quick Summary 
-#' @param all_measured_events a df made from rbind_measured_events
+#' @param df a df with conditions column to split
 #' @export
-split_conditions_column <- function(measured_events, var_names, sep){
+split_conditions_column <- function(df, var_names, sep){
 
   # define a helper function
   split_conditions <- function(x, n, sep){
     strsplit(x, split = sep, fixed = TRUE)[[1]][[n]]
   }
   
-  for(var in seq_along(var_names)){
-    col_name <- var_names[[var]]
-    measured_events[[col_name]]  <- sapply(as.character(measured_events$conditions), 
+  for(n in seq_along(var_names)){
+    col_name <- var_names[[n]]
+    df[[col_name]]  <- sapply(as.character(df$conditions), 
                                            split_conditions, 
-                                           n = var,
+                                           n = n,
                                            sep = sep)
   }
   
-  return(measured_events)
+  return(df)
 }

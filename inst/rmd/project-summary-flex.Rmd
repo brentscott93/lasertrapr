@@ -30,7 +30,7 @@ Row
     
 ```{r, fig.width=14, fig.height=21}
   
-d <- params$rv$data$summary
+d <- params$rv$summary_data
 d$conditions <- factor(d$conditions, levels = params$factor_order) 
 d %>% 
   dplyr::mutate(across(where(is.numeric), round, digits = 2)) %>% 
