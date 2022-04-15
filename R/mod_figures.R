@@ -10,11 +10,8 @@
 mod_figures_ui <- function(id){
   ns <- NS(id)
   tagList(
-    fluidRow(
-    column(3,
-           box(title = 'Graph Options',
-               width = NULL,
-               tabsetPanel(
+    tabBox(title = '',
+               width = 3,
                  tabPanel(
                    title = "Data",
                     h5('Selected Project'),
@@ -56,17 +53,12 @@ mod_figures_ui <- function(id){
              title = "Theme",
              uiOutput(ns("theme"))
            )
-        )
+        ),
+       box(
+         title = "Plot", 
+         width = 9,
+          plotOutput(ns("gg"))
       )
-    ),
-    column(9,
-           box(
-             title = "Plot", 
-             width = NULL,
-             plotOutput(ns("gg"))
-           )
-          )
-    )
   )
 }
     
@@ -80,16 +72,24 @@ mod_figures_server <- function(input, output, session, f){
                          split_conditions = NULL)
     observeEvent(input$load_data, ignoreInit = TRUE, {
       req(f$project$path)
-      path <- list.files(f$project$path,
+      summary_folder <- file.path(f$project$path, "summary")
+      defend_if(!dir.exists(summary_folder), 
+                ui = "This project does not have a 'summary' folder. Please Summarize data before making a graph.", 
+                type = "error")
+      path <- list.files(summary_folder,
                          pattern = "all-measured-events.csv", 
-                         full.names = TRUE, 
+                         full.names = FALSE, 
                          recursive = TRUE)
       dates <- sub("_.*", "", path)
       path <- path[which.max(as.Date(dates))]
-      rv$all_measured_events <- fread(path)
+      full_path <- list.files(summary_folder, 
+                              pattern = path,
+                              full.names = TRUE)
+      rv$all_measured_events <- fread(full_path)
       split_conditions <- list.files(f$project$path, pattern = "split-conditions.csv", recursive = TRUE, full.names = TRUE)
       if(length(split_conditions) == 0){
         rv$data_summary <- summarize_trap(rv$all_measured_events, by = "conditions")
+        rv$split_conditions <- data.frame(conditions = unique(rv$all_measured_events$conditions))
       } else {
         split_conditions <- fread(split_conditions)
         rv$data_summary <- summarize_trap(rv$all_measured_events, by = names(split_conditions))
@@ -119,133 +119,88 @@ mod_figures_server <- function(input, output, session, f){
         dplyr::pull(name)
     })
     
-    colorz <- reactive({
-      if(length(conditions()) == 1){
-        "#002cd3"
-      } else if(length(conditions()) == 2){
-        c("#002cd3", "#d30000")
-      } else {
-        RColorBrewer::brewer.pal(length(conditions()), 'Set1')
-      }
-    })
-    
-    output$user_defaults <- renderUI({
-      req(conditions())
-      if(length(conditions()) >= 2){
-        tagList(
-          
-          selectInput(ns('factor_order'),
-                      label = 'Factor Order',
-                      multiple = T,
-                      choices = conditions()),
-          purrr::map2(seq_along(conditions()),
-                      colorz(),
-                      ~div(style = 'display:inline-block', colourpicker::colourInput(ns(paste0('color', .x)),
-                                                                                     label = paste('Color', .x),
-                                                                                     value = .y)))
-        )
-      } else {
-        div(style = 'display:inline-block', colourpicker::colourInput(ns('color1'),
-                                                                      label = 'Color 1',
-                                                                      value = colorz()))
-      }
-    })
-    
-    # output$xy_var <- renderUI({
-    #   req(input$gg_type)
-    #   if(input$gg_type == "Histogram"){
-    #      tagList(
-    #    selectInput(ns("x"), "X-Axis Variable", choices = c("displacement_nm", "force", "time_on_ms", "time_off_ms"))
-    #      )
-    #   } else {
-    #     choices <- names(rv$all_measured_events)
-    #     tagList(
-    #       selectInput(ns("x"), "X-axis Variable", choices = choices, selected = "conditions"),
-    #       selectInput(ns("y"), "Y-axis Variable", choices = choices, selected = "displacement_nm")
-    #     )
-    #   }
-    # })
     
     output$aes <- renderUI({
+      validate(need(nrow(rv$split_conditions) > 0, "Select project & upload data to graph"))
       req(input$gg_type)
             
-         if(input$gg_type == "Histogram"){
-
-        var <- selectInput(ns("x"), "X-Axis Variable", choices = c("displacement_nm", "force", "time_on_ms", "time_off_ms"))
-
+      var <-  if(input$gg_type == "Histogram"){
+         selectInput(ns("x"), "X-Axis Variable", choices = c("displacement_nm", "force", "time_on_ms", "time_off_ms"))
          } else {
-           choices <- names(rv$all_measured_events)
-           var <- tagList(
-             selectInput(ns("x"), "X-axis Variable", choices = choices, selected = "conditions"),
-             selectInput(ns("y"), "Y-axis Variable", choices = choices, selected = "displacement_nm")
+          choices <- names(rv$all_measured_events)
+          tagList(
+            selectInput(ns("x"), "X-axis Variable", choices = choices, selected = "conditions"),
+            selectInput(ns("y"), "Y-axis Variable", choices = choices, selected = "displacement_nm")
            )
          }
 
-      if(is.null(rv$split_conditions)){
-      fill <-  selectInput(ns("fill"), "Fill By", choices = "conditions")
-      } else {
-      fill <- selectInput(ns("fill"), "Fill By", choices = names(rv$split_conditions))
+      fill_by <- if(is.null(rv$split_conditions)){
+       selectInput(ns("fill_by"), "Fill By", choices = "conditions")
+       } else {
+        selectInput(ns("fill_by"), "Fill By", choices = names(rv$split_conditions))
       }
-   #   req(conditions())
-      if(length(conditions()) >= 2){
-        col <- tagList(
-
-          selectInput(ns('factor_order'),
-                      label = 'Factor Order',
-                      multiple = T,
-                      choices = rv$split_conditions[[input$x]],
-          purrr::map2(seq_along(conditions()),
-                      colorz(),
-                      ~div(style = 'display:inline-block', colourpicker::colourInput(ns(paste0('color', .x)),
-                                                                                     label = paste('Color', .x),
-                                                                                     value = .y)))
-        )
-      } else {
-       col <- div(style = 'display:inline-block', colourpicker::colourInput(ns('color1'),
-                                                                      label = 'Color 1',
-                                                                      value = colorz()))
-      }
+       
+      factor_order <-  selectInput(ns('factor_order'),
+                                   label = 'Factor Order',
+                                   multiple = T,
+                                   choices = rv$split_conditions[[input$x]])
+        
+      to_color <- unique(rv$split_conditions[[input$fill_by]])
+      
+      colorz <- if(length(to_color) == 1){
+                  "#002cd3"
+            } else if(length(to_color) == 2){
+              c("#002cd3", "#d30000")
+            } else {
+              RColorBrewer::brewer.pal(length(conditions()), 'Set1')
+            }
+      
+      col_picker <- purrr::map2(seq_along(to_color),
+                                colorz,
+                                ~div(style = 'display:inline-block', colourpicker::colourInput(ns(paste0('color', .x)),
+                                                                                               label = paste('Color', .x),
+                                                                                               value = .y)))
       
       
       #need factor_order
-      tagList(var, fill, col)
+      tagList(var, factor_order, fill_by, col_picker)
      
     })
     
     observe({
-       req(f$project$path)
-       req(conditions())
-       plot_colors <- purrr::map_chr(paste0('color', seq_along(conditions())), ~input[[.x]])
-      if(input$gg_type == "Bar"){
-        rv$plot <- ggbarplot(
-          data = step_size_sim,
-          x =  input$x,
-          y = input$y,
-          size = 1,
-          fill = input$fill,
-          position = position_dodge(),
-          add = "mean_se",
-          add.params = list(size = 1),
-          error.plot = "upper_errorbar",
-          order = input$factor_order,
-          title = input$title,
-          xlab = input$xlab,
-          ylab = input$ylab
-        )+scale_y_continuous(expand = expansion(c(0, 0.1)))
-
-      } else if(input$gg_type == "Box"){
-        rv$plot <-  ggpubr::ggboxplot()
-      } else if(input$gg_type == "Histogram"){
-        rv$plot <- ggpubr::gghistogram()
-      } else if(input$gg_type == "Scatter"){
-        rv$plot <- ggpubr::ggscatter()
-      } else if(input$gg_type == "Violin"){
-        rv$plot <- ggpubr::ggviolin()
-      }
+      #  req(f$project$path)
+      #  req(conditions())
+      #  plot_colors <- purrr::map_chr(paste0('color', seq_along(conditions())), ~input[[.x]])
+      # if(input$gg_type == "Bar"){
+      #   rv$plot <- ggbarplot(
+      #     data = step_size_sim,
+      #     x =  input$x,
+      #     y = input$y,
+      #     size = 1,
+      #     fill = input$fill,
+      #     position = position_dodge(),
+      #     add = "mean_se",
+      #     add.params = list(size = 1),
+      #     error.plot = "upper_errorbar",
+      #     order = input$factor_order,
+      #     title = input$title,
+      #     xlab = input$xlab,
+      #     ylab = input$ylab
+      #   )+scale_y_continuous(expand = expansion(c(0, 0.1)))
+      # 
+      # } else if(input$gg_type == "Box"){
+      #   rv$plot <-  ggpubr::ggboxplot()
+      # } else if(input$gg_type == "Histogram"){
+      #   rv$plot <- ggpubr::gghistogram()
+      # } else if(input$gg_type == "Scatter"){
+      #   rv$plot <- ggpubr::ggscatter()
+      # } else if(input$gg_type == "Violin"){
+      #   rv$plot <- ggpubr::ggviolin()
+      # }
         
     })
     output$gg <- renderPlot({
-      validate(need(f$project$path, "Select a project, load data, and make graph"))
+      validate(need(nrow(rv$split_conditions) > 0, "Upload data to begin"))
       rv$plot
     })
     

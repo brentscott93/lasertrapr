@@ -125,30 +125,68 @@ mod_summarize_server <- function(input, output, session, f){
   })
   
   output$split_conditions_options <- renderUI({
+    req(conditions())
+    variables <- strsplit(conditions(), "_")
+    number_variables <- sapply(variables, length)
+    var_equal <- var(number_variables) == 0
+    defend_if(!var_equal, ui = "Cannot split conditions column. Un-even variables numbers in each conditions name", type = "error")
     tagList(
-      purrr::map(seq_along(conditions()),
+      purrr::map(seq_len(number_variables[[1]]),
                   ~div(style = 'display:inline-block', textInput(ns(paste0('var', .x)),
-                                                                  label = paste('Variable', .x)))
-      )
-      )
+                                                                  label = paste('Variable', .x))))
+    )
   })
   
   rv <- reactiveValues(summary = data.frame(x = letters),
-                         save = 0)
+                               save = 0)
 
   observeEvent(input$go, {
-    #browser()
+   # browser()
     defend_if_null(f$project_input, ui = 'Please Select a Project', type = 'error')
     defend_if_blank(f$project_input, ui = "Please Select a Project", type = "error")
     withProgress(message = 'Summarizing Project', {
       golem::print_dev("before sum")
-      rv$data <- summarize_trap_data(f = f,
-                                     hz = input$hz,
-                                     factor_order = input$factor_order)
+     
+      if(input$split_conditions){
+        variables <- strsplit(conditions(), "_")
+        number_variables <- sapply(variables, length)
+        var_names <- purrr::map_chr(paste0('var', seq_len(number_variables[[1]])), ~input[[.x]])
+        
+        all_measured_events <- rbind_measured_events(project = f$project$name, save_to_summary = FALSE)
+        all_measured_events <- split_conditions_column(all_measured_events, var_names = var_names, sep = "_")
+        
+        summary_data <- summarize_trap(all_measured_events, by = c("conditions", var_names))
+        
+      } else {
+        all_measured_events <- rbind_measured_events(project = f$project_input, save_to_summary = TRUE)
+        summary_data <- summarize_trap(all_measured_events, by = "conditions")
+      }
+      
+      tt <- total_trap_time(f$project_input, is_shiny = TRUE)
+      
+      summary_data <- merge(summary_data, tt, by = "conditions", all = TRUE)
+      
+      
+      summary_folder <- file.path("~", "lasertrapr", f$project_input, "summary")
+      if(!dir.exists(summary_folder)){
+        dir.create(summary_folder)
+      }
+      
+      walk2(list(all_measured_events, summary_data), 
+            c("all-measured-events.csv", "summary-data.csv"),
+           ~ data.table::fwrite(.x, 
+                               file.path(summary_folder, 
+                                         paste(Sys.Date(), 
+                                               f$project$name, 
+                                               .y, 
+                                               sep = "_"))))
+      
+      rv$all_measured_events <- all_measured_events
+      rv$summary_data <- summary_data
       golem::print_dev("before colors")
       plot_colors <- purrr::map_chr(paste0('color', seq_along(conditions())), ~input[[.x]])
       setProgress(0.6, detail = "Step Stats")
-        rv$step <-  ggstatsplot::ggbetweenstats(rv$data$event_files_filtered,
+        rv$step <-  ggstatsplot::ggbetweenstats(rv$all_measured_events,
                        x = conditions, 
                        y = displacement_nm,
                        ylab = "nanometers",
@@ -159,7 +197,7 @@ mod_summarize_server <- function(input, output, session, f){
                        ggtheme = theme_cowplot())
       
       setProgress(0.65, detail = "Time On Stats")
-      rv$ton <- ggstatsplot::ggbetweenstats(rv$data$event_files_filtered,
+      rv$ton <- ggstatsplot::ggbetweenstats(rv$all_measured_events,
                               x = conditions, 
                               y = time_on_ms,
                               ylab = "milliseconds",
@@ -175,7 +213,7 @@ mod_summarize_server <- function(input, output, session, f){
                                                                          labels = scales::trans_format("log10", scales::math_format(10^.x))),
                                                       coord_trans(y = "log10")))
       setProgress(0.7, detail = "Time Off Stats")
-      rv$toff <- ggstatsplot::ggbetweenstats(rv$data$event_files_filtered,
+      rv$toff <- ggstatsplot::ggbetweenstats(rv$all_measured_events,
                                x = conditions, 
                                y = time_off_ms,
                                ylab = "milliseconds",
@@ -191,7 +229,7 @@ mod_summarize_server <- function(input, output, session, f){
                                                                           labels = scales::trans_format("log10", scales::math_format(10^.x))),
                                                        coord_trans(y = "log10")))
       setProgress(0.75, detail = "Force Stats")
-        rv$force <- ggstatsplot::ggbetweenstats(rv$data$event_files_filtered,
+        rv$force <- ggstatsplot::ggbetweenstats(rv$all_measured_events,
                                    x = conditions, 
                                    y = force,
                                    ylab = "piconewtons",
@@ -201,20 +239,20 @@ mod_summarize_server <- function(input, output, session, f){
                                    centrality.point.args = list(size = 5, color = "grey10"),
                                    ggtheme = theme_cowplot())
       setProgress(0.8, detail = "Time On ECDF")
-      rv$ton_ecdf <- time_on_ecdf(event_files_filtered = rv$data$event_files_filtered,
+      rv$ton_ecdf <- time_on_ecdf(event_files_filtered = rv$all_measured_events,
                                    plot_colors = plot_colors)
       setProgress(0.85, detail = "Time Off ECDF")
-      rv$toff_ecdf <- time_off_ecdf(event_files_filtered = rv$data$event_files_filtered,
+      rv$toff_ecdf <- time_off_ecdf(event_files_filtered = rv$all_measured_events,
                                   plot_colors = plot_colors)
       # setProgress(0.85, detail = "Event Frequency")
       # rv$ef <- stats_plot_event_frequency(event_file_path = rv$data$event_file_path, 
       #                                     factor_order = input$factor_order,
       #                                     plot_colors = plot_colors)
       setProgress(0.9, detail = "Correlations")
-      # rv$correlations <- correlations(event_files_filtered = rv$data$event_files_filtered,
+      # rv$correlations <- correlations(event_files_filtered = rv$all_measured_events,
       #                                 plot_colors = plot_colors)
       setProgress(0.95, detail = "Stiffness")
-      # rv$stiffness <- stiffness(event_files_filtered = rv$data$event_files_filtered,
+      # rv$stiffness <- stiffness(event_files_filtered = rv$all_measured_events,
       #                              plot_colors = plot_colors)
     })
   })
@@ -241,10 +279,16 @@ mod_summarize_server <- function(input, output, session, f){
     })
   })
   output$table <- DT::renderDT({
-    validate(need('conditions' %in% colnames(rv$data$summary), 'Select completed project, choose options, and click summarize'))
-    # rv$data$summary$conditions <- factor(summarize_trap$conditions,
-    #                                     levels = input$factor_order)
-    rv$data$summary %>%
+    validate(need('conditions' %in% colnames(rv$summary_data), 'Select completed project, choose options, and click summarize'))
+    # rv$summary_data$conditions <- factor(summarize_trap$conditions,
+    #                                     levels = input$factor_order)i
+    
+    if(!is.null(input$factor_order)){
+     rv$summary_data$conditions <- 
+        factor(rv$summary_data$conditions ,
+               levels = input$factor_order)
+    }
+    rv$summary_data %>%
       dplyr::arrange(conditions) %>%
       dplyr::select("Conditions" = conditions, 
                     "Step Size (nm)" = displacement_avg,

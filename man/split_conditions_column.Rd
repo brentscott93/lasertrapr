@@ -4,10 +4,10 @@
 \alias{split_conditions_column}
 \title{Quick Summary}
 \usage{
-split_conditions_column(measured_events, var_names, sep)
+split_conditions_column(df, var_names, sep)
 }
 \arguments{
-\item{all_measured_events}{a df made from rbind_measured_events}
+\item{df}{a df with conditions column to split}
 }
 \description{
 Quick Summary
