@@ -78,6 +78,7 @@ mod_figures_server <- function(input, output, session, f){
  
     fig <- reactiveValues(all_measured_events = data.frame(),
                           split_conditions = NULL)
+    
     observeEvent(input$load_data, ignoreInit = TRUE, {
       req(f$project_input)
       summary_folder <- file.path(f$project$path, "summary")
@@ -135,11 +136,12 @@ mod_figures_server <- function(input, output, session, f){
             
       if(input$gg_type == "Histogram"){
          selectInput(ns("x"), "X-Axis Variable", choices = c("displacement_nm", "force", "time_on_ms", "time_off_ms"))
-         } else {
-          choices <- names(fig$data)
+         } else if(input$gg_type == "Bar") {
+          xchoices <- names(fig$split_conditions)
+          ychoices <-  c("displacement_nm", "force", "time_on_ms", "time_off_ms")
           tagList(
-            selectInput(ns("x"), "X-axis Variable", choices = choices, selected = "conditions"),
-            selectInput(ns("y"), "Y-axis Variable", choices = choices, selected = "displacement_nm")
+            selectInput(ns("x"), "X-axis Variable", choices = xchoices, selected = "conditions"),
+            selectInput(ns("y"), "Y-axis Variable", choices = ychoices, selected = "displacement_nm")
            )
          }
     })
@@ -186,38 +188,72 @@ mod_figures_server <- function(input, output, session, f){
     output$xy_labels <- renderUI({
       req(input$x)
       req(input$y)
+      if(input$gg_type == "Bar"){
       tagList(
-      textInput(ns("xlab"), "X Label", value = input$x),
-      textInput(ns("ylab"), "Y Label", value = input$y)
-      )
+        textInput(ns("xlab"), "X Label", value = input$x),
+        textInput(ns("ylab"), "Y Label", value = input$y),
+        checkboxInput(ns("scale_y_log"), "Log Y-axis?")
+       )
+      } else {
+        tagList(
+          textInput(ns("xlab"), "X Label", value = input$x),
+          textInput(ns("ylab"), "Y Label", value = input$y)
+        )
+      }
     })
     
     observe({
-       req(nrow(fig$split_conditions) > 0)
+     # browser()
+      req(nrow(fig$split_conditions) > 0)
       req(input$gg_type)
       req(input$x)
+      req(input$fill_by)
+      to_color <- unique(fig$split_conditions[[input$fill_by]]) 
+      req(input$color1)
+      fig$plot_colors <- purrr::map_chr(seq_along(to_color), ~input[[paste0("color", .x)]])
+      
       if(input$gg_type == "Bar"){
+      
+         plot_data <- fig$data[, .(y = mean(base::get(input$y), na.rm = TRUE),
+                                   y_se = sd(base::get(input$y), na.rm = TRUE)/sqrt(.N)),
+                                   by = names(fig$split_conditions)]
+         
+         plot_data$x <- plot_data[[input$x]]
+
+         if(!is.null(input$factor_order)){
+         plot_data$x <- factor(plot_data$x, levels = input$factor_order)
+         }
+         
         fig$plot <- 
-          fig$data_summary %>% 
-          mutate(ymin = input$y - paste0(input$y, "_se"),
-                 ymax = input$y + paste0(input$y, "_se")) %>% 
           ggplot()+
-             geom_col(data = .,
-                      aes(x = input$x, 
-                          y = input$y, 
-                          fill = input$fill_by),
-                      color = "black")+
-          geom_errorbar(data = ., 
-                        aes(x = input$x,
-                            ymin = ymin,
-                            ymax = ymax))
+          geom_errorbar(data = plot_data,
+                        aes(x = x,
+                            ymin = y-y_se,
+                            ymax = y+y_se,
+                            group =  base::get(input$fill_by)),
+                        width = 0.25,
+                        size=1,
+                        position = position_dodge(width=0.9),
+                        show.legend = FALSE)+
+             geom_col(data = plot_data,
+                      aes(x = x,
+                          y = y,
+                          fill = base::get(input$fill_by)),
+                      color = "black",
+                      position = position_dodge(), 
+                      size=1,
+                      show.legend = FALSE)+
+          scale_y_continuous(expand = expansion(c(0, 0.1)))
+          
+    
         #   ggpubr::ggbarplot(
-        #   data = fig$data,
-        #   x =  input$x,
+        #   data = plot_data,
+        #   x =  x,
         #   y = input$y,
         #   size = 1,
         #   fill = input$fill_by,
-        #   position = position_dodge(),
+        #   palette = fig$plot_colors,
+        #   #position = position_dodge(),
         #   add = "mean_se",
         #   add.params = list(size = 1),
         #   error.plot = "upper_errorbar",
@@ -239,8 +275,27 @@ mod_figures_server <- function(input, output, session, f){
         
     })
     output$gg <- renderPlot({
-      validate(need(input$x, "Upload data to begin"))
-      fig$plot
+      validate(need(fig$data, "Upload data to begin"))
+      validate(need(fig$plot, "Activate 'Aes' tab to display graph."))
+      
+      gg_final <-  
+        fig$plot+
+        ggtitle(input$title)+
+        xlab(input$xlab)+
+        ylab(input$ylab)+
+        scale_fill_manual(values = fig$plot_colors)+
+        theme_cowplot()
+      
+      if(is.null(input$scale_y_log)){
+        gg_final
+      } else {
+        if(input$scale_y_log){
+          gg_final+scale_y_log10(expand = expansion(c(0, 0.1)))
+        } else {
+          gg_final
+        }
+      }
+      
     })
     
 }
