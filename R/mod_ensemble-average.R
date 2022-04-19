@@ -122,6 +122,8 @@ mod_ensemble_average_server <- function(input, output, session, f){
      start_list$k0 <- input$k0
      start_list$k1 <- input$k1
      start_list$k2 <- input$k2
+     start_list$fit <- input$fit
+     removeModal()
    })
    observeEvent(input$options,{
      showModal(
@@ -147,6 +149,7 @@ mod_ensemble_average_server <- function(input, output, session, f){
        )
      )
    })
+
    observe({
      if(is.null(input$fit) || input$fit == "none"){
        shinyjs::hide("d1")

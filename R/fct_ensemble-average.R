@@ -196,8 +196,8 @@ avg_ensembles <- function(f, is_shiny = TRUE){
                            full.names = TRUE, 
                            pattern = "ensemble-data.csv")
     
-    ee_con_data <- lapply(ee_paths , ee_fread) %>% 
-      data.table::rbindlist()
+    ee_con_data <- data.table::rbindlist(lapply(ee_paths , ee_fread)) 
+      
     
     ee_forward_data[[i]] <- ee_con_data[direction == "forward",  
                                         .(avg = mean(data, na.rm = TRUE),
@@ -260,7 +260,7 @@ avg_ensembles <- function(f, is_shiny = TRUE){
 
 
 fit_ensembles <- function(data, fit, start_list, hz){
-  
+  browser()
   forward_avg <- 
     data %>% 
       filter(direction == "forward") %>% 
@@ -271,13 +271,14 @@ fit_ensembles <- function(data, fit, start_list, hz){
       mutate(ensemble_k1 = map(ensemble, ~prep_forward_ensemble_exp(., hz = hz)),
              avg_tail = map_dbl(ensemble, ~mean(tail(.$avg, -100))),
              n = map(ensemble, ~unique(.$n)),
-             k1_nls = map(ensemble_k1, ~nls(avg ~ (d1*(1 - exp(-k0 * time))) + (d2*(1 - exp(-k1 * time))),
+             k1_nls = map(ensemble_k1, ~minpack.lm::nlsLM(avg ~ (d1*(1 - exp(-k0 * time))) + (d2*(1 - exp(-k1 * time))),
                                                          data = .x,
                                                          start = start_list,
                                                          control = nls.control(maxiter = 10000, minFactor = 1/5000000))),
-                          predict_k1 = map(k1_nls, ~predict(.x, newdata=data.frame(time=seq(0, 2, by=1/hz))) %>%
-                                             as_tibble() %>%
-                                             mutate(x = seq(0, 2, by=1/hz))),
+                          predict_k1 = map(k1_nls, ~data.frame(y = predict(.x, newdata=data.frame(time=seq(0, 2, by=1/hz))) %>%
+                                             mutate(x = seq(0, 2, by=1/hz)))),
                           k1_df = map(k1_nls, broom::tidy))
+  print(forward_avg$k1_nls)
+  forward_avg
   
 }

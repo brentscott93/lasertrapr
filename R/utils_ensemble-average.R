@@ -43,7 +43,7 @@ drc_single_neg_exp <- function(){
     single_neg_exp(time = x, a = parm[,1], c = parm[,2])
   }
   
-  ssfct <- function(data){
+  ssfct <- function(data){a
     x <- data[, 1]
     y <- data[, 2]
     
