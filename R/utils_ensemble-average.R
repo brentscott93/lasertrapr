@@ -15,9 +15,12 @@ prep_forward_ensemble_lm <- function(x, hz){
 
 #' @noRd
 prep_forward_ensemble_exp <- function(x, hz){
-  x %>% 
-    dplyr::filter(ensemble_index >= 0) %>%
-    mutate(time = ensemble_index/hz) 
+  x[ensemble_index >= 0, .(ensemble_index, 
+                           avg,
+                           sd, 
+                           se, 
+                           n,
+                           time = ensemble_index/hz)]
 }
 
 #' @noRd

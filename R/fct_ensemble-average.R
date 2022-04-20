@@ -181,9 +181,11 @@ prep_ensemble <- function(trap_selected_project,
 #' @param trap_selected_project full path to currently selected project
 #' @param is_shiny logical. is function being used in shiny or not. 
 #' @noRd
-avg_ensembles <- function(f, is_shiny = TRUE){
-  
-  con <-  list_dir(path = f$project$path)
+avg_ensembles <- function(project, is_shiny = TRUE){
+  #con <-lasertrapr:::list_dir(path = "~/lasertrapr/project_hitch-simulations")
+  #project <- "project_hitch-simulations"
+  project_path <- file.path("~", "lasertrapr", project)
+  con <-  list_dir(path = project_path)
   con <- con[grep("summary", con$name, invert = TRUE, ignore.case = TRUE),]$name
   
   ee_forward_data <- list()
@@ -191,12 +193,12 @@ avg_ensembles <- function(f, is_shiny = TRUE){
   for(i in 1:length(con)){
     if(is_shiny) incProgress(1/(length(con)*2), detail = paste0("Reading ensembles from ", con[[i]]))
      
-    ee_paths <- list.files(path = file.path(f$project$path, con),
+    ee_paths <- list.files(path = file.path(project_path, con[[i]]),
                            recursive = TRUE,
                            full.names = TRUE, 
                            pattern = "ensemble-data.csv")
     
-    ee_con_data <- data.table::rbindlist(lapply(ee_paths , ee_fread)) 
+    ee_con_data <- data.table::rbindlist(lapply(ee_paths , ee_fread, is_shiny=is_shiny)) 
       
     
     ee_forward_data[[i]] <- ee_con_data[direction == "forward",  
@@ -258,16 +260,18 @@ avg_ensembles <- function(f, is_shiny = TRUE){
   
 }
 
-
+data <- forward_backward
 fit_ensembles <- function(data, fit, start_list, hz){
   browser()
-  forward_avg <- 
-    data %>% 
-      filter(direction == "forward") %>% 
-      as_tibble() %>% 
-      dplyr::select(conditions, ensemble_index, avg, sd, se, n) %>% 
-      group_by(conditions) %>% 
-      tidyr::nest(ensemble = c(ensemble_index, avg, sd, se, n)) %>% 
+  forward_avg <- data[direction == "forward", 
+                      .(conditions, ensemble_index, avg, sd, se, n)]
+
+  forward_nest <- forward_avg[, .(ensemble_data = list(.SD)), by = conditions]
+  
+  forward_nest[, `:=`(ensemble_k1_prep = lapply(ensemble_data, prep_forward_ensemble_exp, hz = hz))]
+  
+   
+  
       mutate(ensemble_k1 = map(ensemble, ~prep_forward_ensemble_exp(., hz = hz)),
              avg_tail = map_dbl(ensemble, ~mean(tail(.$avg, -100))),
              n = map(ensemble, ~unique(.$n)),
