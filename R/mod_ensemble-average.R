@@ -99,7 +99,7 @@ mod_ensemble_average_server <- function(input, output, session, f){
        } else {
          ee_fits <- fit_ensembles(data = ee_data,
                                   fit = input$fit, 
-                                  start_list = start_list, 
+                                  start_list = isolate(reactiveValuesToList(start_list)), 
                                   hz = input$hz)
          showNotification("Ensembles Averaged", type = "message")
          ee_fits
