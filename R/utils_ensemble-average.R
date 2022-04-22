@@ -31,8 +31,17 @@ prep_backwards_ensemble_exp <- function(x, hz){
 }
 
 
+fit_forward_ee_2exp <- function(ee_data, start){
+minpack.lm::nlsLM(avg ~ (d1*(1 - exp(-k0 * time))) + (d2*(1 - exp(-k1 * time))),
+                  data = ee_data,
+                  start = start)
+}
 
-
+predict_ee <- function(x, hz){
+   dummy_df <- data.frame(time=seq(0, 2, by=1/hz))
+   dummy_df$y <- predict(x, newdata=dummy_df)
+   return(dummy_df)
+}
 #' Ensemble average self starter
 #' @noRd
 drc_single_neg_exp <- function(){

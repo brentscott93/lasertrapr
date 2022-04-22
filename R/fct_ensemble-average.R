@@ -185,7 +185,7 @@ avg_ensembles <- function(project, is_shiny = TRUE){
   #con <-lasertrapr:::list_dir(path = "~/lasertrapr/project_hitch-simulations")
   #project <- "project_hitch-simulations"
   project_path <- file.path("~", "lasertrapr", project)
-  con <-  list_dir(path = project_path)
+  con <- list_dir(path = project_path)
   con <- con[grep("summary", con$name, invert = TRUE, ignore.case = TRUE),]$name
   
   ee_forward_data <- list()
@@ -260,29 +260,29 @@ avg_ensembles <- function(project, is_shiny = TRUE){
   
 }
 
-data <- forward_backward
+#data <- forward_backward
 fit_ensembles <- function(data, fit, start_list, hz){
-  browser()
+  #browser()
   forward_avg <- data[direction == "forward", 
-                      .(conditions, ensemble_index, avg, sd, se, n)]
+                      .(conditions,
+                        ensemble_index, 
+                        avg, 
+                        sd, 
+                        se, 
+                        n)]
 
   forward_nest <- forward_avg[, .(ensemble_data = list(.SD)), by = conditions]
   
-  forward_nest[, `:=`(ensemble_k1_prep = lapply(ensemble_data, prep_forward_ensemble_exp, hz = hz))]
+  forward_nest[, `:=`(ensemble_k1_prep = lapply(ensemble_data, prep_forward_ensemble_exp, hz = hz),
+                      avg_tail = vapply(ensemble_data, function(x) mean(tail(x$avg, -100)), FUN.VALUE = numeric(1)),
+                      n = vapply(ensemble_data, function(x) unique(x$n),  FUN.VALUE = numeric(1)))]
   
-   
+  forward_nest[, forward_fit_2exp := lapply(ensemble_k1_prep, fit_forward_ee_2exp, start = list(d1 = 5, d2 = 2, k0 = 1000, k1 = 100))]
   
-      mutate(ensemble_k1 = map(ensemble, ~prep_forward_ensemble_exp(., hz = hz)),
-             avg_tail = map_dbl(ensemble, ~mean(tail(.$avg, -100))),
-             n = map(ensemble, ~unique(.$n)),
-             k1_nls = map(ensemble_k1, ~minpack.lm::nlsLM(avg ~ (d1*(1 - exp(-k0 * time))) + (d2*(1 - exp(-k1 * time))),
-                                                         data = .x,
-                                                         start = start_list,
-                                                         control = nls.control(maxiter = 10000, minFactor = 1/5000000))),
-                          predict_k1 = map(k1_nls, ~data.frame(y = predict(.x, newdata=data.frame(time=seq(0, 2, by=1/hz))) %>%
-                                             mutate(x = seq(0, 2, by=1/hz)))),
-                          k1_df = map(k1_nls, broom::tidy))
-  print(forward_avg$k1_nls)
-  forward_avg
+  forward_nest[, predict_forward_2exp := lapply(forward_fit_2exp, predict_ee, hz = hz)] 
+  
+  forward_nest[, forward_2exp_par_table := lapply(forward_fit_2exp, broom::tidy)] 
+  
+  return(forward_avg)
   
 }
