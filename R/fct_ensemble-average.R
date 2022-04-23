@@ -261,7 +261,7 @@ avg_ensembles <- function(project, is_shiny = TRUE){
 }
 
 #data <- forward_backward
-fit_ensembles <- function(data, fit, hz, is_shiny){
+fit_ensembles <- function(data, fit, hz, is_shiny = TRUE){
   #browser()
   if(is_shiny) incProgress(0.25, detail = "Fitting Forwards...")
   
@@ -333,7 +333,7 @@ fit_ensembles <- function(data, fit, hz, is_shiny){
                                                forward = FALSE)
   ]
   
-  backwards_nest[, bcakwards_fit_par_table := lapply(backwards_fit, 
+  backwards_nest[, backwards_fit_par_table := lapply(backwards_fit, 
                                                      broom::tidy)
   ] 
   
