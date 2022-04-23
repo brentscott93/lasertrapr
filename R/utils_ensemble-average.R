@@ -24,23 +24,47 @@ prep_forward_ensemble_exp <- function(x, hz){
 }
 
 #' @noRd
-prep_backwards_ensemble_exp <- function(x, hz){
-  x %>% 
-    dplyr::filter(ensemble_index <=  0) %>%
-    mutate(time = sort(seq(0, by = -1/hz, along.with = ensemble_index)))
+fit_forward_ee_1exp <- function(ee_data, start){
+  minpack.lm::nlsLM(avg ~ d1 + (d2*(1 - exp(-k1 * time))),
+                    data = ee_data,
+                    start = start)
 }
 
-
+#' @noRd
 fit_forward_ee_2exp <- function(ee_data, start){
-minpack.lm::nlsLM(avg ~ (d1*(1 - exp(-k0 * time))) + (d2*(1 - exp(-k1 * time))),
-                  data = ee_data,
-                  start = start)
+  minpack.lm::nlsLM(avg ~ (d1*(1 - exp(-k0 * time))) + (d2*(1 - exp(-k1 * time))),
+                    data = ee_data,
+                    start = start)
 }
 
-predict_ee <- function(x, hz){
-   dummy_df <- data.frame(time=seq(0, 2, by=1/hz))
-   dummy_df$y <- predict(x, newdata=dummy_df)
-   return(dummy_df)
+#' @noRd
+prep_backwards_ensemble_exp <- function(x, hz){
+  x[ensemble_index <= 0, .(ensemble_index, 
+                           avg,
+                           sd, 
+                           se, 
+                           n,
+                           time = sort(seq(0, by = -1/hz, along.with = ensemble_index)))]
+}
+
+#' @noRd
+fit_backwards_ee_1exp <- function(ee_data, start){
+  minpack.lm::nlsLM(avg ~ d1+(d2*exp(time*k2)),
+                    data = ee_data,
+                    start = start)
+}
+
+
+#' @noRd
+predict_ee <- function(nls_fit, hz, forward = TRUE){
+  predict_y <- predict(nls_fit)
+  if(forward){
+    x <- seq(0, by = 1/hz, along.with = predict_y)
+  } else {
+    x <- sort(seq(0, by = -1/hz, along.with = predict_y))
+ }
+  data.frame(time = x,
+             predict_y = predict_y)
 }
 #' Ensemble average self starter
 #' @noRd

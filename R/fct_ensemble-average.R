@@ -261,8 +261,10 @@ avg_ensembles <- function(project, is_shiny = TRUE){
 }
 
 #data <- forward_backward
-fit_ensembles <- function(data, fit, start_list, hz){
+fit_ensembles <- function(data, fit, hz, is_shiny){
   #browser()
+  if(is_shiny) incProgress(0.25, detail = "Fitting Forwards...")
+  
   forward_avg <- data[direction == "forward", 
                       .(conditions,
                         ensemble_index, 
@@ -277,12 +279,67 @@ fit_ensembles <- function(data, fit, start_list, hz){
                       avg_tail = vapply(ensemble_data, function(x) mean(tail(x$avg, -100)), FUN.VALUE = numeric(1)),
                       n = vapply(ensemble_data, function(x) unique(x$n),  FUN.VALUE = numeric(1)))]
   
-  forward_nest[, forward_fit_2exp := lapply(ensemble_k1_prep, fit_forward_ee_2exp, start = list(d1 = 5, d2 = 2, k0 = 1000, k1 = 100))]
   
-  forward_nest[, predict_forward_2exp := lapply(forward_fit_2exp, predict_ee, hz = hz)] 
+  if(fit == "2exp"){
+    
+    forward_nest[, forward_fit := lapply(ensemble_k1_prep, 
+                                         fit_forward_ee_2exp, 
+                                         start = list(d1 = 5, d2 = 2, k0 = 1000, k1 = 100))
+                 ]
+    
+  } else if(fit == "1exp"){
+    
+    forward_nest[, forward_fit := lapply(ensemble_k1_prep, 
+                                         fit_forward_ee_1exp, 
+                                         start = list(d1 = 5, d2 = 2, k1 = 100))
+                ]
+  }
   
-  forward_nest[, forward_2exp_par_table := lapply(forward_fit_2exp, broom::tidy)] 
   
-  return(forward_avg)
+  forward_nest[, predict_forward := lapply(forward_fit, 
+                                           predict_ee, 
+                                           hz = hz)
+              ]
+  
+  forward_nest[, forward_fit_par_table := lapply(forward_fit, 
+                                                 broom::tidy)
+              ] 
+  
+  
+  if(is_shiny) incProgress(0.25, detail = "Fitting Backwards...")
+  
+  backwards_avg <- data[direction == "backwards", 
+                      .(conditions,
+                        ensemble_index, 
+                        avg, 
+                        sd, 
+                        se, 
+                        n)]
+  
+  backwards_nest <- backwards_avg[, .(ensemble_data = list(.SD)), by = conditions]
+  
+  backwards_nest[, `:=`(ensemble_k2_prep = lapply(ensemble_data, prep_backwards_ensemble_exp, hz = hz),
+                        avg_head = vapply(ensemble_data, function(x) mean(head(x$avg, 100)), FUN.VALUE = numeric(1)),
+                        n = vapply(ensemble_data, function(x) unique(x$n),  FUN.VALUE = numeric(1)))]
+  
+  backwards_nest[, backwards_fit := lapply(ensemble_k2_prep, 
+                                           fit_backwards_ee_1exp, 
+                                           start = list(d1 = 6, d2 = 2, k2 = 500))
+  ]
+  
+  backwards_nest[, predict_backwards := lapply(backwards_fit, 
+                                               predict_ee, 
+                                               hz = hz,
+                                               forward = FALSE)
+  ]
+  
+  backwards_nest[, bcakwards_fit_par_table := lapply(backwards_fit, 
+                                                     broom::tidy)
+  ] 
+  
+  
+  
+  return(list(forward = forward_nest,
+              backwards = backwards_nest))
   
 }
