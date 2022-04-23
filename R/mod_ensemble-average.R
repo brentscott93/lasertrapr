@@ -119,7 +119,7 @@ mod_ensemble_average_server <- function(input, output, session, f){
            fill = TRUE
           )
        
-       options_data[include == TRUE & review == TRUE & sucess == TRUE]
+       options_data[include == TRUE & review == TRUE & report == "success"]
        ee$hz <- unique(options_data$hz)
        defend_if(length(ee$hz) != 1, 
                  ui = "Data has different sampling frequencies. Ensmeble averaging not currently supported.", 
@@ -129,9 +129,44 @@ mod_ensemble_average_server <- function(input, output, session, f){
        if(is.null(input$fit) || input$fit == "None"){
           showNotification("Ensembles Averaged", type = "message")
        } else {
-         ee$fits <- fit_ensembles(data = ee_data,
+         ee$fits <- fit_ensembles(data = ee$data,
                                   fit = input$fit, 
                                   hz = ee$hz)
+         
+         summary_folder <- file.path(f$project$path, "summary")
+         if(!file.exists(summary_folder)){
+           dir.create(summary_folder)
+         }
+         
+         forward_fits <- ee$fits$forward$forward_fit
+         names(forward_fits) <- ee$fits$forward$conditions
+         forward_table <- ee$fits$forward$forward_fit_par_table
+         names(forward_table) <- ee$fits$forward$conditions
+         
+         backwards_fits <- ee$fits$backwards$backwards_fit
+         names(backwards_fits) <- ee$fits$backwards$conditions
+         backwards_table <- ee$fits$backwards$backwards_fit_par_table
+         names(backwards_table) <- ee$fits$backwards$conditions
+         
+         sink(file.path(summary_folder, paste0(Sys.Date(), "_ensemble-average-fits.txt")))
+         writeLines("\n
+██╗      █████╗ ███████╗███████╗██████╗ ████████╗██████╗  █████╗ ██████╗ ██████╗ 
+██║     ██╔══██╗██╔════╝██╔════╝██╔══██╗╚══██╔══╝██╔══██╗██╔══██╗██╔══██╗██╔══██╗
+██║     ███████║███████╗█████╗  ██████╔╝   ██║   ██████╔╝███████║██████╔╝██████╔╝
+██║     ██╔══██║╚════██║██╔══╝  ██╔══██╗   ██║   ██╔══██╗██╔══██║██╔═══╝ ██╔══██╗
+███████╗██║  ██║███████║███████╗██║  ██║   ██║   ██║  ██║██║  ██║██║     ██║  ██║
+╚══════╝╚═╝  ╚═╝╚══════╝╚══════╝╚═╝  ╚═╝   ╚═╝   ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝     ╚═╝  ╚═╝
+\n")
+         writeLines("############################### \n Forward Ensemble Average Fits \n ############################### \n")
+         print(forward_fits)
+         writeLines("\n #### Tidy Table #### \n")
+         print(forward_table)
+         writeLines("\n ############################### \n Backwards Ensemble Average Fits \n ############################### \n")
+         print(backwards_fits)
+         writeLines("\n #### Tidy Table #### \n")
+         print(backwards_table)
+         sink()
+         
          showNotification("Ensembles Averaged & Fit", type = "message")
        }
      })
@@ -142,7 +177,12 @@ mod_ensemble_average_server <- function(input, output, session, f){
 
   
  output$forward_backward_ensembles <- renderPlot({
-   req(ee_data())
+   validate(need(ee$data, "Prep & Average Ensembles"))
+   validate(need(ee$fits,"Average Ensembles Before Continuing"))
+   validate(need(input$color1, "Navigate to 'Plot' tab to view Ensemble Plots")) 
+   
+   
+   
    ggplot(data = ee_data())+
      geom_point(aes(x = forward_backward_index, 
                     y = avg, 
