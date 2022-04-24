@@ -301,8 +301,10 @@ fit_ensembles <- function(data, fit, hz, is_shiny = TRUE){
                                            hz = hz)
               ]
   
-  forward_nest[, forward_fit_par_table := lapply(forward_fit, 
-                                                 broom::tidy)
+  forward_nest[, `:=`(forward_fit_par_table = lapply(forward_fit, 
+                                                 broom::tidy),
+                      total_time_dp = sapply(ensemble_k1_prep, function(x) x[, .(length = .N)]$length )
+                      )
               ] 
   
   
@@ -343,3 +345,5 @@ fit_ensembles <- function(data, fit, hz, is_shiny = TRUE){
               backwards = backwards_nest))
   
 }
+
+
