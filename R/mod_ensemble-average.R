@@ -62,7 +62,18 @@ mod_ensemble_average_ui <- function(id){
                actionButton(ns("avg_ensembles"), "Avg Ensembles", width = "100%", style  = "margin-top: 25px", icon = icon("calculator"))
                ),
              tabPanel(
-               title = "Plot"
+               title = "Plot",
+               div(style = "diplay: inline-block;", 
+                   uiOutput(ns("ee_ui"))),
+               uiOutput(ns("facet_col")),
+               shinyWidgets::materialSwitch(ns("custom_labels"), "Custom Labels"),
+               uiOutput(ns("ee_labels")),
+               sliderInput(ns("backwards_shift"), 
+                           "Backwards Shift (seconds)",
+                           min = 0, 
+                           max = 1,
+                           step = 0.05,
+                           value = 0)
                
              )
                
@@ -167,6 +178,24 @@ mod_ensemble_average_server <- function(input, output, session, f){
          print(backwards_table)
          sink()
          
+         
+         ee$forward_predict_df <- ee$fits$forward[, predict_forward[[1]], by = conditions]
+         
+         forward_length <- ee$fits$forward[, .(conditions, total_time_dp)]
+         
+         
+         bwards <- merge(ee$fits$backwards, forward_length, by = "conditions")
+         bwards[, predict_backwards_shift := map2(predict_backwards, 
+                                                  total_time_dp,
+                                                  ~mutate(.x, time_shifted = time+ (2*(.y/ee$hz)))) ]
+         
+         
+         ee$backwards_predict_df <- bwards[, predict_backwards_shift[[1]] , by = conditions]
+         
+         
+         # ee$forward <- ee$data[direction == "forward"]
+         # ee$backwards <- ee$data[direction == "backwards"]
+       
          showNotification("Ensembles Averaged & Fit", type = "message")
        }
      })
@@ -174,28 +203,148 @@ mod_ensemble_average_server <- function(input, output, session, f){
    })
    
 
+   conditions <- reactive({
+     req(f$project$path)
+     list_dir(f$project$path) %>%
+       dplyr::filter(str_detect(name, "summary", negate = TRUE)) %>% 
+       dplyr::pull(name)
+   })
+   
+   colorz <- reactive({
+     if(length(conditions()) == 1){
+       "#002cd3"
+     } else if(length(conditions()) == 2){
+       c("#002cd3", "#d30000")
+     } else {
+       RColorBrewer::brewer.pal(length(conditions()), 'Set1')
+     }
+   })
+   
+   output$facet_col <- renderUI({
+     req(conditions())
+     if(length(conditions()) >= 2){
+     sliderInput(ns("ncol"), 
+                 "Number of Facet Columns",
+                 min = 1, 
+                 max = length(conditions()),
+                 step = 1,
+                 value = 2)
+     }
+   })
+   output$ee_ui <- renderUI({
+     req(conditions())
+     if(length(conditions()) >= 2){
+       tagList(
+         selectInput(ns('factor_order'),
+                     label = 'Factor Order',
+                     multiple = T,
+                     choices = conditions()),
+         purrr::map2(seq_along(conditions()),
+                     colorz(),
+                     ~div(style = 'display:inline-block; ', colourpicker::colourInput(ns(paste0('color', .x)),
+                                                                                    label = paste('Color', .x),
+                                                                                    value = .y)))
+       )
+     } else {
+       div(style = 'display:inline-block; ', colourpicker::colourInput(ns('color1'),
+                                                                     label = 'Color 1',
+                                                                     value = colorz()))
+     }
+   })
+   
+   output$ee_labels <- renderUI({
+     req(input$custom_labels)
+     if(input$custom_labels){
+     purrr::map(seq_along(conditions()),
+                ~div(style = 'display:inline-block; width: 75px;', textInput(ns(paste0('label', .x)), label = paste('Label', .x))))
+     }
+   })
+   
+ observe({
+   req(ee$data)
+   req(ee$forward_predict_df)
+   req(input$color1)
+   
+   ee_data <- ee$data
+   ee_forward_predict_df <- ee$forward_predict_df
+   ee_backwards_predict_df <- ee$backwards_predict_df
+   
+   facet_ncol <- if(length(conditions()) >=2 ){
+     req(input$ncol)
+     input$ncol
+   } else {
+     1
+   }
+   
+   plot_colors <- purrr::map_chr(seq_along(conditions()), ~input[[paste0('color', .x)]])
+   
+   if(!is.null(input$factor_order)){
+     if(input$custom_labels){
+       req(input$label1)
+       new_labels <- purrr::map_chr(seq_along(conditions()), ~input[[paste0('label', .x)]])
+       ee_data$conditions <- factor(ee_data$conditions,
+                                    levels = input$factor_order, 
+                                    labels = new_labels)
+       
+       ee_forward_predict_df$conditions <- factor(ee_forward_predict_df$conditions, 
+                                                  levels = input$factor_order, 
+                                                  labels = new_labels)
+       
+       ee_backwards_predict_df$conditions <- factor(ee_backwards_predict_df$conditions, 
+                                                  levels = input$factor_order, 
+                                                  labels = new_labels)
+     } else {
+       ee_data$conditions <- factor(ee_data$conditions,
+                                    levels = input$factor_order)
+       
+       ee_forward_predict_df$conditions <- factor(ee_forward_predict_df$conditions, 
+                                                  levels = input$factor_order)
+       
+       ee_backwards_predict_df$conditions <- factor(ee_backwards_predict_df$conditions, 
+                                                    levels = input$factor_order)
+     }
+   }
 
-  
- output$forward_backward_ensembles <- renderPlot({
-   validate(need(ee$data, "Prep & Average Ensembles"))
-   validate(need(ee$fits,"Average Ensembles Before Continuing"))
-   validate(need(input$color1, "Navigate to 'Plot' tab to view Ensemble Plots")) 
-   
-   
-   
-   ggplot(data = ee_data())+
-     geom_point(aes(x = forward_backward_index, 
+   ee$plot <-
+   ggplot()+
+     geom_point(data = ee_data[direction=="forward"],
+                aes(x = forward_backward_index/ee$hz, 
                     y = avg, 
                     color = conditions), 
                 alpha = 0.3,
-                shape = 16)+
-     facet_wrap(~conditions, scales = "free_x")+
-     xlab("Displacement (nm)")+
+                shape = 16,
+                size = 0.8)+
+     geom_point(data = ee_data[direction=="backwards"],
+                aes(x = (forward_backward_index/ee$hz) - input$backwards_shift, 
+                    y = avg, 
+                    color = conditions), 
+                alpha = 0.3,
+                shape = 16,
+                size = 0.8)+
+     geom_line(data = ee_forward_predict_df,
+               aes(x = time, 
+                   y = predict_y))+
+     geom_line(data = ee_backwards_predict_df,
+               aes(x = time_shifted - input$backwards_shift, 
+                   y = predict_y))+
+     facet_wrap(~conditions, scales = "free_x", ncol = facet_ncol)+
+     ylab("nanometers")+
+     xlab("seconds")+
+     scale_color_manual(values = plot_colors)+
      theme_cowplot()+
      theme(
        strip.background = element_rect(fill = "transparent"),
        legend.position = "none"
      )
+ })
+ 
+ output$forward_backward_ensembles <- renderPlot({
+   validate(need(ee$data, "Prep & Average Ensembles"))
+   validate(need(ee$fits,"Average Ensembles Before Continuing"))
+   validate(need(input$color1, "Navigate to 'Plot' tab to view Ensemble Plots")) 
+   
+  ee$plot
+  
  })
  
 }
