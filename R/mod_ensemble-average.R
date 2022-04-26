@@ -35,7 +35,6 @@ mod_ensemble_average_ui <- function(id){
                          max = 10, 
                          step = 1, 
                          width = "100%"),
-             numericInput(ns("hz"), "Hz", value = 5000, min = 0, max = 20000),
              actionButton(ns("prep_ensemble"), "Prep Ensembles", width = "100%", icon = icon("align-justify"))
              ),
              tabPanel(
@@ -66,29 +65,61 @@ mod_ensemble_average_ui <- function(id){
                div(style = "diplay: inline-block;", 
                    uiOutput(ns("ee_ui"))),
                uiOutput(ns("facet_col")),
-               shinyWidgets::materialSwitch(ns("custom_labels"), "Custom Labels"),
+               shinyWidgets::materialSwitch(ns("custom_labels"), "Custom Labels", status = "primary"),
                uiOutput(ns("ee_labels")),
                sliderInput(ns("backwards_shift"), 
                            "Backwards Shift (seconds)",
                            min = 0, 
                            max = 1,
                            step = 0.05,
-                           value = 0)
+                           value = 0),
+               actionButton(ns("save_plot"), "Save Plot")
                
              )
                
                
                ),
                
-            box(width = 9,
+            box(width = 8,
                  title = "Ensemble Average Plots",
                  fluidRow(
                    column(12, 
                           plotOutput(ns("forward_backward_ensembles")) %>% shinycssloaders::withSpinner(type = 8, color = "#373B38"))
                  )
-                )
-             )
-    )
+                ),
+            box(width = 1, 
+                   title = "Height",
+                   shinyWidgets::noUiSliderInput(ns("plot_height"),
+                                                 "",
+                                                 min = 0, 
+                                                 max = 650, 
+                                                 value = 500,
+                                                 tooltips = FALSE, 
+                                                 step = 5, 
+                                                 direction = "rtl", 
+                                                 orientation = "vertical", 
+                                                 color = "#444444",
+                                                 width = "100px", 
+                                                 height = "600px"))
+        ),
+    fluidRow(
+       column(3),
+       column(9,
+              box(width = NULL,
+                  title = "Width",
+                  shinyWidgets::noUiSliderInput(ns("plot_width"),
+                                                "", 
+                                                min = 100, 
+                                                max = 950, 
+                                                value = 900, 
+                                                tooltips = FALSE, 
+                                                step = 5, 
+                                                color = "#444444",
+                                                width = "100%" )
+         )
+      )
+   )
+)
 }
     
 #' ensemble_average Server Function
@@ -97,18 +128,44 @@ mod_ensemble_average_ui <- function(id){
 mod_ensemble_average_server <- function(input, output, session, f){
   ns <- session$ns
   ee <- reactiveValues()
+  
+  observe({
+     req(f$project_input)
+     req(f$project$path)
+
+     options_paths <- list.files(path = f$project$path, 
+                                 pattern = "options.csv",
+                                 full.names = TRUE,
+                                 recursive = TRUE)
+     
+     options_data <-
+        data.table::rbindlist(
+           lapply(options_paths, data.table::fread),
+           fill = TRUE
+        )
+     
+     options_data[include == TRUE & review == TRUE & report == "success"]
+     ee$hz <- unique(options_data$hz)
+    
+  })
+  
   observeEvent(input$prep_ensemble, {
    # browser()
+    
     golem::print_dev(f$project_input)
     golem::print_dev(str(f))
     defend_if_null(f$project_input, ui = 'Please Select a Project', type = 'error')
     defend_if_blank(f$project_input, ui = "Please Select a Project", type = "error")
+    defend_if(length(ee$hz) != 1, 
+              ui = "Data has different sampling frequencies. Ensmeble averaging not currently supported.", 
+              type = "error")
+    
     withProgress(message = "Preparing Ensembles", {
       prep_ensemble(trap_selected_project = f$project$path,
                     ms_extend_s2 = input$ms_extend_s2, 
                     ms_extend_s1 = input$ms_extend_s1, 
                     ms_2_skip = input$ms_2_skip,
-                    hz = input$hz)
+                    hz = ee$hz)
     })
     showNotification("Ensembles Prepared", type= "message")
   })
@@ -117,25 +174,11 @@ mod_ensemble_average_server <- function(input, output, session, f){
    observeEvent(input$avg_ensembles, {
      defend_if_null(f$project_input, ui = 'Please Select a Project', type = 'error')
      defend_if_blank(f$project_input, ui = "Please Select a Project", type = "error")
+     defend_if(length(ee$hz) != 1, 
+               ui = "Data has different sampling frequencies. Ensmeble averaging not currently supported.", 
+               type = "error")
     
      withProgress(message = "Averaging Ensembles", {
-       options_paths <- list.files(path = f$project$path, 
-                                   pattern = "options.csv",
-                                   full.names = TRUE,
-                                   recursive = TRUE)
-       
-       options_data <-
-         data.table::rbindlist(
-           lapply(options_paths, data.table::fread),
-           fill = TRUE
-          )
-       
-       options_data[include == TRUE & review == TRUE & report == "success"]
-       ee$hz <- unique(options_data$hz)
-       defend_if(length(ee$hz) != 1, 
-                 ui = "Data has different sampling frequencies. Ensmeble averaging not currently supported.", 
-                 type = "error")
-       
        ee$data <- avg_ensembles(project = f$project_input)
        if(is.null(input$fit) || input$fit == "None"){
           showNotification("Ensembles Averaged", type = "message")
@@ -280,7 +323,11 @@ mod_ensemble_average_server <- function(input, output, session, f){
    
    if(!is.null(input$factor_order)){
      if(input$custom_labels){
+       if(input$factor_order[length(input$factor_order)] != ""){
        req(input$label1)
+       last <- input[[paste0('label', length(conditions()))]]
+       if(last != ""){
+       req(last)
        new_labels <- purrr::map_chr(seq_along(conditions()), ~input[[paste0('label', .x)]])
        ee_data$conditions <- factor(ee_data$conditions,
                                     levels = input$factor_order, 
@@ -293,6 +340,8 @@ mod_ensemble_average_server <- function(input, output, session, f){
        ee_backwards_predict_df$conditions <- factor(ee_backwards_predict_df$conditions, 
                                                   levels = input$factor_order, 
                                                   labels = new_labels)
+       }
+      }
      } else {
        ee_data$conditions <- factor(ee_data$conditions,
                                     levels = input$factor_order)
@@ -345,6 +394,68 @@ mod_ensemble_average_server <- function(input, output, session, f){
    
   ee$plot
   
+ }, height = function() input$plot_height, width = function() input$plot_width )
+ 
+ 
+ observeEvent(input$save_plot, {
+    
+    filename <- paste0(gsub(":", "-", sub(" ", "_", Sys.time())), "_ensemble-average-plot")
+    ee$size_ratio <- input$plot_width/input$plot_height
+    showModal(
+       modalDialog(
+          title = "Save Plot As...",
+          textInput(ns("save_as_file_name"),
+                    "Filename",
+                    value = filename),
+          shinyWidgets::radioGroupButtons(
+             inputId = ns("save_as_file_type"),
+             label = "File Type",
+             choices = c("jpg", "png", "pdf", "rds"),
+             justified = TRUE,
+             checkIcon = list(
+                yes = tags$i(class = "fa fa-check-square",
+                             style = "color: black"),
+                no = tags$i(class = "fa fa-square-o",
+                            style = "color: black"))
+          ),
+         
+          conditionalPanel("input.save_as_file_type ! = 'rds'", ns = ns,
+            numericInput(ns("save_width"), 
+                         "Width of Plot (inches, aspect ratio preserved)",
+                         value = "8")
+          ),
+          footer = tagList(
+             modalButton("Cancel"),
+             actionButton(ns("save_as_modal_ok"), "OK")
+          )
+       )
+    )
+ })
+ 
+
+ 
+ observeEvent(input$save_as_modal_ok, {
+    
+    target_dir <-  file.path(f$project$path, "summary", "figures")
+    if(!dir.exists(target_dir)){
+       dir.create(target_dir)
+    }
+    filename <- paste0(input$save_as_file_name, ".", input$save_as_file_type)
+    if(input$save_as_file_type == "rds"){
+       saveRDS(fig$gg_final, 
+               file = file.path(target_dir, filename))
+    } else {
+       
+       
+       ggsave(filename = file.path(target_dir, filename),
+              plot = ee$plot,
+              height = input$save_width/ee$size_ratio,
+              width = input$save_width, 
+              units = "in",
+              bg = "white")
+    }
+    showNotification(paste("Plot saved as:", filename))
+    removeModal()
  })
  
 }
