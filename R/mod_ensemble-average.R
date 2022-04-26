@@ -58,35 +58,55 @@ mod_ensemble_average_ui <- function(id){
                                style = "color: black"))
                ),
                
+               conditionalPanel("input.fit == '1exp'", ns=ns,
+               withMathJax(helpText("$$ y = d_1 + d_2(1-e^{-k_1x}) $$"))),
+               
+               conditionalPanel("input.fit == '2exp'", ns=ns,
+               withMathJax(helpText("$$ y = d_1(1-e^{-k_0x}) + d_2(1-e^{-k_1x}) $$"))),
+               
                actionButton(ns("avg_ensembles"), "Avg Ensembles", width = "100%", style  = "margin-top: 25px", icon = icon("calculator"))
                ),
              tabPanel(
-               title = "Plot",
+               title = "Plot Options",
                div(style = "diplay: inline-block;", 
                    uiOutput(ns("ee_ui"))),
                uiOutput(ns("facet_col")),
                shinyWidgets::materialSwitch(ns("custom_labels"), "Custom Labels", status = "primary"),
                uiOutput(ns("ee_labels")),
+              
                sliderInput(ns("backwards_shift"), 
                            "Backwards Shift (seconds)",
                            min = 0, 
                            max = 1,
                            step = 0.05,
                            value = 0),
-               actionButton(ns("save_plot"), "Save Plot")
+               numericInput(ns("size"), "Theme Size", value = 14),
+               actionButton(ns("save_plot"), "Save Plot", width = "100%")
                
              )
                
                
                ),
                
-            box(width = 8,
-                 title = "Ensemble Average Plots",
-                 fluidRow(
-                   column(12, 
-                          plotOutput(ns("forward_backward_ensembles")) %>% shinycssloaders::withSpinner(type = 8, color = "#373B38"))
-                 )
-                ),
+            tabBox(side = "right",
+             width = 8,
+              title = "Ensemble Averages",
+             tabPanel(
+                "Backwards Parameter",
+                tableOutput(ns("backwards_par"))
+                
+             ),
+             
+             tabPanel(
+                "Forward Parameter",
+                tableOutput(ns("forward_par"))
+             ),
+             tabPanel(
+                "Plot",
+                plotOutput(ns("forward_backward_ensembles"), height = "auto") %>% shinycssloaders::withSpinner(type = 8, color = "#373B38")
+             ), 
+             
+            ),
             box(width = 1, 
                    title = "Height",
                    shinyWidgets::noUiSliderInput(ns("plot_height"),
@@ -266,12 +286,17 @@ mod_ensemble_average_server <- function(input, output, session, f){
    output$facet_col <- renderUI({
      req(conditions())
      if(length(conditions()) >= 2){
-     sliderInput(ns("ncol"), 
-                 "Number of Facet Columns",
-                 min = 1, 
-                 max = length(conditions()),
-                 step = 1,
-                 value = 2)
+        shinyWidgets::radioGroupButtons(
+           inputId = ns('nrow'),
+           label =   "Number of Facet Rows",
+           choices = 1:length(conditions()),
+           justified = TRUE,
+           checkIcon = list(
+              yes = tags$i(class = "fa fa-check-square",
+                           style = "color: black"),
+              no = tags$i(class = "fa fa-square-o",
+                          style = "color: black"))
+        )
      }
    })
    output$ee_ui <- renderUI({
@@ -284,7 +309,7 @@ mod_ensemble_average_server <- function(input, output, session, f){
                      choices = conditions()),
          purrr::map2(seq_along(conditions()),
                      colorz(),
-                     ~div(style = 'display:inline-block; ', colourpicker::colourInput(ns(paste0('color', .x)),
+                     ~div(style = 'display:inline-block; width: 75px', colourpicker::colourInput(ns(paste0('color', .x)),
                                                                                     label = paste('Color', .x),
                                                                                     value = .y)))
        )
@@ -312,9 +337,9 @@ mod_ensemble_average_server <- function(input, output, session, f){
    ee_forward_predict_df <- ee$forward_predict_df
    ee_backwards_predict_df <- ee$backwards_predict_df
    
-   facet_ncol <- if(length(conditions()) >=2 ){
-     req(input$ncol)
-     input$ncol
+   facet_nrow <- if(length(conditions()) >=2 ){
+     req(input$nrow)
+     as.numeric(input$nrow)
    } else {
      1
    }
@@ -323,7 +348,8 @@ mod_ensemble_average_server <- function(input, output, session, f){
    
    if(!is.null(input$factor_order)){
      if(input$custom_labels){
-       if(input$factor_order[length(input$factor_order)] != ""){
+      if(length(input$factor_order) == length(conditions())){
+       if(nchar(input$factor_order[length(input$factor_order)]) > 0){
        req(input$label1)
        last <- input[[paste0('label', length(conditions()))]]
        if(last != ""){
@@ -340,6 +366,7 @@ mod_ensemble_average_server <- function(input, output, session, f){
        ee_backwards_predict_df$conditions <- factor(ee_backwards_predict_df$conditions, 
                                                   levels = input$factor_order, 
                                                   labels = new_labels)
+        }
        }
       }
      } else {
@@ -376,11 +403,11 @@ mod_ensemble_average_server <- function(input, output, session, f){
      geom_line(data = ee_backwards_predict_df,
                aes(x = time_shifted - input$backwards_shift, 
                    y = predict_y))+
-     facet_wrap(~conditions, scales = "free_x", ncol = facet_ncol)+
+     facet_wrap(~conditions, scales = "free_x", nrow = facet_nrow)+
      ylab("nanometers")+
      xlab("seconds")+
      scale_color_manual(values = plot_colors)+
-     theme_cowplot()+
+     theme_cowplot(input$size)+
      theme(
        strip.background = element_rect(fill = "transparent"),
        legend.position = "none"
@@ -419,7 +446,7 @@ mod_ensemble_average_server <- function(input, output, session, f){
                             style = "color: black"))
           ),
          
-          conditionalPanel("input.save_as_file_type ! = 'rds'", ns = ns,
+          conditionalPanel("input.save_as_file_type != 'rds'", ns = ns,
             numericInput(ns("save_width"), 
                          "Width of Plot (inches, aspect ratio preserved)",
                          value = "8")
@@ -454,10 +481,22 @@ mod_ensemble_average_server <- function(input, output, session, f){
               units = "in",
               bg = "white")
     }
-    showNotification(paste("Plot saved as:", filename))
+    showNotification(paste("Plot saved as:", filename), type = "message")
     removeModal()
  })
  
+ 
+ output$forward_par <- renderTable({
+    validate(need(ee$fits$forward, "Please average & fit ensembles"))
+    fdat <- ee$fits$forward[, forward_fit_par_table[[1]], by=conditions]
+    dcast(fdat, conditions ~ term, value.var = "estimate")
+ })
+ 
+ output$backwards_par <- renderTable({
+    validate(need(ee$fits$backwards, "Please average & fit ensembles"))
+    bdat <- ee$fits$backwards[, backwards_fit_par_table[[1]], by=conditions]
+    dcast(bdat, conditions ~ term, value.var = "estimate")
+ })
 }
     
 ## To be copied in the UI
