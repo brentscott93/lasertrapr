@@ -537,30 +537,41 @@ mod_figures_server <- function(input, output, session, f){
 
   
   observeEvent(input$save_plot, {
+    
+    filename <- paste0(gsub(":", "-", sub(" ", "_", Sys.time())), "_plot")
+    fig$size_ratio <- input$plot_width/input$plot_height
     showModal(
       modalDialog(
-      title = "Save Plot As...",
-      textInput(ns("save_as_file_name"),
-                "Filename",
-                value = paste0(sub(" ", "_", Sys.time()), "_plot")),
-      shinyWidgets::radioGroupButtons(
-        inputId = ns("save_as_file_type"),
-        label = "File Type",
-        choices = c("jpg", "png", "pdf", "rds"),
-        justified = TRUE,
-        checkIcon = list(
-          yes = tags$i(class = "fa fa-check-square",
-                       style = "color: black"),
-          no = tags$i(class = "fa fa-square-o",
-                      style = "color: black"))
-      ),
-      footer = tagList(
-        modalButton("Cancel"),
-        actionButton(ns("save_as_modal_ok"), "OK")
-      )
+        title = "Save Plot As...",
+        textInput(ns("save_as_file_name"),
+                  "Filename",
+                  value = filename),
+        shinyWidgets::radioGroupButtons(
+          inputId = ns("save_as_file_type"),
+          label = "File Type",
+          choices = c("jpg", "png", "pdf", "rds"),
+          justified = TRUE,
+          checkIcon = list(
+            yes = tags$i(class = "fa fa-check-square",
+                         style = "color: black"),
+            no = tags$i(class = "fa fa-square-o",
+                        style = "color: black"))
+        ),
+        
+        conditionalPanel("input.save_as_file_type != 'rds'", ns = ns,
+                         numericInput(ns("save_width"), 
+                                      "Width of Plot (inches, aspect ratio preserved)",
+                                      value = "8")
+        ),
+        footer = tagList(
+          modalButton("Cancel"),
+          actionButton(ns("save_as_modal_ok"), "OK")
+        )
       )
     )
   })
+  
+  
   
   observeEvent(input$save_as_modal_ok, {
     
@@ -573,14 +584,16 @@ mod_figures_server <- function(input, output, session, f){
       saveRDS(fig$gg_final, 
               file = file.path(target_dir, filename))
     } else {
-    ggsave(filename = file.path(target_dir, filename),
-           plot = fig$gg_final,
-           height = input$plot_height,
-           width = input$plot_width, 
-           units = "px",
-           bg = "white")
+      
+      
+      ggsave(filename = file.path(target_dir, filename),
+             plot = ee$plot,
+             height = input$save_width/fig$size_ratio,
+             width = input$save_width, 
+             units = "in",
+             bg = "white")
     }
-    showNotification(paste("Plot saved as:", filename))
+    showNotification(paste("Plot saved as:", filename), type = "message")
     removeModal()
   })
     
