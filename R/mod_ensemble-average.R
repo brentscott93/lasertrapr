@@ -149,25 +149,25 @@ mod_ensemble_average_server <- function(input, output, session, f){
   ns <- session$ns
   ee <- reactiveValues()
   
-  observe({
-     req(f$project_input)
-     req(f$project$path)
-
-     options_paths <- list.files(path = f$project$path, 
-                                 pattern = "options.csv",
-                                 full.names = TRUE,
-                                 recursive = TRUE)
-     
-     options_data <-
-        data.table::rbindlist(
-           lapply(options_paths, data.table::fread),
-           fill = TRUE
-        )
-     
-     options_data[include == TRUE & review == TRUE & report == "success"]
-     ee$hz <- unique(options_data$hz)
-    
-  })
+  # observe({
+  #    req(f$project_input)
+  #    req(f$project$path)
+  # 
+  #    options_paths <- list.files(path = f$project$path, 
+  #                                pattern = "options.csv",
+  #                                full.names = TRUE,
+  #                                recursive = TRUE)
+  #    
+  #    options_data <-
+  #       data.table::rbindlist(
+  #          lapply(options_paths, data.table::fread),
+  #          fill = TRUE
+  #       )
+  #    
+  #    options_data[include == TRUE & review == TRUE & report == "success"]
+  #    ee$hz <- unique(options_data$hz)
+  #   
+  # })
   
   observeEvent(input$prep_ensemble, {
    # browser()
@@ -176,6 +176,21 @@ mod_ensemble_average_server <- function(input, output, session, f){
     golem::print_dev(str(f))
     defend_if_null(f$project_input, ui = 'Please Select a Project', type = 'error')
     defend_if_blank(f$project_input, ui = "Please Select a Project", type = "error")
+    
+    options_paths <- list.files(path = f$project$path,
+                                pattern = "options.csv",
+                                full.names = TRUE,
+                                recursive = TRUE)
+
+    options_data <-
+          data.table::rbindlist(
+             lapply(options_paths, data.table::fread),
+             fill = TRUE
+          )
+
+    options_data[include == TRUE & review == TRUE & report == "success"]
+    ee$hz <- unique(options_data$hz)
+    
     defend_if(length(ee$hz) != 1, 
               ui = "Data has different sampling frequencies. Ensmeble averaging not currently supported.", 
               type = "error")
@@ -194,6 +209,21 @@ mod_ensemble_average_server <- function(input, output, session, f){
    observeEvent(input$avg_ensembles, {
      defend_if_null(f$project_input, ui = 'Please Select a Project', type = 'error')
      defend_if_blank(f$project_input, ui = "Please Select a Project", type = "error")
+     
+     options_paths <- list.files(path = f$project$path,
+                                 pattern = "options.csv",
+                                 full.names = TRUE,
+                                 recursive = TRUE)
+     
+     options_data <-
+       data.table::rbindlist(
+         lapply(options_paths, data.table::fread),
+         fill = TRUE
+       )
+     
+     options_data[include == TRUE & review == TRUE & report == "success"]
+     ee$hz <- unique(options_data$hz)
+     
      defend_if(length(ee$hz) != 1, 
                ui = "Data has different sampling frequencies. Ensmeble averaging not currently supported.", 
                type = "error")
@@ -222,7 +252,7 @@ mod_ensemble_average_server <- function(input, output, session, f){
          backwards_table <- ee$fits$backwards$backwards_fit_par_table
          names(backwards_table) <- ee$fits$backwards$conditions
          
-         sink(file.path(summary_folder, paste0(Sys.Date(), "_ensemble-average-fits.txt")))
+         sink(file.path(summary_folder, paste0(Sys.Date(), "_ensemble-average-models.txt")))
          writeLines("\n
 ██╗      █████╗ ███████╗███████╗██████╗ ████████╗██████╗  █████╗ ██████╗ ██████╗ 
 ██║     ██╔══██╗██╔════╝██╔════╝██╔══██╗╚══██╔══╝██╔══██╗██╔══██╗██╔══██╗██╔══██╗
@@ -232,13 +262,13 @@ mod_ensemble_average_server <- function(input, output, session, f){
 ╚══════╝╚═╝  ╚═╝╚══════╝╚══════╝╚═╝  ╚═╝   ╚═╝   ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝     ╚═╝  ╚═╝
 \n")
          writeLines("############################### \n Forward Ensemble Average Fits \n ############################### \n")
-         print(forward_fits)
-         writeLines("\n #### Tidy Table #### \n")
-         print(forward_table)
+         print(lapply(forward_fits, base::summary))
+         # writeLines("\n #### Tidy Table #### \n")
+         # print(forward_table)
          writeLines("\n ############################### \n Backwards Ensemble Average Fits \n ############################### \n")
-         print(backwards_fits)
-         writeLines("\n #### Tidy Table #### \n")
-         print(backwards_table)
+         print(lapply(backwards_fits, base::summary))
+         # writeLines("\n #### Tidy Table #### \n")
+         # print(backwards_table)
          sink()
          
          
@@ -256,6 +286,17 @@ mod_ensemble_average_server <- function(input, output, session, f){
          ee$backwards_predict_df <- bwards[, predict_backwards_shift[[1]] , by = conditions]
          
          
+         
+         ee$fdat <- ee$fits$forward[, forward_fit_par_table[[1]], by=conditions]
+         forward_pars <- ee$fdat
+         forward_pars$direction <- "forward"
+         
+         ee$bdat <- ee$fits$backwards[, backwards_fit_par_table[[1]], by=conditions]
+         backwards_pars <- ee$bdat
+         backwards_pars$direction <- "backwards"
+         
+         mod_table <- rbind(forward_pars, backwards_pars)
+         fwrite(mod_table, file = file.path(summary_folder, paste0(Sys.Date(), "_ensemble-average-parameters.csv")))
          # ee$forward <- ee$data[direction == "forward"]
          # ee$backwards <- ee$data[direction == "backwards"]
        
@@ -487,15 +528,13 @@ mod_ensemble_average_server <- function(input, output, session, f){
  
  
  output$forward_par <- renderTable({
-    validate(need(ee$fits$forward, "Please average & fit ensembles"))
-    fdat <- ee$fits$forward[, forward_fit_par_table[[1]], by=conditions]
-    dcast(fdat, conditions ~ term, value.var = "estimate")
+    validate(need(ee$fdat, "Please average & fit ensembles"))
+    dcast(ee$fdat, conditions ~ term, value.var = "estimate")
  })
  
  output$backwards_par <- renderTable({
-    validate(need(ee$fits$backwards, "Please average & fit ensembles"))
-    bdat <- ee$fits$backwards[, backwards_fit_par_table[[1]], by=conditions]
-    dcast(bdat, conditions ~ term, value.var = "estimate")
+    validate(need(ee$bdat, "Please average & fit ensembles"))
+    dcast(ee$bdat, conditions ~ term, value.var = "estimate")
  })
 }
     

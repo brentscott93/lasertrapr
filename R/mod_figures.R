@@ -587,7 +587,7 @@ mod_figures_server <- function(input, output, session, f){
       
       
       ggsave(filename = file.path(target_dir, filename),
-             plot = ee$plot,
+             plot = fig$gg_final,
              height = input$save_width/fig$size_ratio,
              width = input$save_width, 
              units = "in",
