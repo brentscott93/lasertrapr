@@ -422,17 +422,20 @@ mod_ensemble_average_server <- function(input, output, session, f){
      }
    }
 
+   hz <- ee$hz
+   shift <- input$backwards_shift
+   
    ee$plot <-
    ggplot()+
      geom_point(data = ee_data[direction=="forward"],
-                aes(x = forward_backward_index/ee$hz, 
+                aes(x = forward_backward_index/hz, 
                     y = avg, 
                     color = conditions), 
                 alpha = 0.3,
                 shape = 16,
                 size = 0.8)+
      geom_point(data = ee_data[direction=="backwards"],
-                aes(x = (forward_backward_index/ee$hz) - input$backwards_shift, 
+                aes(x = (forward_backward_index/hz) - shift, 
                     y = avg, 
                     color = conditions), 
                 alpha = 0.3,
@@ -442,7 +445,7 @@ mod_ensemble_average_server <- function(input, output, session, f){
                aes(x = time, 
                    y = predict_y))+
      geom_line(data = ee_backwards_predict_df,
-               aes(x = time_shifted - input$backwards_shift, 
+               aes(x = time_shifted - shift, 
                    y = predict_y))+
      facet_wrap(~conditions, scales = "free_x", nrow = facet_nrow)+
      ylab("nanometers")+
@@ -510,7 +513,7 @@ mod_ensemble_average_server <- function(input, output, session, f){
     }
     filename <- paste0(input$save_as_file_name, ".", input$save_as_file_type)
     if(input$save_as_file_type == "rds"){
-       saveRDS(fig$gg_final, 
+       saveRDS(ee$plot, 
                file = file.path(target_dir, filename))
     } else {
        
