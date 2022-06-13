@@ -24,9 +24,6 @@ changepoint_analysis(
 
 \item{conversion}{}
 }
-\value{
-
-}
 \description{
 Runs changepoint analysis, estimates more accurate event measurements, and saves data for ensemble averaging.
 }
