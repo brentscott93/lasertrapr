@@ -18,7 +18,7 @@ hidden_markov_changepoint_analysis <- function(trap_data,
                                                is_shiny = F, 
                                                opt,
                                                ...){
- # browser()
+  #browser()
   project <- unique(trap_data$project)
   conditions <- unique(trap_data$conditions)
   date <- unique(trap_data$date)
@@ -224,24 +224,25 @@ hidden_markov_changepoint_analysis <- function(trap_data,
         
         opt_df <- as.data.frame(opt)
         
-        if(names(opt_df) %in% names(o)) {
-        options_df <- 
-          o %>% 
-           dplyr::select(-c(names(opt_df))) %>% 
-            cbind(opt_df) %>% 
+        if(all(names(opt_df) %in% names(o))) {
+        options_df <-
+          o %>%
+           dplyr::select(-c(names(opt_df))) %>%
+            cbind(opt_df) %>%
             dplyr::mutate( analyzer = 'hm/cp',
                            status = 'analyzed',
-                           report = report_data,) %>% 
+                           report = report_data,) %>%
           dplyr::select(project, conditions, date, obs, everything())
         } else {
-          options_df <- 
-            o %>% 
-            cbind(opt_df) %>% 
+          options_df <-
+            o %>%
+            cbind(opt_df) %>%
             dplyr::mutate( analyzer = 'hm/cp',
                            status = 'analyzed',
-                           report = report_data,) %>% 
+                           report = report_data,) %>%
             dplyr::select(project, conditions, date, obs, everything())
         }
+
         
         if(is_shiny == T) setProgress(0.95, detail = 'Saving Data')
         file_names <-  c('trap-data.csv', 
@@ -296,8 +297,6 @@ hidden_markov_changepoint_analysis <- function(trap_data,
     
    
     
-
-
 
 
 
