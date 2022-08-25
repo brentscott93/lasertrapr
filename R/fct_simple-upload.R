@@ -67,3 +67,89 @@ setProgress(1, detail = "Done")
 
 }
 
+
+
+
+##' @title Read in data with calibration info in the header 
+##' @param input_data a dataframe returned by shinyFiles
+##' @param h user inputted header lines list. values are line/row numbers
+##' @param project 
+##' @param conditions 
+##' @param date 
+##' @param number_of_channels 
+##' @return nothing. saves data to lasertrapr folder
+upload_data_cal_in_header <- function(input_data,
+                                      h = h,
+                                      project,
+                                      conditions,
+                                      date,
+                                      number_of_channels){
+    withProgress(message = 'Initializing Data', value = 0, {
+        
+        for(r in seq_along(input_data$datapath)){
+            
+            shiny::incProgress(1/nrow(input_data))
+            
+            header_data <- fread(input_data$datapath[[r]],
+                                 nrows = h$header_size,
+                                 header = FALSE)
+
+             o <- data.frame(project = project$name,
+                             conditions = conditions$name,
+                             date = date$name,
+                             obs = NA,
+                             hz = header_data[h$hz]$V2,
+                             processor = NA,
+                             include = NA,
+                             mv2nm = header_data[h$nm_v1]$V2,
+                             nm2pn = header_data[h$pn_nm1]$V2,
+                             analyzer = NA,
+                             report = 'not run',
+                             review = NA,
+                             channels = 1,
+                             lab = "unknown")
+
+            
+             trap_data <- fread(input_data$datapath[[r]],
+                                skip = h$header_size)
+            
+              t <- data.frame(project = project$name,
+                              conditions = conditions$name,
+                              date = date$name,
+                              obs = NA,
+                              raw_bead = unname(unlist(trap_data[,h$trap1_col, with=FALSE])))
+
+              if(number_of_channels == 2){
+                  t$raw_bead2 <- unname(unlist(trap_data[, h$trap2_col, with = FALSE]))
+                  o$mv2nm2 <- header_data[h$nm_v2]$V2
+                  o$nm2pn2 <- header_data[h$pn_nm2]$V2
+                  o$channels <- 2
+              }
+
+            if(header_data$V1[30] == "FB-Mbead Trap"){
+                o$lab <- "greenberg"
+                o$feedback_motor_bead <- header_data$V2[30]
+                t$aod_position = trap_data$AODpos
+                t$feedback_filter_error = trap_data$`FB-FiltErr`
+                }
+         
+            if(r < 10){
+               obs <- paste0("obs-0", r)
+             } else {
+                obs <- paste0("obs-", r)
+             }
+
+            dir.create(file.path(date$path, obs))
+            
+            t$obs <- obs
+            data.table::fwrite(t, file = file.path(date$path, obs, "trap-data.csv"), sep = ",")
+
+            o$obs <- obs
+            data.table::fwrite(o, file = file.path(date$path, obs, "options.csv"), sep = ",")
+            data.table::fwrite(header_data, file.path(date$path, obs, "header.csv"), sep = ",")
+                
+ 
+              }
+    }
+    )
+}
