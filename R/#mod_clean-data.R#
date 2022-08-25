@@ -198,7 +198,7 @@ mod_clean_data_ui <- function(id){
 #' @importFrom magrittr "%<>%"
 #' @noRd 
 
-mod_clean_data_server <- function(input, output, session, f){
+cmod_clean_data_server <- function(input, output, session, f){
   
     ns <- session$ns
     

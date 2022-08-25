@@ -5,14 +5,15 @@
 #' @param id,input,output,session Internal parameters for {shiny}.
 #'
 #' @noRd 
-#' @import tidyverse magrittr
+#' @import tidyverse magrittr shinyFiles
 #' @importFrom shiny NS tagList 
 
 mod_split_obs_ui <- function(id){
   ns <- NS(id)
   tagList(
      
-    fluidRow(box(width = 3, collapsible = TRUE, collapsed = FALSE,
+      fluidRow(box(width = 3,
+                   collapsible = TRUE, collapsed = FALSE,
                            title = "Upload Data",
                            #h4(strong("Make Trap Observations")),
                            #strong(h5("1) Select Raw Data Files")),
@@ -33,39 +34,145 @@ mod_split_obs_ui <- function(id){
                            
                  conditionalPanel(
                    condition = " input.upload_method == 'upload'", ns = ns,
-                   
-                           # shinyFiles::shinyFilesButton(id = ns("file_select"), 
-                           #                              "Select Files...",
-                           #                              title = "Select trap data",
-                           #                              multiple = TRUE),
-                           # 
-                   
-                   fileInput(ns("simple_data_input"),
-                             'Upload Any File Type',
-                             multiple = TRUE,
-                             accept = c(".txt", ".csv", ".xls", ".xlsx", ".tsv"),
-                             buttonLabel = "Browse...",
-                             placeholder = "None currently uploaded"),
-                   
-                          #  h5("Selected Files"),
-                          # verbatimTextOutput(ns("selected_files_to_upload")), 
-                          # 
-                   numericInput(ns("hz"), "Hz", 0),
-                          shinyWidgets::prettyCheckbox(ns("ready_for_analysis"), 
-                                                       "Ready for Analysis?",
+
+                   fluidRow(
+                       column(12,
+                              shinyFilesButton(ns("file_input"),
+                                               label = "Browse for file...",
+                                               title = "Select one or more file", 
+                                               multiple = TRUE,
+                                               style = "width: 100%; margin-bottom: 5px;"),
+                              )
+                   ),
+                   fluidRow(
+                       column(6,
+                              
+                    shinyWidgets::radioGroupButtons(
+                             inputId = ns("channels"),
+                             label = 'Number of Channels',
+                             choices = c(1, 2),
+                             direction = "horizontal",
+                             width = "100%",
+                             justified = TRUE,
+                             checkIcon = list(
+                               yes = tags$i(class = "fa fa-check-square",
+                                            style = "color: black"),
+                               no = tags$i(class = "fa fa-square-o",
+                                           style = "color: black"))
+                             )),
+                       column(6,style =  "padding-top: 32px;",
+                                shinyWidgets::prettyCheckbox(ns("in_header"), 
+                                                       "Cal in header?",
                                                        value = FALSE, 
                                                        outline = TRUE, 
                                                        shape = "curve",
-                                                       status = "primary"),
+                                                     status = "primary" ))
+
+                   ),
+
+  
                    conditionalPanel(
-                     condition = " input.ready_for_analysis == true", ns = ns,
-                     numericInput(ns("nm_to_pn"), "Stiffness Conversion (pN/nm)", value = 0.04)
-                   ), 
-                          actionButton(ns("simple_upload_button"), 
-                                       "Initialize Data",
-                                       width = "100%", 
-                                       icon = icon("play-circle"),
-                                       style = 'margin-top: 25px;')
+                       condition = "input.in_header == true", ns = ns,
+                       fluidRow(
+                           column(6,
+                                  numericInput(ns("header_size"),
+                                               label = "Header Size",
+                                               value = 68,
+                                               step = 1)),
+                           column(6,
+                           numericInput(ns("header_hz"),
+                                    label = "Hz",
+                                    value = 15,
+                                    step = 1))
+                           ),
+                       fluidRow(
+                           column(6, 
+                           numericInput(ns("header_nm_v1"),
+                                    label = "nm/V",
+                                    value = 22,
+                                    step = 1,
+                                    width = "100%")),
+                           column(6,
+                           numericInput(ns("header_pn_nm1"),
+                                    label = "pN/nm",
+                                    value = 18,
+                                    step = 1,
+                                    width = "100%")
+                           )
+                       ),
+                      
+                
+                       conditionalPanel(
+                           condition = "input.channels == 2", ns = ns,
+                             fluidRow(
+                               column(6,
+
+                               numericInput(ns("header_nm_v2"),
+                                    label = "nm/V 2",
+                                    value = 24,
+                                    step = 1,
+                                    width = "100%"),
+                               ),
+                               column(6,
+                                      
+                               numericInput(ns("header_pn_nm2"),
+                                    label = "pN/nm 2",
+                                    value = 20,
+                                    step = 1,
+                                    width = "100%")
+                               )
+                             ),
+                          fluidRow(
+                               column(6,
+
+                               numericInput(ns("trap1_col"),
+                                    label = "Trap 1 Col",
+                                    value = 1,
+                                    step = 1,
+                                    width = "100%"),
+                               ),
+                               column(6,
+                                      
+                               numericInput(ns("trap2_col"),
+                                    label = "Trap 2 Col",
+                                    value = 3,
+                                    step = 1,
+                                    width = "100%")
+                               )
+                               )
+                           )
+                         ),
+                   
+                 conditionalPanel(
+                     condition = "input.in_header == false", ns = ns,
+                     fluidRow(
+                         column(6, 
+                                numericInput(ns("hz"), "Hz", 0)
+                                ),
+                         column(6,
+                                div(style = "padding-top: 32px;",
+                                     shinyWidgets::prettyCheckbox(ns("ready_for_analysis"), 
+                                                       "Ready for analysis?",
+                                                       value = FALSE, 
+                                                       outline = TRUE, 
+                                                       shape = "curve",
+                                                     status = "primary" )
+
+                                              ))
+                     ),
+                     
+                   conditionalPanel(
+                       condition = " input.ready_for_analysis == true", ns = ns,
+                       numericInput(ns("nm_to_pn"), "Stiffness Conversion (pN/nm)", value = 0.04)
+                     )
+                   ),
+
+                   
+                     actionButton(ns("simple_upload_button"), 
+                                   "Initialize Data",
+                                    width = "100%", 
+                                    icon = icon("play-circle"),
+                                     style = 'margin-top: 25px;')
                  ), #conditional close
                  conditionalPanel(
                    condition = " input.upload_method == 'split_obs'", ns = ns,
@@ -211,51 +318,101 @@ mod_split_obs_ui <- function(id){
 #' @noRd 
 #' @import tidyverse magrittr
 mod_split_obs_server <- function(input, output, session, f){
-  ns <- session$ns
- 
-  observeEvent(input$simple_upload_button, {
-    defend_if_empty(f$project, "No 'Project' folder selected. Please select a folder with the folder chooser above.")
-    defend_if_empty(f$conditions, "No 'Conditions' folder selected. Please select a folder with the folder chooser above.")
-    defend_if_empty(f$date, "No 'Date' folder selected. Please select a folder with the folder chooser above.")
-    defend_if_equal(input$hz == 0, "Please enter sampling frequency, Hz.")
-    req(nchar(f$date$path>0))
-    simple_upload(input_data = input$simple_data_input,
-                  project = f$project,
-                  conditions = f$conditions,
-                  date = f$date,
-                  nm2pn = input$nm_to_pn, 
-                  ready_for_analysis = input$ready_for_analysis,
-                  hz = input$hz)
-    f$new_obs_from_split <- f$new_obs_from_split + 1
-  })
-  #check if a date folder is properly selected
-  observeEvent(input$split_obs_button, {
-    golem::print_dev("go")
-    if(is_empty(f$date) == TRUE){
-      showNotification("No 'Date' folder selected. Please select a folder with the folder chooser above. ",
-                       type = "error")
-   
-    } else if(is_empty(input$trap_txt_upload)){
-      showNotification("No data uploaded",
-                       type = "error")
-    } else {
-      req(nchar(f$date$path>0))
-      req(input$trap_txt_upload)
-      all_data <- map(input$trap_txt_upload$name, ~substring(.x, 1, 4) == 'Data')
+    ns <- session$ns
+    
+    shinyFileChoose(input = input,
+                    id = "file_input",
+                    roots = c(home="/home"),
+                    defaultRoot = "home",
+                    defaultPath = "",
+                    session = session)
+
+
+
+    ## header cal info
+    ## these values correspond to the LINE NUMBERS where the info can be found in the headers of the data files
+    h <- reactiveValues(header_size = 0,
+                        hz = 0,
+                        nm_v1 = 0,
+                        nm_v2 = 0,
+                        pn_nm1 = 0,
+                        pn_nm2 = 0,
+                        trap1_col = 0,
+                        trap2_col = 0)
+    observe({
+          h$header_size <- input$header_size
+          h$hz <- input$header_hz
+          h$nm_v1 <- input$header_nm_v1
+          h$nm_v2 <- input$header_nm_v2
+          h$pn_nm1 <- input$header_pn_nm1
+          h$pn_nm2 <- input$header_pn_nm2
+          h$trap1_col <- input$trap1_col
+          h$trap2_col <- input$trap2_col
+       })
+
       
-      if(all(all_data != TRUE)){
-        showNotification("Not all files are valid 'Data' files. Only upload files starting with 'Data'.",
-                         type = "error")
-      } else {
-      golem::print_dev('before split_obs call')
-      split_obs(input_data = input$trap_txt_upload,
-                project = f$project,
-                conditions = f$conditions,
-                date = f$date,
-                threshold = input$threshold)
-      f$new_obs_from_split <- f$new_obs_from_split + 1
-      }
-    }
+    observeEvent(input$simple_upload_button, {
+      
+        defend_if_empty(f$project, "No 'Project' folder selected. Please select a folder with the folder chooser above.")
+        defend_if_empty(f$conditions, "No 'Conditions' folder selected. Please select a folder with the folder chooser above.")
+        defend_if_empty(f$date, "No 'Date' folder selected. Please select a folder with the folder chooser above.")
+        ## defend_if_equal(input$hz == 0, "Please enter sampling frequency, Hz.")
+        req(nchar(f$date$path>0))
+
+        
+        input_data <- parseFilePaths(c(home="/home"), input$file_input)
+        if(input$in_header){
+            
+
+            upload_data_cal_in_header(input_data = input_data,
+                                      h = h,
+                                      project = f$project,
+                                      conditions = f$conditions,
+                                      date = f$date,
+                                      number_of_channels = input$channels)
+
+        } else {
+
+            
+            simple_upload(input_data = input$simple_data_input,
+                          project = f$project,
+                          conditions = f$conditions,
+                          date = f$date,
+                          nm2pn = input$nm_to_pn, 
+                          ready_for_analysis = input$ready_for_analysis,
+                          hz = input$hz)
+        }
+        
+        f$new_obs_from_split <- f$new_obs_from_split + 1
+    })
+         #check if a date folder is properly selected
+    observeEvent(input$split_obs_button, {
+        golem::print_dev("go")
+        if(is_empty(f$date) == TRUE){
+            showNotification("No 'Date' folder selected. Please select a folder with the folder chooser above. ",
+                             type = "error")
+            
+        } else if(is_empty(input$trap_txt_upload)){
+            showNotification("No data uploaded",
+                             type = "error")
+        } else {
+            req(nchar(f$date$path>0))
+            req(input$trap_txt_upload)
+            all_data <- map(input$trap_txt_upload$name, ~substring(.x, 1, 4) == 'Data')
+            
+            if(all(all_data != TRUE)){
+                showNotification("Not all files are valid 'Data' files. Only upload files starting with 'Data'.",
+                                 type = "error")
+            } else {
+                golem::print_dev('before split_obs call')
+                split_obs(input_data = input$trap_txt_upload,
+                          project = f$project,
+                          conditions = f$conditions,
+                          date = f$date,
+                          threshold = input$threshold)
+                f$new_obs_from_split <- f$new_obs_from_split + 1
+            }
+        }
   })
   
   ####cal####
