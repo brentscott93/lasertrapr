@@ -32,3 +32,5 @@ You can install the development version of lasertrapr from GitHub with.
 devtools::install_github("brentscott93/lasertrapr")
 ```
 Note: This will install a random snapshot from my last commit. 
+
+Updated disclaimer: This projected was started when I was in grad school at UMass Amherst in the Muscle Biophysics lab. I currently and at WashU in St. Louis in the Greenberg Lab who developed the MATLAB based SPASM program for analyzing lasertrap data. Development of lasertrapr is still on-going but at a slower pace than previously. If you want to use lastertrapr and could use a specific update, please open an issue explaining your need. 
