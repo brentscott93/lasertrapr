@@ -4,7 +4,7 @@
 #' @param date a file path to the date folder where data should be moved
 #' @param threshold a numeric value specifying number of seconds to divide observations by
 #' 
-#' @import tidyverse 
+#'
 #' @noRd
 
 

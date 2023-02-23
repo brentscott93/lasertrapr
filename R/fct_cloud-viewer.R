@@ -146,7 +146,7 @@ lasertrapr_cloud <- function(email){
   library(googledrive)
   library(data.table)
   library(magrittr)
-  library(tidyverse)
+  ## library(tidyverse)
   library(ggstatsplot)
   library(cowplot)
   

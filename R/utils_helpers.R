@@ -16,7 +16,7 @@ ms_to_dp <- function(x, hz = 5000){
 #' @return a 2 column tibble
 #' @noRd
 list_files <- function(...){
-  tibble(name = list.files(full.names = FALSE, ...),
+  tibble::tibble(name = list.files(full.names = FALSE, ...),
          path = list.files(full.names = TRUE, ...))
 }
 
@@ -25,7 +25,7 @@ list_files <- function(...){
 #' @param ... arguments to dir function
 #' @noRd
 list_dir <- function(path){
-  tibble(name = list.dirs(path = path, full.names = FALSE, recursive = F),
+  tibble::tibble(name = list.dirs(path = path, full.names = FALSE, recursive = F),
          path = list.dirs(path = path, full.names = TRUE, recursive = F))
 }
 
@@ -35,9 +35,9 @@ list_dir <- function(path){
 #' @noRd
 str_trap <- function(x){
   
-  substring <- str_sub(x, c(6, 11, 14, 17, 20, 23), c(9, 12, 15, 18, 21, 24))
+  substring <- stringr::str_sub(x, c(6, 11, 14, 17, 20, 23), c(9, 12, 15, 18, 21, 24))
 
-  final_string <- as.numeric(str_c(substring, collapse = ""))
+  final_string <- as.numeric(stringr::str_c(substring, collapse = ""))
   
   
 }
@@ -76,7 +76,7 @@ add_labels_hmm <- function(x, events, ...){
     x <- dygraphs::dyEvent(x, events$peak_nm_index[[event]], 
                            paste0(round(events$time_on_ms[[event]], digits = 0), 'ms, ',
                                   round(events$displacement_nm[[event]], digits = 1),
-                                  ' nm {', event, '}'), ...)
+                                  ' nm {', events$id[[event]], '}'), ...)
   }
   x
 }
@@ -342,27 +342,27 @@ defend_if_empty <- function(x, ...){
 #' Defends shiny app if x != y
 #' @noRd
 defend_if_not_equal <- function(x, y, ...){
-  if(x != y) showNotification(...)
+  if(x != y) shiny::showNotification(...)
   req(x == y)
 }
 
 #' Defends shiny app if x == y
 #' @noRd
 defend_if_equal <- function(x, y, ...){
-  if(x == y) showNotification(...)
+  if(x == y) shiny::showNotification(...)
   req(x != y)
 }
 
 #' Defends shiny app if x == ""
 #' @noRd
 defend_if_blank <- function(x, ...){
-  if(x == "") showNotification(...)
+  if(x == "") shiny::showNotification(...)
   req(x)
 }
 
 #' Defends shiny app if is.null(x)
 #' @noRd
 defend_if_null <- function(x, ...){
-  if(is.null(x)) showNotification(...)
+  if(is.null(x)) shiny::showNotification(...)
   req(!is.null(x))
 }

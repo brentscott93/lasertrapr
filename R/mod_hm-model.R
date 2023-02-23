@@ -234,11 +234,18 @@ mod_hm_model_server <- function(input, output, session, f){
                              front_signal_ratio = trap_data()$events$front_signal_ratio,
                              back_signal_ratio = trap_data()$events$back_signal_ratio,
                              color = scales::alpha("#D95F02" , 0.4))
-    
+
+
    periods_df %<>%  dplyr::filter(keep == T, event_user_excluded == F)
    periods_df %<>% dplyr::filter(front_signal_ratio >= ro$front_signal_ratio & back_signal_ratio >= ro$back_signal_ratio)
 
+    # get the peak nm index to put the labels here
    pni <-  trap_data()$events$peak_nm_index
+
+    # add a column providiing the real event number
+    # so when user filters out events, the events retain their real event number
+    # making it easier to pick other events to exclude
+   trap_data()$events$id <- 1:nrow(trap_data()$events)
    labels <- trap_data()$events %>%  filter(keep == T, event_user_excluded == F)
   
       # if(nrow(excluded_events) == 0 ){
