@@ -117,10 +117,10 @@ upload_data_cal_in_header <- function(input_data,
                               conditions = conditions$name,
                               date = date$name,
                               obs = NA,
-                              raw_bead = unname(unlist(trap_data[,h$trap1_col, with=FALSE])))
+                              raw_bead_1 = unname(unlist(trap_data[,h$trap1_col, with=FALSE])))
 
               if(number_of_channels == 2){
-                  t$raw_bead2 <- unname(unlist(trap_data[, h$trap2_col, with = FALSE]))
+                  t$raw_bead_2 <- unname(unlist(trap_data[, h$trap2_col, with = FALSE]))
                   o$mv2nm2 <- header_data[h$nm_v2]$V2
                   o$nm2pn2 <- header_data[h$pn_nm2]$V2
                   o$channels <- 2

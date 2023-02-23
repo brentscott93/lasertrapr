@@ -294,8 +294,8 @@ changepoint_analysis <- function(measured_hm_events,
                                  displacement_type){
   #for dev
   #cp_running_var_window <- 5
-  front_cp_method <- "Variance"
-  back_cp_method <- "Mean/Var"
+  ## front_cp_method <- "Variance"
+  ## back_cp_method <- "Mean/Var"
   
   flip_raw <- measured_hm_events$flip_raw
   viterbi_rle <- measured_hm_events$viterbi_rle
