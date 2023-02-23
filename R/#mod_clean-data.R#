@@ -194,7 +194,7 @@ mod_clean_data_ui <- function(id){
 }
     
 #' clean_data Server Function
-#' @import tidyverse hexbin
+#' @import hexbin
 #' @importFrom magrittr "%<>%"
 #' @noRd 
 

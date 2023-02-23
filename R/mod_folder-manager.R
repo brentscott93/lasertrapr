@@ -40,7 +40,7 @@ mod_folder_manager_ui <- function(id){
 #' folder_manager Server Function
 #'
 #' @noRd 
-#' @import tidyverse magrittr
+#' @import magrittr
 mod_folder_manager_server <- function(input, output, session, lasertrapr_folder, f){
   ns <- session$ns
   f$ns <- session$ns
@@ -116,7 +116,7 @@ mod_folder_manager_server <- function(input, output, session, lasertrapr_folder,
   trap_selected_project <-  reactive({
     req(project_names())
     project_names() %>%
-      filter(name == input$trap_project_selectInput)
+      dplyr::filter(name == input$trap_project_selectInput)
     
   })
   
@@ -216,20 +216,20 @@ mod_folder_manager_server <- function(input, output, session, lasertrapr_folder,
   #   })
   observe({
     req(input$trap_date_selectInput)
-    req(is_tibble(trap_selected_date()))
+    req(tibble::is_tibble(trap_selected_date()))
     golem::print_dev(trap_selected_date()$path)
     })
   #obs
   observe({
     req(input$trap_date_selectInput)
     rv$obs_names <-  list_dir(path = trap_selected_date()$path) %>% 
-                        dplyr::filter(str_detect(name, 'obs'))
+                        dplyr::filter(stringr::str_detect(name, 'obs'))
   })
   
   observeEvent(f$new_obs, ignoreNULL = T, ignoreInit = T, {
     req(input$trap_date_selectInput)
     rv$obs_names <-  list_dir(path = trap_selected_date()$path)%>%
-                           dplyr::filter(str_detect(name, 'obs'))
+                           dplyr::filter(stringr::str_detect(name, 'obs'))
     updateSelectInput(session,
                       ns('trap_obs_selectInput'),
                          "Select Observation",
@@ -241,7 +241,7 @@ mod_folder_manager_server <- function(input, output, session, lasertrapr_folder,
   observeEvent(f$new_obs_from_split, ignoreNULL = T, ignoreInit = T, {
     req(input$trap_date_selectInput)
     rv$obs_names <-  list_dir(path = trap_selected_date()$path)%>%
-      dplyr::filter(str_detect(name, 'obs'))
+      dplyr::filter(stringr::str_detect(name, 'obs'))
     updateSelectInput(session,
                       ns('trap_obs_selectInput'),
                       "Select Observation",

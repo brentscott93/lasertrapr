@@ -5,7 +5,7 @@
 #' @param id,input,output,session Internal parameters for {shiny}.
 #'
 #' @noRd 
-#' @import tidyverse magrittr shinyFiles
+#' @import magrittr
 #' @importFrom shiny NS tagList 
 
 mod_split_obs_ui <- function(id){
@@ -36,13 +36,13 @@ mod_split_obs_ui <- function(id){
                    condition = " input.upload_method == 'upload'", ns = ns,
 
                    fluidRow(
-                       column(12,
-                              shinyFilesButton(ns("file_input"),
-                                               label = "Browse for file...",
-                                               title = "Select one or more file", 
-                                               multiple = TRUE,
-                                               style = "width: 100%; margin-bottom: 5px;"),
-                              )
+                       ## column(12,
+                       ##        shinyFilesButton(ns("file_input"),
+                       ##                         label = "Browse for file...",
+                       ##                         title = "Select one or more file",
+                       ##                         multiple = TRUE,
+                       ##                         style = "width: 100%; margin-bottom: 5px;"),
+                       ##        )
                    ),
                    fluidRow(
                        column(6,
@@ -316,16 +316,16 @@ mod_split_obs_ui <- function(id){
 #' split_obs Server Function
 #'
 #' @noRd 
-#' @import tidyverse magrittr
+#' @import purrr dplyr magrittr
 mod_split_obs_server <- function(input, output, session, f){
     ns <- session$ns
     
-    shinyFileChoose(input = input,
-                    id = "file_input",
-                    roots = c(home="/home"),
-                    defaultRoot = "home",
-                    defaultPath = "",
-                    session = session)
+    ## shinyFileChoose(input = input,
+    ##                 id = "file_input",
+    ##                 roots = c(home="/home"),
+    ##                 defaultRoot = "home",
+    ##                 defaultPath = "",
+    ##                 session = session)
 
 
 
@@ -419,7 +419,7 @@ mod_split_obs_server <- function(input, output, session, f){
   #Start trap calibrations
   e <- reactiveValues()
   observeEvent(input$equi_button, {
-    if(is_empty(input$equi_file)){
+    if(rlang::is_empty(input$equi_file)){
       showNotification('No data uploaded', type = 'error')
     } else if(substring(input$equi_file$name, 1, 4) != 'Equi') {
       showNotification("Not a valid 'Equi' file.", type = 'error')
@@ -458,7 +458,7 @@ mod_split_obs_server <- function(input, output, session, f){
   })
   
   observeEvent(input$step_button, {
-    if(is_empty(input$step_files)){
+    if(rlang::is_empty(input$step_files)){
       showNotification('No data uploaded', type = 'error')
     } else if(substring(input$step_files$name, 1, 4) != 'Step') {
       showNotification("Not a valid 'Step' file.", type = 'error')
@@ -471,17 +471,17 @@ mod_split_obs_server <- function(input, output, session, f){
     req(substring(input$step_files$name, 1, 4) == 'Step')
     withProgress(message = "Step Calibration", min= 0, max = 1, value = 0.01, {
       incProgress(0.4, detail = "Reading Data")
-      files <- map(input$step_files$datapath, read_tsv, col_names = c('bead', 'trap')) %>%
+      files <- purrr::map(input$step_files$datapath, read_tsv, col_names = c('bead', 'trap')) %>%
         map(pull, bead)
       incProgress(0.75, detail = "Calculating...This may take a while...")
-      steps <- map(files, step_cal, step = input$step_cal_stepsize)
+      steps <- purrr::map(files, step_cal, step = input$step_cal_stepsize)
       incProgress(1, detail = "Done!")
     })
     return(steps)
   })
   
   conversion <- reactive({
-    conv1 <- map(step_calibration(), "mv2nm_conversion")
+    conv1 <- purrr::map(step_calibration(), "mv2nm_conversion")
     conv2 <-  round(mean(abs(unlist(conv1))), 2)
   })
   
@@ -497,7 +497,7 @@ mod_split_obs_server <- function(input, output, session, f){
   
   step_calibration_plot <- reactive({
     
-    grobs <- map(step_calibration(), "plot")
+    grobs <- purrr::map(step_calibration(), "plot")
     p <- gridExtra::grid.arrange(grobs = grobs, ncol = 1)
     
     return(p)
@@ -1028,7 +1028,7 @@ mod_split_obs_server <- function(input, output, session, f){
      filenames <- c("trap-data.csv", "options.csv")
      data_to_save <- list(trap_data_to_save, options_to_save)
      
-     walk2(data_to_save, filenames, ~data.table::fwrite(.x, file = file.path(sim_save_folder, .y)))
+     purrr::walk2(data_to_save, filenames, ~data.table::fwrite(.x, file = file.path(sim_save_folder, .y)))
      
     })
     showNotification(ui = "Simulation data saved", type = "message")

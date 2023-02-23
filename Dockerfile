@@ -20,7 +20,6 @@ RUN Rscript -e 'remotes::install_version("shinyjs",upgrade="never", version = "2
 RUN Rscript -e 'remotes::install_version("plotrix",upgrade="never", version = "3.8-2")'
 RUN Rscript -e 'remotes::install_version("testthat",upgrade="never", version = "3.1.1")'
 RUN Rscript -e 'remotes::install_version("config",upgrade="never", version = "0.3.1")'
-RUN Rscript -e 'remotes::install_version("tidyverse",upgrade="never", version = "1.3.1")'
 RUN Rscript -e 'remotes::install_version("colourpicker",upgrade="never", version = "1.1.1")'
 RUN Rscript -e 'remotes::install_version("ggstatsplot",upgrade="never", version = "0.9.0")'
 RUN Rscript -e 'remotes::install_version("truncdist",upgrade="never", version = "1.0-2")'
