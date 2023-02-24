@@ -71,6 +71,7 @@ golem::add_module( name = "mini_ensemble" )
 golem::add_module( name = "summarize" )
 golem::add_module( name = "ensemble_average" )
 golem::add_module( name = "figures" )
+golem::add_module( name = "isometric_force_clamp" )
 
 #golem::add_module( name = "name_of_module2" ) # Name of the module
 

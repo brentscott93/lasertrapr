@@ -2,8 +2,7 @@
 #' 
 #' @param input,output,session Internal parameters for {shiny}. 
 #'     DO NOT REMOVE.
-#' @import shiny 
-#' @importFrom magrittr "%<>%"
+#' @import shiny
 #' @noRd
 app_server <- function( input, output, session ) {
   
@@ -18,8 +17,8 @@ app_server <- function( input, output, session ) {
   }
   
   #reactive values to store currently selected folders
-  f <- reactiveValues(project = tibble(name = NA, path = 'please select'),
-                      conditions = tibble(name = NA, path = 'please select'),
+  f <- reactiveValues(project = data.frame(name = NA, path = 'please select'),
+                      conditions = data.frame(name = NA, path = 'please select'),
                       #date = tibble(name = NA, path = 'please select'),
                       new_obs = 0,
                       new_obs_refresh_graph = 0,
@@ -41,6 +40,8 @@ app_server <- function( input, output, session ) {
   callModule(mod_hm_model_server, "hm_model_ui", f = f)
   
   callModule(mod_mini_ensemble_server, "mini_ensemble", f = f)
+
+  callModule(mod_isometric_force_clamp_server, "isometric_force_clamp", f = f)
   
   callModule(mod_ensemble_average_server, "ensemble_average", f = f)
   
