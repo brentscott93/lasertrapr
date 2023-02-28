@@ -69,7 +69,7 @@ mod_isometric_force_clamp_ui <- function(id){
              valueBoxOutput(ns('n_events'), width = NULL)
             ),
             column(4,
-             valueBoxOutput(ns('s2n'), width = NULL)
+             valueBoxOutput(ns('max_load'), width = NULL)
           )),
       fluidRow(
         column(9,
@@ -128,8 +128,7 @@ mod_isometric_force_clamp_ui <- function(id){
 #' isometric_force_clamp Server Functions
 #'
 #' @noRd 
-mod_isometric_force_clamp_server <- function(id, f){
-  moduleServer( id, function(input, output, session, f){
+mod_isometric_force_clamp_server <- function(input, output, session, f){
     ns <- session$ns
 
 
@@ -160,7 +159,7 @@ mod_isometric_force_clamp_server <- function(id, f){
 
     opt <- reactiveValuesToList(isolate(a))
     withProgress(message = 'Analyzing trap data', value = 0, max = 1, min = 0, {
-    purrr::walk(trap_data, ~isometric_force_clamp_analysis,
+    purrr::walk(trap_data, ~isometric_force_clamp_analysis(
                                     trap_data = .x,
                                     f = f,
                                     w_width = a$w_width,
@@ -194,9 +193,24 @@ mod_isometric_force_clamp_server <- function(id, f){
   output$overlay_dygraph <- dygraphs::renderDygraph({
     req(trap_data())
     hz <- trap_data()$options$hz[[1]]
+    feedback_motor_bead <- as.integer(trap_data()$options$feedback_motor_bead[[1]])
+
+    if(feedback_motor_bead == 1){
+
     d <- data.table::data.table(index = (1:nrow(trap_data()$trap)/hz),
-                    raw = trap_data()$trap$processed_bead,
-                    model = trap_data()$trap$hm_overlay)
+                                motor_bead = trap_data()$trap$processed_bead_1,
+                                transducer_bead = trap_data()$trap$processed_bead_2,
+                                ## model = trap_data()$trap$hm_overlay
+                                )
+
+    } else if(feedback_motor_bead == 2) {
+
+    d <- data.table::data.table(index = (1:nrow(trap_data()$trap)/hz),
+                                motor_bead = trap_data()$trap$processed_bead_2,
+                                transducer_bead = trap_data()$trap$processed_bead_1,
+                                ## model = trap_data()$trap$hm_overlay
+                                )
+    }
 
     periods_df <- data.table::data.table(start = trap_data()$events$cp_event_start_dp/hz,
                                          stop = trap_data()$events$cp_event_stop_dp/hz,
@@ -213,32 +227,19 @@ mod_isometric_force_clamp_server <- function(id, f){
     # add a column providiing the real event number
     # so when user filters out events, the events retain their real event number
     # making it easier to pick other events to exclude
-   trap_data()$events$id <- 1:nrow(trap_data()$events)
    labels <- trap_data()$events[keep == TRUE & event_user_excluded == FALSE]
 
-      # if(nrow(excluded_events) == 0 ){
-      # overlay_dy <-  dygraphs::dygraph(d) %>% #raw_data_dygraph
-      #                   dygraphs::dySeries('raw', color = 'black', strokeWidth = 2) %>%
-      #                   dygraphs::dySeries('model', color = "#1B9E77",  strokeWidth = 2) %>%
-      #                   dygraphs::dyRangeSelector(fillColor ='white', strokeColor = 'black') %>%
-      #                   add_shades(periods_df) %>% #raw_periods
-      #                   #add_shades(excluded_events, color = "grey60") %>%
-      #                   add_labels_hmm(trap_data()$events, peak_nm_index = pni, labelLoc = 'bottom') %>% #results$events
-      #                   dygraphs::dyAxis('x', label = 'seconds', drawGrid = FALSE) %>%
-      #                   dygraphs::dyAxis('y', label = 'nm', drawGrid = FALSE) %>%
-      #                   dygraphs::dyUnzoom()
-      # } else {
 
-        overlay_dy <-  dygraphs::dygraph(d) |> #raw_data_dygraph
-                        dygraphs::dySeries('raw', color = 'black') |>
-                        ## dygraphs::dySeries('model', color = "#1B9E77",  strokeWidth = 2) %>%
-                        dygraphs::dyRangeSelector(fillColor ='white', strokeColor = 'black') |>
-                        add_shades(periods_df) |>#raw_periods
-                        #add_shades(excluded_events, color = "#BDBDBD") %>%
-                        add_labels_hmm(labels, labelLoc = 'bottom') |> #results$events
-                        dygraphs::dyAxis('x', label = 'seconds', drawGrid = FALSE) |>
-                        dygraphs::dyAxis('y', label = 'nm', drawGrid = FALSE) |>
-                        dygraphs::dyUnzoom()
+    overlay_dy <-
+      dygraphs::dygraph(d) |> #raw_data_dygraph
+      dygraphs::dySeries('raw', color = 'black') |>
+    ## dygraphs::dySeries('model', color = "#1B9E77",  strokeWidth = 2) %>%
+      dygraphs::dyRangeSelector(fillColor ='white', strokeColor = 'black') |>
+      add_shades(periods_df) |>#raw_periods
+      add_labels_hmm(labels, labelLoc = 'bottom') |> #results$events
+      dygraphs::dyAxis('x', label = 'seconds', drawGrid = FALSE) |>
+      dygraphs::dyAxis('y', label = 'nm', drawGrid = FALSE) |>
+      dygraphs::dyUnzoom()
      # }
 
   })
@@ -291,11 +292,11 @@ mod_isometric_force_clamp_server <- function(id, f){
 
   })
 
-  output$s2n <- renderValueBox({
+  output$max_load <- renderValueBox({
     req(trap_data())
     valueBox(
-      round(unique(trap_data()$running$var_signal_ratio), 2),
-      "Signal-to-noise",
+      round(max(trap_data()$events$force_pn), 2),
+      "Max Load",
       icon = icon("signal"),
       color = 'yellow'
     )
@@ -326,20 +327,20 @@ mod_isometric_force_clamp_server <- function(id, f){
 
   output$table <- DT::renderDT({
     req(info())
-    info() %>%
-      dplyr::rename('Obs' = obs,
+    info()[,.('Obs' = obs,
                     'Include' = include,
                     'Analyzer' = analyzer,
                     #'Status' = status,
                     'Report' = report,
-                    'Review' = review) %>%
-      DT::datatable() %>%
+                    'Review' = review
+              )] |>
+      DT::datatable() |>
       DT::formatStyle('Include',
                   color = DT::styleEqual(c(F, T), c('red', 'black'))
-                  ) %>%
+                  ) |>
       DT::formatStyle('Report',
                   color = DT::styleEqual(c('error', 'success'), c('red', 'black'))
-      ) %>%
+      ) |>
       DT::formatStyle('Review',
                   color = DT::styleEqual(c(NA, F, T), c('grey', 'red', 'green'))
       )
@@ -356,10 +357,9 @@ mod_isometric_force_clamp_server <- function(id, f){
       td <- list_files(f$obs$path, pattern = 'options.csv')
       trap <- data.table::fread(td$path)
       setProgress(0.7)
-      trap_reviewed <- trap %>%
-        dplyr::mutate(review = input$quality_control)
+      trap$review <- input$quality_control
 
-      data.table::fwrite(trap_reviewed, file = file.path(f$obs$path, 'options.csv'))
+      data.table::fwrite(trap, file = file.path(f$obs$path, 'options.csv'))
       setProgress(1, detail = 'Done')
     })
      showNotification('Review saved' , type = 'message')
@@ -368,34 +368,15 @@ mod_isometric_force_clamp_server <- function(id, f){
 
 
 
-
-  # output$obs_2_review <-  renderPrint({
-  #
-  #   validate(need(substring(f$obs_input, 1, 3) == 'obs', message = 'Please select an obs folder to analyze'))
-  #
-  #   validate(need(substring(f$obs_input, 1, 3) == 'obs', message = 'Please select an obs folder to analyze'))
-  #   cat('Revewing ', f$obs$name)
-  #
-  # })
-
-    a <- reactiveValues(w_width = 150,
+    a <- reactiveValues(w_width = 20,
                         w_slide = "1/2",
                         em_random_start = FALSE,
-                        use_channels = "Mean/Var",
-                        front_cp_method = "Mean/Var",
-                        back_cp_method = "Mean/Var",
-                        cp_running_var_window = 5,
                         displacement_type = "avg")
 
     observeEvent(input$set_options, {
       a$w_width <- input$w_width
       a$w_slide <- input$w_slide
       a$em_random_start <- input$em_random_start
-      a$use_channels <- input$use_channels
-      a$front_cp_method <-input$front_cp_method
-      a$back_cp_method <-input$back_cp_method
-      a$cp_running_var_window <- input$cp_running_var_window
-      a$displacement_type <- input$displacement_type
       removeModal()
     })
 
@@ -419,18 +400,18 @@ mod_isometric_force_clamp_server <- function(id, f){
                                                               width = "100%")
                          )
                        ),
-                       fluidRow(
-                         column(6,
-                                shinyWidgets::prettyRadioButtons(
-                                  inputId = ns("use_channels"),
-                                  label = "Channels",
-                                  choices = c("Mean/Var", "Variance"),
-                                  selected = a$use_channels,
-                                  inline = TRUE,
-                                  status = "primary",
-                                  fill = TRUE
-                                )
-                            ),
+                        fluidRow(
+                       ##   column(6,
+                       ##          shinyWidgets::prettyRadioButtons(
+                       ##            inputId = ns("use_channels"),
+                       ##            label = "Channels",
+                       ##            choices = c("Mean/Var", "Variance"),
+                       ##            selected = a$use_channels,
+                       ##            inline = TRUE,
+                       ##            status = "primary",
+                       ##            fill = TRUE
+                       ##          )
+                       ##      ),
                          column(4,
                                 div(style = "margin-top: 25px;",
                                 shinyWidgets::prettyCheckbox(inputId = ns('em_random_start'),
@@ -442,64 +423,51 @@ mod_isometric_force_clamp_server <- function(id, f){
                           )
                          )
                         )
-        ), #hm-model tab close
-        tabPanel("Changepoint",
-                 fluidRow(
-                   column(6,
-                          h4("Front"),
-                          shinyWidgets::prettyRadioButtons(
-                            inputId = ns("front_cp_method"),
-                            label = "Channels",
-                            choices = c("Mean/Var", "Variance"),
-                            selected = a$front_cp_method,
-                            inline = TRUE,
-                            status = "primary",
-                            fill = TRUE
-                          )
-                   ),
-                          column(6,
-                                 h4("Back"),
-                                 shinyWidgets::prettyRadioButtons(
-                                   inputId = ns("back_cp_method"),
-                                   label = "Channels",
-                                   choices = c("Mean/Var", "Variance"),
-                                   selected = a$back_cp_method,
-                                   inline = TRUE,
-                                   status = "primary",
-                                   fill = TRUE
-                                 )
-                          )
-                   ),
-                    sliderInput(ns("cp_running_var_window"), "Running Variance Window Width", min = 5, max = 100, value = a$cp_running_var_window, width = "100%")
-          ), #cp tab panel
-        tabPanel("Displacements",
-                 radioButtons(inputId = ns('displacement_type'),
-                              label = 'Displacement Calculation Method',
-                              choices = list("Average" = "avg",
-                                             "Peak" = "peak"),
-                              inline = TRUE,
-                              selected = a$displacement_type)
-         )
+        ) #hm-model tab close
+        ## tabPanel("Changepoint",
+        ##          fluidRow(
+        ##            column(6,
+        ##                   h4("Front"),
+        ##                   shinyWidgets::prettyRadioButtons(
+        ##                     inputId = ns("front_cp_method"),
+        ##                     label = "Channels",
+        ##                     choices = c("Mean/Var", "Variance"),
+        ##                     selected = a$front_cp_method,
+        ##                     inline = TRUE,
+        ##                     status = "primary",
+        ##                     fill = TRUE
+        ##                   )
+        ##            ),
+        ##                   column(6,
+        ##                          h4("Back"),
+        ##                          shinyWidgets::prettyRadioButtons(
+        ##                            inputId = ns("back_cp_method"),
+        ##                            label = "Channels",
+        ##                            choices = c("Mean/Var", "Variance"),
+        ##                            selected = a$back_cp_method,
+        ##                            inline = TRUE,
+        ##                            status = "primary",
+        ##                            fill = TRUE
+        ##                          )
+        ##                   )
+        ##            ),
+        ##             sliderInput(ns("cp_running_var_window"), "Running Variance Window Width", min = 5, max = 100, value = a$cp_running_var_window, width = "100%")
+        ##   ), #cp tab panel
+        ## tabPanel("Displacements",
+        ##          radioButtons(inputId = ns('displacement_type'),
+        ##                       label = 'Displacement Calculation Method',
+        ##                       choices = list("Average" = "avg",
+        ##                                      "Peak" = "peak"),
+        ##                       inline = TRUE,
+        ##                       selected = a$displacement_type)
+        ##  )
         )
        )
       )
 
-    observe({
-      if(is.null(input$back_cp_method)){
-        shinyjs::hide("cp_running_var_window")
-      } else {
-        if(input$back_cp_method == "Variance" || input$front_cp_method == "Variance"){
-          shinyjs::show("cp_running_var_window")
-        } else  {
-          shinyjs::hide("cp_running_var_window")
-        }
-      }
-      })
   })
 
     #### Review Options ####
-    ro <- reactiveValues(front_signal_ratio = 0,
-                         back_signal_ratio = 0)
 
     which_events_user_excluded <- eventReactive(trap_data()$events, {
       req(trap_data())
@@ -541,24 +509,6 @@ mod_isometric_force_clamp_server <- function(id, f){
               ),
               div(style = "padding-top: 15px", verbatimTextOutput(ns("number_excluded_events")))
 
-            ),
-            tabPanel("Signal Filter",
-                     column(6,
-                            sliderInput(ns("front_signal_ratio"),
-                                        "Front Signal-to-noise Filter",
-                                        min = 0,
-                                        max = 4,
-                                        value = 0,
-                                        step = 0.1)
-                            ),
-                            column(6,
-                                   sliderInput(ns("back_signal_ratio"),
-                                               "Back Signal-to-noise Filter",
-                                               min = 0,
-                                               max = 4,
-                                               value = 0,
-                                               step = 0.1)
-                            )
             )
           )
         )
@@ -611,12 +561,8 @@ mod_isometric_force_clamp_server <- function(id, f){
     })
 
     observeEvent(input$set_review_options, {
-      ro$front_signal_ratio <- input$front_signal_ratio
-      ro$back_signal_ratio <- input$back_signal_ratio
-      golem::print_dev("before if")
       if(!is_empty(input$exclude_event_manual)){
        excluded_data <- trap_data()$events
-       golem::print_dev("setting val true")
        if(input$include_exclude == "exclude"){
        excluded_data$event_user_excluded[as.numeric(input$exclude_event_manual)] <- TRUE
        } else if(input$include_exclude == "include"){
@@ -681,20 +627,13 @@ mod_isometric_force_clamp_server <- function(id, f){
 
       req(trap_data())
       measured_events <- trap_data()$events
-      step <-
+      to <-
         ggplot()+
-        geom_dotplot(data = measured_events, aes(displacement_nm),
-                     fill = "grey40",
-                     binwidth = 2)+
-        geom_vline(aes(xintercept = mean(measured_events$displacement_nm)), linetype = "dashed")+
-        geom_label(aes(mean(measured_events$displacement_nm),
-                       y = 1,
-                       label = paste0("bar(x)==", round(mean(measured_events$displacement_nm), 1))),
-                   parse = TRUE,
-                   size = 6)+
-        ggtitle("Displacements")+
-        xlab("nanometers")+
-        ylab('')+
+        stat_ecdf(data = measured_events,
+                     aes(x = time_on_ms))+
+        ggtitle("Time On")+
+        xlab("milliseconds")+
+        ylab('ECDF')+
         # scale_x_continuous(breaks = sort(c(seq(-100, 100, by = 20), round(mean(measured_events$displacement_nm), 1))))+
         cowplot::theme_cowplot(18)+
         theme(
@@ -704,19 +643,12 @@ mod_isometric_force_clamp_server <- function(id, f){
         )
 
 
-      time_on <-
+      to_vs_force <-
         ggplot()+
-        geom_dotplot(data = measured_events, aes(time_on_ms),
-                     fill = "grey40",
-                     binwidth = 10)+
-        geom_vline(aes(xintercept = mean(measured_events$time_on_ms)), linetype = "dashed")+
-        geom_label(aes(mean(measured_events$time_on_ms), y = 1,
-                       label = paste0("bar(x)==", round(mean((measured_events$time_on_ms), 0)))),
-                   parse = TRUE,
-                   size = 6)+
-        ggtitle("Time On")+
+        geom_point(data = measured_events, aes(x = force_pn, y = time_on_ms))+
+        ggtitle("Force Vs. Time On")+
         xlab("milliseconds")+
-        ylab('')+
+        ylab('piconewtons')+
         cowplot::theme_cowplot(18)+
         theme(
           axis.text.y = element_blank(),
@@ -725,11 +657,10 @@ mod_isometric_force_clamp_server <- function(id, f){
         )
 
 
-      cowplot::plot_grid(step, time_on)
+      cowplot::plot_grid(to, to_vs_force)
     })
 
  
-  })
 }
     
 ## To be copied in the UI
