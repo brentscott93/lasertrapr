@@ -30,7 +30,7 @@ app_ui <- function(request) {
           menuItem(text = 'Clean & Process', tabName = 'clean', icon = icon('broom')),
           menuItem(text = 'Analyzers', icon = icon('microscope'),
            menuSubItem(text = 'HM-Model/Changepoint', tabName = 'hm_model'),
-           menuSubItem(text = 'Mini-Ensemble', tabName = 'mini_ensemble')),
+           menuSubItem(text = 'Mini-Ensemble', tabName = 'mini_ensemble'),
            menuSubItem(text = 'Isometric Force Clamp', tabName = 'isometric_force_clamp')),
           menuItem(text = 'Summarize', tabName = 'summarize', icon = icon('sort')),
           menuItem(text = 'Ensemble Average', tabName = 'ensemble_average', icon = icon('align-left')),

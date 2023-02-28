@@ -221,7 +221,7 @@ isometric_force_clamp_analysis <- function(trap_data,
                                      state = hmm_posterior$state,
                                      index = 1:length(hmm_posterior$state))
 
-        conversion <- ws
+        ## conversion <- ws
         if(is_shiny) setProgress(0.5, detail = "Measuring")
         run_length_encoding <- rle(hm_model_results$state)
 
@@ -385,31 +385,31 @@ isometric_force_clamp_analysis <- function(trap_data,
             conditions = conditions,
             date = date,
             obs = obs,
-            index = 1:nrow(hm_event_transitions),
-            cp_found_start = cp_found_start
-            cp_found_stop = cp_found_stop
+            id = 1:nrow(hm_event_transitions),
+            cp_found_start = cp_found_start,
+            cp_found_stop = cp_found_stop,
             cp_start_dp = cp_starts,
             cp_stop_dp = cp_stops,
             keep = keep_event,
             time_on_dp = attachment_durations,
             time_on_s = attachment_durations/hz,
-            time_on_ms = attachment_durations/hz*1000
+            time_on_ms = attachment_durations/hz*1000,
             baseline_position_prior_nm = baseline_position_prior,
             absolute_displacements_nm = absolute_displacements,
-            displacement_nm = relative_displacements
+            displacement_nm = relative_displacements,
             peak_nm_index = displacement_markers,
             force_pn = relative_displacements*nm2pn
           )
 
 
-        report_data  <- "success"
 
 
-        o$analyzer = "ifc",
-        o$status = "analyzed",
-        o$report = report_data
+        o$analyzer <- "ifc"
+        o$status <- "analyzed"
+        o$report <- "success"
 
         if(is_shiny == T) setProgress(0.95, detail = 'Saving Data')
+
         file_names <-  c('trap-data.csv',
                          'ifc-measured-events.csv',
                          'hm-model-data.csv',
