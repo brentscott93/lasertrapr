@@ -27,8 +27,8 @@ mod_clean_data_ui <- function(id){
                    shinyWidgets::radioGroupButtons(
                      inputId = ns("mode"),
                      label = 'View Mode',
-                     choices = c("Volts" = "volts",
-                                 "Nanometers", "nm",
+                     choices = c("Raw" = "raw",
+                                 ## "Nanometers", "nm"## ,
                                  "Detrend" = "detrend"),
                      direction = "horizontal",
                      width = "100%",
@@ -45,8 +45,8 @@ mod_clean_data_ui <- function(id){
           
             column(4,
                    uiOutput(ns("nm_conversion")),
-                   ## numericInput(ns('mv2nm'), 
-                   ##           'Step Cal (nm/mV)', 
+                   ## numericInput(ns('mv2nm'),
+                   ##           'Step Cal (nm/mV)',
                    ##           value = 1,
                    ##           width = '100%')
             ),
@@ -194,7 +194,7 @@ mod_clean_data_ui <- function(id){
 }
     
 #' clean_data Server Function
-#' @import hexbin
+#' @import hexbin stringr
 #' @importFrom magrittr "%<>%"
 #' @noRd 
 
@@ -398,12 +398,12 @@ mod_clean_data_server <- function(input, output, session, f){
   observeEvent(f$obs_input, {
     req(substring(f$obs_input, 1, 3) == 'obs')
     trap_path <- list_files(f$obs$path, pattern = 'trap-data.csv')
-   rv$filter_max <- nrow(data.table::fread(trap_path$path, select = "raw_bead"))
+   rv$filter_max <- nrow(data.table::fread(trap_path$path, select = "project"))
   })
   
   observeEvent(rv$update_filter, ignoreInit = T, {
     trap_path <- list_files(f$obs$path, pattern = 'trap-data.csv')
-    rv$filter_max <- nrow(data.table::fread(trap_path$path, select = "raw_bead"))
+    rv$filter_max <- nrow(data.table::fread(trap_path$path, select = "project"))
     
   })
 
@@ -436,14 +436,50 @@ mod_clean_data_server <- function(input, output, session, f){
 
       current_obs <- f$obs$path
       #rv$current_graph_obs <- f$obs$name
+      opt <- list_files(current_obs) |>
+        dplyr::filter(str_detect(name, "options")) |>
+        dplyr::pull(path) |>
+        data.table::fread()
+
       trap_data <- list_files(current_obs) %>%
         dplyr::filter(str_detect(name, "trap-data.csv")) %>%
         dplyr::pull(path)
 
-      data <- data.table::fread(trap_data, sep = ",") %>%
-        dplyr::mutate(bead = raw_bead*as.numeric(input$mv2nm),
-                      time_sec = 1:nrow(.)/hz()) %>%
-        dplyr::select(time_sec, bead)
+      has_header <- file.exists(file.path(current_obs, "header.csv"))
+
+
+      data <- data.table::fread(trap_data, sep = ",")
+
+      if(opt$channels == 1){
+      ## data <- data.table::fread(trap_data, sep = ",") %>%
+      ##   dplyr::mutate(bead = raw_bead*as.numeric(input$mv2nm),
+      ##                 time_sec = 1:nrow(.)/hz()) %>%
+      ##   dplyr::select(time_sec, bead)
+
+        if(has_header){
+         mv2nm <- opt$mv2nm
+        } else {
+         mv2nm <- input$mv2nm
+        }
+
+        data <- data[, .(bead = raw_bead*as.numeric(mv2nm),
+                         time_sec = 1:nrow(data)/hz())
+                     ]
+        } else if(opt$channels == 2){
+
+        if(has_header){
+         mv2nm <- opt$mv2nm
+         mv2nm2 <- opt$mv2nm2
+        } else {
+        stop("App only supports 2 channel datasets that contain calibrations in header file")
+        }
+
+        data <- data[, .(bead_1 = raw_bead_1*as.numeric(mv2nm),
+                         bead_2 = raw_bead_2*as.numeric(mv2nm2),
+                         time_sec = 1:nrow(data)/hz())
+             ]
+        }
+
 
       f1 <- input$trap_filter_sliderInput[[1]]
       f2 <-  input$trap_filter_sliderInput[[2]]
@@ -451,13 +487,15 @@ mod_clean_data_server <- function(input, output, session, f){
          #but only the title was changing and data wasnt
          #this will keep the dygraph from refreshing until input$graph is clicked again
       dg_data$title <- f$obs$name
-      dg_data$data <- data %<>% slice(f1:f2) 
+      dg_data$data <- data[f1:f2,]
       dg_data$make_graph <- dg_data$make_graph + 1
       shinyjs::show('dygraph_clean')
   })
 
   trap_data_trace <- eventReactive(dg_data$make_graph, ignoreNULL = T, ignoreInit = T, {
-    
+
+
+  if(o$data$channels == 1){
     if(isolate(input$mode) == 'raw'){
       
       data <- dg_data$data
@@ -502,6 +540,46 @@ mod_clean_data_server <- function(input, output, session, f){
                             axisLabelFontSize = 15,
                             drawGrid = FALSE)
     }
+    } else if(o$data$channels == 2){
+
+
+    if(isolate(input$mode) == 'raw'){
+
+      data <- dg_data$data
+
+    } else if(isolate(input$mode) == 'detrend'){
+
+      break_pts <- seq(hz()*5, nrow(dg_data$data), by = hz()*5)
+      data <- dg_data$data %>%
+        mutate(bead_1 = as.vector(pracma::detrend(bead_1, tt = "linear", bp = break_pts)),
+               bead_2 = as.vector(pracma::detrend(bead_2, tt = "linear", bp = break_pts)))
+
+    } else if(isolate(input$mode) == 'range'){
+
+      data <- dg_data$data %>%
+        mutate(bead_1 = bead_1 - base$range,
+               bead_2 = bead_2 - base$range)
+
+    } else if(isolate(input$mode) == 'mv'){
+      data <- dg_data$data %>%
+        mutate(bead_1 = bead_1 - base$baseline_fit$estimate[1],
+               bead_2 = bead_2 - base$baseline_fit$estimate[1])
+    }
+
+      dg <- dygraphs::dygraph(data,  ylab = "nm", xlab = "Seconds",  main = dg_data$title) %>%
+        dygraphs::dySeries("bead_1", color = "black") %>%
+        dygraphs::dySeries("bead_2", color = "red") %>%
+        dygraphs::dyRangeSelector(fillColor ="", strokeColor = "black") %>%
+        dygraphs::dyUnzoom() %>%
+        dygraphs::dyOptions(axisLabelColor = "black",
+                            gridLineColor = "black",
+                            axisLineColor = "black",
+                            axisLineWidth = 3,
+                            axisLabelFontSize = 15,
+                            drawGrid = FALSE)
+
+    }
+  dg
   })
 
   output$dygraph_clean <- dygraphs::renderDygraph({

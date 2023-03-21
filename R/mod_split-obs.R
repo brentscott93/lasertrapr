@@ -5,7 +5,7 @@
 #' @param id,input,output,session Internal parameters for {shiny}.
 #'
 #' @noRd 
-#' @import magrittr
+#' @import magrittr shinyFiles
 #' @importFrom shiny NS tagList 
 
 mod_split_obs_ui <- function(id){
@@ -36,13 +36,13 @@ mod_split_obs_ui <- function(id){
                    condition = " input.upload_method == 'upload'", ns = ns,
 
                    fluidRow(
-                       ## column(12,
-                       ##        shinyFilesButton(ns("file_input"),
-                       ##                         label = "Browse for file...",
-                       ##                         title = "Select one or more file",
-                       ##                         multiple = TRUE,
-                       ##                         style = "width: 100%; margin-bottom: 5px;"),
-                       ##        )
+                       column(12,
+                              shinyFiles::shinyFilesButton(ns("file_input"),
+                                               label = "Browse for file...",
+                                               title = "Select one or more file",
+                                               multiple = TRUE,
+                                               style = "width: 100%; margin-bottom: 5px;"),
+                              )
                    ),
                    fluidRow(
                        column(6,
@@ -316,16 +316,16 @@ mod_split_obs_ui <- function(id){
 #' split_obs Server Function
 #'
 #' @noRd 
-#' @import purrr dplyr magrittr
+#' @import purrr dplyr magrittr shinyFiles
 mod_split_obs_server <- function(input, output, session, f){
     ns <- session$ns
     
-    ## shinyFileChoose(input = input,
-    ##                 id = "file_input",
-    ##                 roots = c(home="/home"),
-    ##                 defaultRoot = "home",
-    ##                 defaultPath = "",
-    ##                 session = session)
+    shinyFileChoose(input = input,
+                    id = "file_input",
+                    roots = c(home="/home"),
+                    defaultRoot = "home",
+                    defaultPath = "",
+                    session = session)
 
 
 
