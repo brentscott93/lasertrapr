@@ -16,6 +16,7 @@
     htmltools
     shinydashboard
     shinyWidgets
+    shinyFiles
     dygraphs
     RcppRoll
     shinyjs
