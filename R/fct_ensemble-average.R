@@ -181,7 +181,9 @@ prep_ensemble <- function(trap_selected_project,
 avg_ensembles <- function(project, is_shiny = TRUE){
   #con <-lasertrapr:::list_dir(path = "~/lasertrapr/project_hitch-simulations")
   #project <- "project_hitch-simulations"
-  project_path <- file.path("~", "lasertrapr", project)
+  print("Starting Avg")
+  project_path <- file.path(path.expand("~"), "lasertrapr", project)
+  print("project path: ", project_path )
   con <- list_dir(path = project_path)
   con <- con[grep("summary", con$name, invert = TRUE, ignore.case = TRUE),]$name
   
@@ -218,7 +220,7 @@ avg_ensembles <- function(project, is_shiny = TRUE){
   ee_backwards_data <- data.table::rbindlist(ee_backwards_data)
   ee_forward_data <- data.table::rbindlist(ee_forward_data)
   forward_backward <- rbind(ee_forward_data, ee_backwards_data)
-
+  print("Completed Avg")
    return(forward_backward)
   #if(is_shiny) incProgress(1/(length(con)*2), message = paste0("Plotting...", con[[i]]))
   # ggplot(data = forward_backward)+
@@ -259,7 +261,7 @@ avg_ensembles <- function(project, is_shiny = TRUE){
 
 #data <- forward_backward
 fit_ensembles <- function(data, fit, hz, is_shiny = TRUE){
-  #browser()
+  print("starting fits")
   if(is_shiny) incProgress(0.25, detail = "Fitting Forwards...")
   
   forward_avg <- data[direction == "forward", 
@@ -269,7 +271,7 @@ fit_ensembles <- function(data, fit, hz, is_shiny = TRUE){
                         sd, 
                         se, 
                         n)]
-
+  
   forward_nest <- forward_avg[, .(ensemble_data = list(.SD)), by = conditions]
   
   forward_nest[, `:=`(ensemble_k1_prep = lapply(ensemble_data, prep_forward_ensemble_exp, hz = hz),
