@@ -227,7 +227,7 @@ mod_hm_model_server <- function(input, output, session, f){
                     raw = trap_data()$trap$processed_bead,
                     model = trap_data()$trap$hm_overlay)
 
-    periods_df <- data.frame(start = trap_data()$events$cp_event_start_dp/hz,
+    periods_df <- data.table::data.table(start = trap_data()$events$cp_event_start_dp/hz,
                              stop = trap_data()$events$cp_event_stop_dp/hz,
                              keep = trap_data()$events$keep,
                              event_user_excluded = trap_data()$events$event_user_excluded, 
@@ -236,18 +236,19 @@ mod_hm_model_server <- function(input, output, session, f){
                              color = scales::alpha("#D95F02" , 0.4))
 
 
-   periods_df %<>%  dplyr::filter(keep == T, event_user_excluded == F)
-   periods_df %<>% dplyr::filter(front_signal_ratio >= ro$front_signal_ratio & back_signal_ratio >= ro$back_signal_ratio)
+   periods_df <- periods_df[keep == T & event_user_excluded == F]
+   periods_df <- periods_df[front_signal_ratio >= ro$front_signal_ratio & back_signal_ratio >= ro$back_signal_ratio]
 
-    # get the peak nm index to put the labels here
-   pni <-  trap_data()$events$peak_nm_index
 
     # add a column providiing the real event number
     # so when user filters out events, the events retain their real event number
     # making it easier to pick other events to exclude
-   trap_data()$events$id <- 1:nrow(trap_data()$events)
-   labels <- trap_data()$events %>%  filter(keep == T, event_user_excluded == F)
-  
+   events <- trap_data()$events
+   events$id <- 1:nrow(trap_data()$events)
+   labels <- events[keep == T & event_user_excluded == F]
+
+    # get the peak nm index to put the labels here
+   ## pni <-  events$peak_nm_index
       # if(nrow(excluded_events) == 0 ){
       # overlay_dy <-  dygraphs::dygraph(d) %>% #raw_data_dygraph
       #                   dygraphs::dySeries('raw', color = 'black', strokeWidth = 2) %>%
