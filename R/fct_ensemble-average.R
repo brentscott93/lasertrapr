@@ -53,18 +53,16 @@ prep_ensemble <- function(trap_selected_project,
   #       nrows = 1), 
   #     fill = TRUE)
   
-  options_data %<>%
-    dplyr::filter(
-      report == "success",
-      review == T,
-      include == T)
-  
-  event_file_paths <- 
-    options_data %>% 
-      unite('path', c(project, conditions, date, obs), sep = "/") %>% 
-      pull(path) %>% 
-      paste0("~/lasertrapr/", ., '/measured-events.csv')
-  
+  options_data <- options_data[report == "success" & review == TRUE & include == TRUE]
+
+  event_file_paths <- file.path(path.expand("~"),
+                                "lasertrapr",
+                                options_data$project,
+                                options_data$conditions,
+                                options_data$date,
+                                options_data$obs,
+                                "measured-events.csv")
+
   event_files_filtered <- 
     data.table::rbindlist(
       lapply(
@@ -74,11 +72,10 @@ prep_ensemble <- function(trap_selected_project,
     )
  
   longest_event_df <- 
-    event_files_filtered %>%
-    dplyr::filter(keep == TRUE & event_user_excluded == FALSE) %>% 
-    dplyr::group_by(conditions) %>% 
-    dplyr::summarize(longest_event = max(cp_time_on_dp))
-  
+    event_files_filtered[keep == TRUE & event_user_excluded == FALSE,
+                         .(longest_event = max(cp_time_on_dp)),
+                         by = conditions]
+
   dp_extend_s2 <- ms_extend_s2*hz/1000
   dp_extend_s1 <- ms_extend_s1*hz/1000
   
@@ -104,7 +101,7 @@ prep_ensemble <- function(trap_selected_project,
                                                      "is_positive",
                                                      "event_user_excluded"))
     
-    measured_events %<>% dplyr::filter(keep == TRUE & event_user_excluded == FALSE)
+    measured_events <- measured_events[keep == TRUE & event_user_excluded == FALSE]
     
     event_ensembles <- list()
     for(event in seq_len(nrow(measured_events))){
