@@ -449,6 +449,12 @@ mod_clean_data_server <- function(input, output, session, f){
 
 
       data <- data.table::fread(trap_data, sep = ",")
+    
+    print("hi chris - any baby yet?")
+     print("trying a bug fix on 2023-03-31")
+    if(is.null(opt$channels)){
+      opt$channels <- 1
+      }
 
       if(opt$channels == 1){
       ## data <- data.table::fread(trap_data, sep = ",") %>%
