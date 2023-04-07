@@ -14,13 +14,13 @@ prep_forward_ensemble_lm <- function(x, hz){
 }
 
 #' @noRd
-prep_forward_ensemble_exp <- function(x, hz){
-  x[ensemble_index >= 0, .(ensemble_index, 
-                           avg,
-                           sd, 
-                           se, 
-                           n,
-                           time = ensemble_index/hz)]
+prep_forward_ensemble_exp <- function(x, max_l, hz){
+  x[ensemble_index >= 0 & ensemble_index <= max_l, .(ensemble_index,
+                                      avg,
+                                      sd,
+                                      se,
+                                      n,
+                                      time = ensemble_index/hz)]
 }
 
 #' @noRd
@@ -38,8 +38,8 @@ fit_forward_ee_2exp <- function(ee_data, start){
 }
 
 #' @noRd
-prep_backwards_ensemble_exp <- function(x, hz){
-  x[ensemble_index <= 0, .(ensemble_index, 
+prep_backwards_ensemble_exp <- function(x, max_l, hz){
+  x[ensemble_index <= 0 & ensemble_index >= -max_l, .(ensemble_index,
                            avg,
                            sd, 
                            se, 
