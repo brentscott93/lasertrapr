@@ -144,7 +144,8 @@ mod_ensemble_average_ui <- function(id){
     
 #' ensemble_average Server Function
 #'
-#' @noRd 
+#' @noRd
+#' @import data.table
 mod_ensemble_average_server <- function(input, output, session, f){
   ns <- session$ns
   ee <- reactiveValues()
@@ -170,7 +171,7 @@ mod_ensemble_average_server <- function(input, output, session, f){
   # })
   
   observeEvent(input$prep_ensemble, {
-   # browser()
+   ## browser()
     
     golem::print_dev(f$project_input)
     golem::print_dev(str(f))
@@ -229,6 +230,8 @@ mod_ensemble_average_server <- function(input, output, session, f){
                type = "error")
     
      withProgress(message = "Averaging Ensembles", {
+       ## browser()
+       print(f$project_path)
        ee$data <- avg_ensembles(project = f$project_input)
        if(is.null(input$fit) || input$fit == "None"){
           showNotification("Ensembles Averaged", type = "message")
