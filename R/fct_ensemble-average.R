@@ -5,7 +5,8 @@
 #' @param ms_extend_s1 
 #' @param hz 
 #'
-#' @return nothing. Saves ensemble-data.csv in each obs-## folder. 
+#' @return nothing. Saves ensemble-data.csv in each obs-## folder.
+#' @import data.table
 #' @noRd
 prep_ensemble <- function(trap_selected_project,
                           ms_extend_s2 = 3, 
@@ -16,6 +17,7 @@ prep_ensemble <- function(trap_selected_project,
   # trap_selected_project <- "~/lasertrapr/project_myoV-phosphate"
   # ms_extend_s2 = 3
   # ms_extend_s1 = 3
+  ## browser()
   if(is_shiny) incProgress(0.01, detail = "Removing Old Files")
   
   old_files <- 
@@ -100,9 +102,11 @@ prep_ensemble <- function(trap_selected_project,
                                                      "back_signal_ratio",
                                                      "is_positive",
                                                      "event_user_excluded"))
-    
+
+    measured_events$id <- 1:nrow(measured_events)
     measured_events <- measured_events[keep == TRUE & event_user_excluded == FALSE]
-    
+
+    substeps <- list()
     event_ensembles <- list()
     for(event in seq_len(nrow(measured_events))){
       #print(paste0("event=", event))
@@ -135,6 +139,12 @@ prep_ensemble <- function(trap_selected_project,
       end_forward_base <- start - 1
       before_forwards <- data.frame(data = trap_trace[(end_forward_base - ((ms_10*5)-1)):end_forward_base],
                                     ensemble_index = -(ms_10*5):-1)
+
+      ms_1 <- 1*hz/1000
+      ms_5 <- 3 *hz/1000
+
+      mean_baseline_prior <- mean( trap_trace[(end_forward_base - (ms_5-1)):(end_forward_base-ms_1)] )
+
       start_backwards_base <- stop + 1
       after_backwards <- data.frame(data = trap_trace[start_backwards_base:(start_backwards_base + ((ms_10*5)-1))],
                                     ensemble_index = 1:(ms_10*5))
@@ -155,13 +165,30 @@ prep_ensemble <- function(trap_selected_project,
       
       ensemble <- 
         rbind(forward_ensemble, backwards_ensemble) %>% 
-        mutate(project = options_data$project[[i]],
+        mutate(
+               project = options_data$project[[i]],
                conditions = options_data$conditions[[i]],
                date = options_data$date[[i]],
-               obs = options_data$obs[[i]]) %>% 
+               obs = options_data$obs[[i]]
+        ) %>%
         arrange(forward_backward_index)
       
       event_ensembles[[event]] <- ensemble
+
+      substeps[[event]] <- data.frame(
+        project = options_data$project[[i]],
+        conditions = options_data$conditions[[i]],
+        date = options_data$date[[i]],
+        obs = options_data$obs[[i]],
+        event_id = measured_events$id[[event]],
+        prior_2ms_unbound_position_nm = mean_baseline_prior,
+        bead_position_substep_1_nm = s1_avg,
+        substep_1_nm = s1_avg-mean_baseline_prior,
+        bead_position_substep_2_nm = s2_avg,
+        substep_2_nm = s2_avg-s1_avg
+      )
+
+      print(paste0("id: ", measured_events$id[[event]], "; substep1: ", s1_avg, "; substep2: ", s2_avg))
     }
     ensemble_data <- data.table::rbindlist(event_ensembles)
     ensemble_data$ms_extend_s2 <- ms_extend_s2
@@ -169,6 +196,10 @@ prep_ensemble <- function(trap_selected_project,
     ensemble_data$ms_stroke_to_skip <- ms_2_skip
     ensemble_path <- file.path(path, "ensemble-data.csv")
     data.table::fwrite(ensemble_data, file = ensemble_path, sep = ",")
+
+    substeps_data <- data.table::rbindlist(substeps)
+    substeps_path <- file.path(path, "substeps.csv")
+    data.table::fwrite(substeps_data, file = substeps_path, sep = ",")
   }
 }
 
@@ -181,9 +212,9 @@ prep_ensemble <- function(trap_selected_project,
 avg_ensembles <- function(project, is_shiny = TRUE){
   #con <-lasertrapr:::list_dir(path = "~/lasertrapr/project_hitch-simulations")
   #project <- "project_hitch-simulations"
+  ## browser()
   print("Starting Avg")
   project_path <- file.path(path.expand("~"), "lasertrapr", project)
-  print("project path: ", project_path )
   con <- list_dir(path = project_path)
   con <- con[grep("summary", con$name, invert = TRUE, ignore.case = TRUE),]$name
   
