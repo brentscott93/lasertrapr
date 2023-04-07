@@ -291,10 +291,12 @@ avg_ensembles <- function(project, is_shiny = TRUE){
 }
 
 #data <- forward_backward
-fit_ensembles <- function(data, fit, hz, is_shiny = TRUE){
+fit_ensembles <- function(data, fit, hz, max_l, is_shiny = TRUE){
   print("starting fits")
+
+
   if(is_shiny) incProgress(0.25, detail = "Fitting Forwards...")
-  
+  max_l <- max_l*hz
   forward_avg <- data[direction == "forward", 
                       .(conditions,
                         ensemble_index, 
@@ -305,7 +307,7 @@ fit_ensembles <- function(data, fit, hz, is_shiny = TRUE){
   
   forward_nest <- forward_avg[, .(ensemble_data = list(.SD)), by = conditions]
   
-  forward_nest[, `:=`(ensemble_k1_prep = lapply(ensemble_data, prep_forward_ensemble_exp, hz = hz),
+  forward_nest[, `:=`(ensemble_k1_prep = lapply(ensemble_data, prep_forward_ensemble_exp, hz = hz, max_l = max_l),
                       avg_tail = vapply(ensemble_data, function(x) mean(tail(x$avg, -100)), FUN.VALUE = numeric(1)),
                       n = vapply(ensemble_data, function(x) unique(x$n),  FUN.VALUE = numeric(1)))]
   
@@ -350,7 +352,7 @@ fit_ensembles <- function(data, fit, hz, is_shiny = TRUE){
   
   backwards_nest <- backwards_avg[, .(ensemble_data = list(.SD)), by = conditions]
   
-  backwards_nest[, `:=`(ensemble_k2_prep = lapply(ensemble_data, prep_backwards_ensemble_exp, hz = hz),
+  backwards_nest[, `:=`(ensemble_k2_prep = lapply(ensemble_data, prep_backwards_ensemble_exp, hz = hz, max_l = max_l),
                         avg_head = vapply(ensemble_data, function(x) mean(head(x$avg, 100)), FUN.VALUE = numeric(1)),
                         n = vapply(ensemble_data, function(x) unique(x$n),  FUN.VALUE = numeric(1)))]
   

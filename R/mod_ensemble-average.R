@@ -238,7 +238,8 @@ mod_ensemble_average_server <- function(input, output, session, f){
        } else {
          ee$fits <- fit_ensembles(data = ee$data,
                                   fit = input$fit, 
-                                  hz = ee$hz)
+                                  hz = ee$hz,
+                                  max_l = input$length_of_ensembles)
          
          summary_folder <- file.path(f$project$path, "summary")
          if(!file.exists(summary_folder)){
@@ -425,19 +426,34 @@ mod_ensemble_average_server <- function(input, output, session, f){
      }
    }
 
+   length_of_full_ensemble <- nrow(ee_data[direction=="forward" & ensemble_index >= 0])
+   diff_in_length_filter <- length_of_full_ensemble - nrow(ee_forward_predict_df)
    hz <- ee$hz
    shift <- input$backwards_shift
-   
+
+   original_length <- nrow(ee_data[direction == "forward" & ensemble_index >= 0])
+   max_forward_fit_index <- nrow(ee_forward_predict_df)
+   ee_data_forward <- ee_data[direction=="forward" & forward_backward_index <= max_forward_fit_index]
+
+   ee_data_backwards <- ee_data[direction=="backwards" & ensemble_index >= -max_forward_fit_index]
+
+   if(max_forward_fit_index < original_length){
+     filter_diff <- original_length-max_forward_fit_index
+     ee_data_backwards[, forward_backward_index := forward_backward_index-(2*filter_diff)]
+     }
+
+
+
    ee$plot <-
    ggplot()+
-     geom_point(data = ee_data[direction=="forward"],
+     geom_point(data = ee_data_forward,
                 aes(x = forward_backward_index/hz, 
                     y = avg, 
                     color = conditions), 
                 alpha = 0.3,
                 shape = 16,
                 size = 0.8)+
-     geom_point(data = ee_data[direction=="backwards"],
+     geom_point(data = ee_data_backwards,
                 aes(x = (forward_backward_index/hz) - shift, 
                     y = avg, 
                     color = conditions), 
