@@ -194,7 +194,7 @@ mod_clean_data_ui <- function(id){
 }
     
 #' clean_data Server Function
-#' @import hexbin stringr
+#' @import hexbin stringr data.table
 #' @importFrom magrittr "%<>%"
 #' @noRd 
 
@@ -449,7 +449,10 @@ mod_clean_data_server <- function(input, output, session, f){
 
 
       data <- data.table::fread(trap_data, sep = ",")
-    
+
+
+
+      ## browser()
     print("hi chris - any baby yet?")
      print("trying a bug fix on 2023-03-31")
     if(is.null(opt$channels)){
@@ -468,8 +471,8 @@ mod_clean_data_server <- function(input, output, session, f){
          mv2nm <- input$mv2nm
         }
 
-        data <- data[, .(bead = raw_bead*as.numeric(mv2nm),
-                         time_sec = 1:nrow(data)/hz())
+        data <- data[, .(time_sec = .I/hz(),
+                         bead = raw_bead*as.numeric(mv2nm))
                      ]
         } else if(opt$channels == 2){
 
@@ -480,15 +483,19 @@ mod_clean_data_server <- function(input, output, session, f){
         stop("App only supports 2 channel datasets that contain calibrations in header file")
         }
 
-        data <- data[, .(bead_1 = raw_bead_1*as.numeric(mv2nm),
-                         bead_2 = raw_bead_2*as.numeric(mv2nm2),
-                         time_sec = 1:nrow(data)/hz())
+        data <- data[, .(
+                         time_sec = .I/hz(),
+                         bead_1 = raw_bead_1*as.numeric(mv2nm),
+                         bead_2 = raw_bead_2*as.numeric(mv2nm2)
+                         )
              ]
         }
 
 
       f1 <- input$trap_filter_sliderInput[[1]]
       f2 <-  input$trap_filter_sliderInput[[2]]
+
+       dg_data$channels <- opt$channels
          #dygraph kept refreshing on change file
          #but only the title was changing and data wasnt
          #this will keep the dygraph from refreshing until input$graph is clicked again
@@ -499,9 +506,9 @@ mod_clean_data_server <- function(input, output, session, f){
   })
 
   trap_data_trace <- eventReactive(dg_data$make_graph, ignoreNULL = T, ignoreInit = T, {
-
-
-  if(o$data$channels == 1){
+print("trap data trace")
+## browser()
+  if(dg_data$channels == 1){
     if(isolate(input$mode) == 'raw'){
       
       data <- dg_data$data
@@ -546,7 +553,7 @@ mod_clean_data_server <- function(input, output, session, f){
                             axisLabelFontSize = 15,
                             drawGrid = FALSE)
     }
-    } else if(o$data$channels == 2){
+    } else if(dg_data$channels == 2){
 
 
     if(isolate(input$mode) == 'raw'){
