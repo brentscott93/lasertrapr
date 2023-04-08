@@ -507,6 +507,7 @@ mod_clean_data_server <- function(input, output, session, f){
 
   trap_data_trace <- eventReactive(dg_data$make_graph, ignoreNULL = T, ignoreInit = T, {
 print("trap data trace")
+print(str(dg_data$data))
 ## browser()
   if(dg_data$channels == 1){
     if(isolate(input$mode) == 'raw'){
@@ -528,7 +529,7 @@ print("trap data trace")
       data <- dg_data$data %>% 
         mutate(bead = bead - base$baseline_fit$estimate[1])
     }
-    
+    print(str(dg_data)) 
     if(isolate(input$mv2nm) == 1){
       
       dg <- dygraphs::dygraph(data,  ylab = "mV", xlab = "Seconds",  main = dg_data$title) %>%
