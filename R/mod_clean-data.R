@@ -27,8 +27,8 @@ mod_clean_data_ui <- function(id){
                    shinyWidgets::radioGroupButtons(
                      inputId = ns("mode"),
                      label = 'View Mode',
-                     choices = c("Raw" = "raw",
-                                 ## "Nanometers", "nm"## ,
+                     choices = c("Volts" = "volts",
+                                 "Nanometers" = "nm",## ,
                                  "Detrend" = "detrend"),
                      direction = "horizontal",
                      width = "100%",
@@ -209,9 +209,12 @@ mod_clean_data_server <- function(input, output, session, f){
           req(substring(f$obs_input, 1, 3) == 'obs')
           o$data <- fread(file.path(f$obs$path, "options.csv"))
          })
-            
+
+  # decide which nm conversion input to draw
+  # depending on options listed in options.csv
     output$nm_conversion <- renderUI({
         req(substring(f$obs_input, 1, 3) == 'obs')
+        req(o$data)
         if(file.exists(file.path(f$obs$path, "header.csv"))){
 
             if(o$data$channels == 2){
@@ -272,14 +275,12 @@ mod_clean_data_server <- function(input, output, session, f){
             req(o$data)
             paste0("pN/nm2: ", round(as.numeric(o$data$nm2pn2), 3))
         })
-        
+
+  # when switching observation, reset all buttons
+  # only triggers after selected and viewed one trace
   observeEvent(f$obs_input, ignoreNULL = T, ignoreInit = T, {
       req(input$graph > 0)
 
-       if(file.exists(file.path(f$obs$path, "header.csv"))){
-            o$data <- fread(file.path(f$obs$path, "options.csv"))
-       }
-      
     showNotification('Switched obs', 
                      type = 'message',
                      duration = 2)
@@ -329,22 +330,22 @@ mod_clean_data_server <- function(input, output, session, f){
 
   })
   
- observe({ golem::print_dev(f$project_ns) })
+ ## observe({ golem::print_dev(f$project_ns) })
  
-  output$selected_folders <- renderPrint({
-    
-    validate(need(substring(f$obs_input, 1, 3) == 'obs', message = 'Please select folders'))
-   
-    cat('Project:', f$project$name, ' | Conditions:', f$conditions$name, ' | Date:', f$date$name, ' | Observation:', f$obs$name)
-    
-      })
+  ## output$selected_folders <- renderPrint({
+
+  ##   validate(need(substring(f$obs_input, 1, 3) == 'obs', message = 'Please select folders'))
+
+  ##   cat('Project:', f$project$name, ' | Conditions:', f$conditions$name, ' | Date:', f$date$name, ' | Observation:', f$obs$name)
+
+  ##     })
   
   rv <- reactiveValues(wait = FALSE, update_filter = 0)
 
-  trap_files <- reactive({
-    list_files(f$obs$path) %>%
-      dplyr::filter(str_detect(name, "Data"))
-  })
+  ## trap_files <- reactive({
+  ##   list_files(f$obs$path) %>%
+  ##     dplyr::filter(str_detect(name, "Data"))
+  ## })
   
   #END obtain filenames/paths for trap file selectors
   
@@ -395,18 +396,22 @@ mod_clean_data_server <- function(input, output, session, f){
     shinyjs::click('graph')
   })
 
+  #watch the obs input
+  # when it updates get length of data trace for filter
   observeEvent(f$obs_input, {
     req(substring(f$obs_input, 1, 3) == 'obs')
     trap_path <- list_files(f$obs$path, pattern = 'trap-data.csv')
-   rv$filter_max <- nrow(data.table::fread(trap_path$path, select = "project"))
+    rv$filter_max <- nrow(data.table::fread(trap_path$path, select = "project"))
   })
-  
+
+  #recaculates the length of trace when update_filter is triggered
   observeEvent(rv$update_filter, ignoreInit = T, {
     trap_path <- list_files(f$obs$path, pattern = 'trap-data.csv')
     rv$filter_max <- nrow(data.table::fread(trap_path$path, select = "project"))
     
   })
 
+  # draw the filter
   output$trap_filter <- renderUI({
     req(substring(f$obs_input, 1, 3) == 'obs')
     sliderInput(ns("trap_filter_sliderInput"),
@@ -419,14 +424,14 @@ mod_clean_data_server <- function(input, output, session, f){
     
   })
   
-  observeEvent(f$obs_input, ignoreInit = T, {
-    req(substring(f$obs_input, 1, 3) == 'obs')
-    rv$update_graph <-  rv$update_graph + 1
-  })
-  
+  ## observeEvent(f$obs_input, ignoreInit = T, {
+  ##   req(substring(f$obs_input, 1, 3) == 'obs')
+  ##   rv$update_graph <-  rv$update_graph + 1
+  ## })
+
+ # read the data to mak the dygraph
   dg_data <- reactiveValues(make_graph = 0)
   observeEvent(input$graph,  {
-    
      defend_if_empty(f$obs_input,
                      ui = 'No observation folder selected.', 
                      type = 'error')
@@ -434,56 +439,38 @@ mod_clean_data_server <- function(input, output, session, f){
      defend_if_not_equal(substring(f$obs_input, 1, 3), 'obs', 
                          ui = 'No observation folder selected.', type = 'error')
 
-      current_obs <- f$obs$path
-      #rv$current_graph_obs <- f$obs$name
-      opt <- list_files(current_obs) |>
-        dplyr::filter(str_detect(name, "options")) |>
-        dplyr::pull(path) |>
-        data.table::fread()
+      trap_data <- fread(file.path(f$obs$path, "trap-data.csv"), sep = ",")
+      has_header <- file.exists(file.path(f$obs$path, "header.csv"))
 
-      trap_data <- list_files(current_obs) %>%
-        dplyr::filter(str_detect(name, "trap-data.csv")) %>%
-        dplyr::pull(path)
-
-      has_header <- file.exists(file.path(current_obs, "header.csv"))
-
-
-      data <- data.table::fread(trap_data, sep = ",")
-
-
-
-      ## browser()
-    print("hi chris - any baby yet?")
-     print("trying a bug fix on 2023-03-31")
-    if(is.null(opt$channels)){
-      opt$channels <- 1
+    if(is.null(o$data$channels)){
+      o$data$channels <- 1
       }
 
-      if(opt$channels == 1){
+      if(o$data$channels == 1){
       ## data <- data.table::fread(trap_data, sep = ",") %>%
       ##   dplyr::mutate(bead = raw_bead*as.numeric(input$mv2nm),
       ##                 time_sec = 1:nrow(.)/hz()) %>%
       ##   dplyr::select(time_sec, bead)
 
         if(has_header){
-         mv2nm <- opt$mv2nm
+         mv2nm <- o$data$mv2nm
         } else {
          mv2nm <- input$mv2nm
         }
 
-        data <- data[, .(time_sec = .I/hz(),
+        trap_data <- trap_data[, .(time_sec = .I/hz(),
                          bead = raw_bead*as.numeric(mv2nm))
                      ]
-        } else if(opt$channels == 2){
+        } else if(o$data$channels == 2){
 
         if(has_header){
-         mv2nm <- opt$mv2nm
-         mv2nm2 <- opt$mv2nm2
+         mv2nm <- o$data$mv2nm
+         mv2nm2 <- o$data$mv2nm2
         } else {
         stop("App only supports 2 channel datasets that contain calibrations in header file")
         }
 
-        data <- data[, .(
+        trap_data <- trap_data[, .(
                          time_sec = .I/hz(),
                          bead_1 = raw_bead_1*as.numeric(mv2nm),
                          bead_2 = raw_bead_2*as.numeric(mv2nm2)
@@ -495,44 +482,45 @@ mod_clean_data_server <- function(input, output, session, f){
       f1 <- input$trap_filter_sliderInput[[1]]
       f2 <-  input$trap_filter_sliderInput[[2]]
 
-       dg_data$channels <- opt$channels
+      dg_data$channels <- o$data$channels
          #dygraph kept refreshing on change file
          #but only the title was changing and data wasnt
          #this will keep the dygraph from refreshing until input$graph is clicked again
       dg_data$title <- f$obs$name
-      dg_data$data <- data[f1:f2,]
+      dg_data$data <- trap_data[f1:f2,]
       dg_data$make_graph <- dg_data$make_graph + 1
       shinyjs::show('dygraph_clean')
   })
 
+  # once the data is read above initiate graph options and make dygraph
   trap_data_trace <- eventReactive(dg_data$make_graph, ignoreNULL = T, ignoreInit = T, {
-print("trap data trace")
-print(str(dg_data$data))
+   print(paste0("dg_data: ", head(dg_data$data)))
+   print(paste0("number channels: ", dg_data$channels))
+   print(paste0("make graph: ", dg_data$make_graph))
 ## browser()
   if(dg_data$channels == 1){
-    if(isolate(input$mode) == 'raw'){
+    if(isolate(input$mode) == 'volts'){
       
       data <- dg_data$data
       
     } else if(isolate(input$mode) == 'detrend'){
       
       break_pts <- seq(hz()*5, nrow(dg_data$data), by = hz()*5)
-      data <- dg_data$data %>% 
+      data <- isolate(dg_data$data) %>%
         mutate(bead = as.vector(pracma::detrend(bead, tt = "linear", bp = break_pts)))
       
     } else if(isolate(input$mode) == 'range'){
       
-      data <- dg_data$data %>% 
+      data <- isolate(dg_data$data) %>%
         mutate(bead = bead - base$range)
       
     } else if(isolate(input$mode) == 'mv'){
-      data <- dg_data$data %>% 
+      data <- isolate(dg_data$data) %>%
         mutate(bead = bead - base$baseline_fit$estimate[1])
     }
-    print(str(dg_data)) 
     if(isolate(input$mv2nm) == 1){
       
-      dg <- dygraphs::dygraph(data,  ylab = "mV", xlab = "Seconds",  main = dg_data$title) %>%
+      dg <- dygraphs::dygraph(data = data,  ylab = "V", xlab = "Seconds",  main = dg_data$title) %>%
         dygraphs::dySeries("bead", color = "black") %>%
         dygraphs::dyRangeSelector(fillColor ="", strokeColor = "black") %>%
         dygraphs::dyUnzoom() %>%
@@ -543,7 +531,7 @@ print(str(dg_data$data))
                             axisLabelFontSize = 15,
                             drawGrid = FALSE)
     } else {
-      dg <- dygraphs::dygraph(data,  ylab = "nm", xlab = "Seconds",  main = dg_data$title) %>%
+      dg <- dygraphs::dygraph(data = data,  ylab = "nm", xlab = "Seconds",  main = dg_data$title) %>%
         dygraphs::dySeries("bead", color = "black") %>%
         dygraphs::dyRangeSelector(fillColor ="", strokeColor = "black") %>%
         dygraphs::dyUnzoom() %>%
@@ -557,7 +545,7 @@ print(str(dg_data$data))
     } else if(dg_data$channels == 2){
 
 
-    if(isolate(input$mode) == 'raw'){
+    if(isolate(input$mode) == 'volts'){
 
       data <- dg_data$data
 
@@ -593,11 +581,12 @@ print(str(dg_data$data))
                             drawGrid = FALSE)
 
     }
-  dg
+   dg
   })
 
   output$dygraph_clean <- dygraphs::renderDygraph({
     req(trap_data_trace())
+    ## validate(need(names(trap_data_trace$dygraph) %in% c("bead", "time_sec")), "Please select an obs and click graph to update.")
     trap_data_trace()
   })
 
@@ -741,7 +730,7 @@ output$move_files <- renderText({
     shinyWidgets::updateRadioGroupButtons(
       session = session,
       inputId = "mode",
-      choices = c("Raw" = "raw",
+      choices = c("Volts" = "volts",
                   "Detrend" = "detrend",
                   "Remove base" = "range"),
       checkIcon = list(
@@ -784,7 +773,7 @@ output$move_files <- renderText({
       shinyWidgets::updateRadioGroupButtons(
         session = session,
         inputId = "mode",
-        choices = c("Raw" = "raw",
+        choices = c("Volts" = "volts",
                     "Detrend" = "detrend",
                     "Remove MV" = "mv"),
         checkIcon = list(
