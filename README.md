@@ -18,6 +18,14 @@ the [website](https://lasertrapr.app).
 
 Project future: The goal is to have the app published in the Journal of Open Source Software and rOpenSci. Updates and tests need to be added to prepare this for submission. Additionally, updates to support co-variance and two detector systems are being developed as well as an analyzer for isometric force clamping. 
 
+Several peer-reviewed research articles have used either this app or prior versions of the codebase including: 
+
+1) [FRET and optical trapping reveal mechanisms of actin activation of the power stroke and phosphate release in myosin V](https://www.jbc.org/article/S0021-9258(17)50627-4/fulltext)
+2) [A mutation in switch I alters the load-dependent kinetics of myosin Va](A mutation in switch I alters the
+load-dependent kinetics of myosin Va)
+3) [Myosin's powerstroke occurs prior to the release of phosphatefrom the active site](https://onlinelibrary.wiley.com/doi/epdf/10.1002/cm.21682)
+4) [Positional Isomers of a Non-Nucleoside Substrate Differentially Affect Myosin Function](https://www.sciencedirect.com/science/article/pii/S0006349520305002)
+
 ## Installation
 
 Current stable version will be hosted on my `drat` repo. 
