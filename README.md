@@ -22,7 +22,7 @@ Several peer-reviewed research articles have used either this app or prior versi
 
 1) [FRET and optical trapping reveal mechanisms of actin activation of the power stroke and phosphate release in myosin V](https://www.jbc.org/article/S0021-9258(17)50627-4/fulltext)
 2) [A mutation in switch I alters the load-dependent kinetics of myosin Va](https://www.nature.com/articles/s41467-023-38535-0)
-3) [Myosin's powerstroke occurs prior to the release of phosphatefrom the active site](https://onlinelibrary.wiley.com/doi/epdf/10.1002/cm.21682)
+3) [Myosin's powerstroke occurs prior to the release of phosphate from the active site](https://onlinelibrary.wiley.com/doi/epdf/10.1002/cm.21682)
 4) [Positional Isomers of a Non-Nucleoside Substrate Differentially Affect Myosin Function](https://www.sciencedirect.com/science/article/pii/S0006349520305002)
 
 ## Installation
