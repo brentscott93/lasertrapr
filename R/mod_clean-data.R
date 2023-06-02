@@ -27,8 +27,7 @@ mod_clean_data_ui <- function(id){
                    shinyWidgets::radioGroupButtons(
                      inputId = ns("mode"),
                      label = 'View Mode',
-                     choices = c("Volts" = "volts",
-                                 "Nanometers" = "nm",## ,
+                     choices = c("Nanometers" = "nm",## ,
                                  "Detrend" = "detrend"),
                      direction = "horizontal",
                      width = "100%",
@@ -99,41 +98,8 @@ mod_clean_data_ui <- function(id){
       )))), #col, row, box close
     
         fluidRow(
-          tabBox(id = ns('baseline_tab_box'), width = 8, 
-                 side = 'right',
-            title = "Remove Baseline",
-            # The id lets us use input$tabset1 on the server to find the current tab
-            tabPanel("Range",
-                     fluidRow(column(3, actionButton(ns('baseline_graph_range'), 'Baseline Range', width = '100%'))),
-                     fluidRow(column(12, 
-                                     plotOutput(ns('range'))  %>% 
-                                       shinycssloaders::withSpinner(type = 8, color = "#373B38"),
-                                     verbatimTextOutput(ns('range_mean'))
-                     ))),#tabPanel close
-            tabPanel("MV", 
-                     fluidRow(column(3,actionButton(ns('baseline_graph_mv'), 'Baseline MV', width = '100%'))),
-                     fluidRow(
-                     column(6, 
-                           plotOutput(ns('mv'), brush = ns('mv_brush'))  %>% 
-                              shinycssloaders::withSpinner(type = 8, color = "#373B38"),
-                     ), #col close
-                     column(6, 
-                           # actionButton(ns('measure'), 'Calculate average of selection', width = '100%'),
-                            plotOutput(ns('baseline_histo')) %>% 
-                              shinycssloaders::withSpinner(type = 8, color = "#373B38"),
-                           
-                     ) #col close
-                     ), #row close
-                   
-                     fluidRow(
-                       column(12,
-                       verbatimTextOutput(ns('baseline_avg'))
-                       )
-                     )#rowclose
-            )
-           
-          ), #tabBox close
-                
+
+          uiOutput(ns("baseline_range_box")),
         
   
   box(width = 4, title = "Save Processed Data",
@@ -276,6 +242,56 @@ mod_clean_data_server <- function(input, output, session, f){
             paste0("pN/nm2: ", round(as.numeric(o$data$nm2pn2), 3))
         })
 
+  output$baseline_range_box <- renderUI({
+     if(o$data$channels == 1 || is.null(o$data$channels)){
+       tagList(
+          tabBox(id = ns('baseline_tab_box'), width = 8,
+                 side = 'right',
+            title = "Remove Baseline",
+            # The id lets us use input$tabset1 on the server to find the current tab
+            tabPanel("Range",
+                     fluidRow(column(3, actionButton(ns('baseline_graph_range'), 'Baseline Range', width = '100%'))),
+                     fluidRow(column(12,
+                                     plotOutput(ns('range'))  %>%
+                                       shinycssloaders::withSpinner(type = 8, color = "#373B38"),
+                                     verbatimTextOutput(ns('range_mean'))
+                     ))),#tabPanel close
+            tabPanel("MV",
+                     fluidRow(column(3,actionButton(ns('baseline_graph_mv'), 'Baseline MV', width = '100%'))),
+                     fluidRow(
+                     column(6,
+                           plotOutput(ns('mv'), brush = ns('mv_brush'))  %>%
+                              shinycssloaders::withSpinner(type = 8, color = "#373B38"),
+                     ), #col close
+                     column(6,
+                           # actionButton(ns('measure'), 'Calculate average of selection', width = '100%'),
+                            plotOutput(ns('baseline_histo')) %>%
+                              shinycssloaders::withSpinner(type = 8, color = "#373B38"),
+
+                     ) #col close
+                     ), #row close
+
+                     fluidRow(
+                       column(12,
+                       verbatimTextOutput(ns('baseline_avg'))
+                       )
+                     )#rowclose
+            )
+
+          ) #tabBox close
+         )
+
+  } else {
+
+    tagList(
+          box(id = ns('baseline_tab_box'), width = 8,
+            title = "Unsupported",
+            h5("Currently 2 channel is unsupported for baseline transformations.", style = "color: grey;")
+    )
+   )
+  }
+  })
+
   # when switching observation, reset all buttons
   # only triggers after selected and viewed one trace
   observeEvent(f$obs_input, ignoreNULL = T, ignoreInit = T, {
@@ -288,8 +304,7 @@ mod_clean_data_server <- function(input, output, session, f){
     shinyWidgets::updateRadioGroupButtons(
       session = session,
       inputId = "mode",
-      choices = c("Volts" = "volts",
-                  "Nanometers" = "nm",
+      choices = c("Nanometers" = "nm",
                   "Detrend" = "detrend"),
       checkIcon = list(
         yes = tags$i(class = "fa fa-check-square",
@@ -373,7 +388,7 @@ mod_clean_data_server <- function(input, output, session, f){
     
     all_obs <- list_dir(f$date$path) %>% 
       dplyr::filter(str_detect(name, 'obs')) %>% 
-      nrow
+      nrow()
     
     move_obs(trap_selected_date = f$date$path,
              trap_selected_obs = f$obs$path,
@@ -383,9 +398,10 @@ mod_clean_data_server <- function(input, output, session, f){
              trap_obs = all_obs,
              hz = hz())
     
-    rv$update_filter <- rv$update_filter + 1
+     rv$update_filter <- rv$update_filter + 1
      f$current_obs <- f$obs$name
      f$new_obs <- f$new_obs + 1
+      shinyjs::hide('dygraph_clean')
   })
   
   #the move obs will create a new folder and observatrion data
@@ -439,6 +455,7 @@ mod_clean_data_server <- function(input, output, session, f){
      defend_if_not_equal(substring(f$obs_input, 1, 3), 'obs', 
                          ui = 'No observation folder selected.', type = 'error')
 
+     print("reading data")
       trap_data <- fread(file.path(f$obs$path, "trap-data.csv"), sep = ",")
       has_header <- file.exists(file.path(f$obs$path, "header.csv"))
 
@@ -494,12 +511,12 @@ mod_clean_data_server <- function(input, output, session, f){
 
   # once the data is read above initiate graph options and make dygraph
   trap_data_trace <- eventReactive(dg_data$make_graph, ignoreNULL = T, ignoreInit = T, {
-   print(paste0("dg_data: ", head(dg_data$data)))
-   print(paste0("number channels: ", dg_data$channels))
-   print(paste0("make graph: ", dg_data$make_graph))
+   ## print(paste0("dg_data: ", head(dg_data$data)))
+   ## print(paste0("number channels: ", dg_data$channels))
+   ## print(paste0("make graph: ", dg_data$make_graph))
 ## browser()
   if(dg_data$channels == 1){
-    if(isolate(input$mode) == 'volts'){
+    if(isolate(input$mode) == 'nm'){
       
       data <- dg_data$data
       
@@ -545,7 +562,7 @@ mod_clean_data_server <- function(input, output, session, f){
     } else if(dg_data$channels == 2){
 
 
-    if(isolate(input$mode) == 'volts'){
+    if(isolate(input$mode) == 'nm'){
 
       data <- dg_data$data
 
@@ -556,17 +573,19 @@ mod_clean_data_server <- function(input, output, session, f){
         mutate(bead_1 = as.vector(pracma::detrend(bead_1, tt = "linear", bp = break_pts)),
                bead_2 = as.vector(pracma::detrend(bead_2, tt = "linear", bp = break_pts)))
 
-    } else if(isolate(input$mode) == 'range'){
-
-      data <- dg_data$data %>%
-        mutate(bead_1 = bead_1 - base$range,
-               bead_2 = bead_2 - base$range)
-
-    } else if(isolate(input$mode) == 'mv'){
-      data <- dg_data$data %>%
-        mutate(bead_1 = bead_1 - base$baseline_fit$estimate[1],
-               bead_2 = bead_2 - base$baseline_fit$estimate[1])
     }
+
+    ## else if(isolate(input$mode) == 'range'){
+
+    ##   data <- dg_data$data %>%
+    ##     mutate(bead_1 = bead_1 - base$range,
+    ##            bead_2 = bead_2 - base$range)
+
+    ## } else if(isolate(input$mode) == 'mv'){
+    ##   data <- dg_data$data %>%
+    ##     mutate(bead_1 = bead_1 - base$baseline_fit$estimate[1],
+    ##            bead_2 = bead_2 - base$baseline_fit$estimate[1])
+    ## }
 
       dg <- dygraphs::dygraph(data,  ylab = "nm", xlab = "Seconds",  main = dg_data$title) %>%
         dygraphs::dySeries("bead_1", color = "black") %>%
@@ -592,6 +611,8 @@ mod_clean_data_server <- function(input, output, session, f){
 
 output$move_files <- renderText({
   validate(need(trim_from(), 'Please load data to clean'))
+  req(length(input$dygraph_clean_date_window)==2)
+  ## req(input$dygraph_clean_date_window[[2]] <= nrow(dg_data$data))
   paste0("Move data from ",
          trim_from(),
          "s",
@@ -618,17 +639,21 @@ output$move_files <- renderText({
     
   trim_from <- reactive({
     req(hz())
+    req(input$dygraph_clean_date_window[[1]])
     try(as.numeric(round_any(input$dygraph_clean_date_window[[1]], 1/hz(), f = round)))
   })
 
   trim_to <- reactive({
     req(hz())
+    req(length(input$dygraph_clean_date_window)==2)
+    ## req(dg_data$data)
     try(as.numeric(round_any(input$dygraph_clean_date_window[[2]], 1/hz(), f = round)))
 
   })
 
   output$trim_files <- renderText({
     validate(need(trim_from(), 'Please load data to clean'))
+    req(length(input$dygraph_clean_date_window)==2)
     paste0("Delete data from ",
            trim_from(),
            "s",
@@ -659,7 +684,12 @@ output$move_files <- renderText({
                  hz = hz())
     rv$update_filter <- rv$update_filter + 1
     showNotification("Data trimmed. Graph will refresh.")
-    shinyjs::click('graph')
+
+
+     rv$update_filter <- rv$update_filter + 1
+     f$current_obs <- f$obs$name
+     f$new_obs <- f$new_obs + 1
+     shinyjs::hide('dygraph_clean')
   })
   
   #### Process Data ####
@@ -730,7 +760,7 @@ output$move_files <- renderText({
     shinyWidgets::updateRadioGroupButtons(
       session = session,
       inputId = "mode",
-      choices = c("Volts" = "volts",
+      choices = c("Nanometers" = "nm",
                   "Detrend" = "detrend",
                   "Remove base" = "range"),
       checkIcon = list(
@@ -773,7 +803,7 @@ output$move_files <- renderText({
       shinyWidgets::updateRadioGroupButtons(
         session = session,
         inputId = "mode",
-        choices = c("Volts" = "volts",
+        choices = c("Nanometers" = "nm",
                     "Detrend" = "detrend",
                     "Remove MV" = "mv"),
         checkIcon = list(

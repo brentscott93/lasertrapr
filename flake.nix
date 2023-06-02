@@ -44,7 +44,8 @@
     truncdist
     ggstatsplot
     colourpicker
-    minpack_lm];
+    minpack_lm
+    reactlog];
     in {
       devShells.default = pkgs.mkShell {
         packages = [ pkgs.bashInteractive 
