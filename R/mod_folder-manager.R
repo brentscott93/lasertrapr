@@ -40,7 +40,6 @@ mod_folder_manager_ui <- function(id){
 #' folder_manager Server Function
 #'
 #' @noRd 
-#' @import magrittr
 mod_folder_manager_server <- function(input, output, session, lasertrapr_folder, f){
   ns <- session$ns
   f$ns <- session$ns
@@ -101,7 +100,7 @@ mod_folder_manager_server <- function(input, output, session, lasertrapr_folder,
   
   #output for renderUI select input button with project names
   output$trap_project = renderUI({
-    if(is_empty(project_names) == TRUE){
+    if(rlang::is_empty(project_names) == TRUE){
       selectInput(ns('trap_project_selectInput'), "Select Project", c(Choose='', "Create New..." = "create", selectize = TRUE), width = '500px')
     } else {
       selectInput(ns('trap_project_selectInput'),

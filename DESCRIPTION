@@ -7,11 +7,9 @@ License: MIT + file LICENSE
 Imports: 
     config,
     golem,
-    shiny,
     processx,
-    attempt,
+    shiny,
     DT,
-    glue,
     htmltools,
     shinydashboard,
     shinyWidgets,
@@ -19,28 +17,19 @@ Imports:
     RcppRoll,
     shinyjs,
     pracma,
-    magrittr,
     fresh,
     changepoint,
     gridExtra,
-    gt,
     shinycssloaders,
     hexbin,
     depmixS4,
     RColorBrewer,
     rmarkdown,
     data.table,
-    vroom,
-    survival,
-    survminer,
     cowplot,
-    rstatix,
-    Hmisc,
-    plotrix,
     broom,
     drc,
     truncdist,
-    ggstatsplot,
     colourpicker,
     minpack.lm,
     purrr,
@@ -52,4 +41,6 @@ LazyData: true
 RoxygenNote: 7.2.3
 Suggests: 
     testthat
+    usethis
 Depends: 
+    R (>= 2.10)

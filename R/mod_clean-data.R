@@ -93,7 +93,7 @@ mod_clean_data_ui <- function(id){
     box(title = "Data Trace", width = 12,
     fluidRow(column(12,
  
-               dygraphs::dygraphOutput(ns("dygraph_clean")) %>% shinycssloaders::withSpinner(type = 8, color = "#373B38"),
+               dygraphs::dygraphOutput(ns("dygraph_clean")) |> shinycssloaders::withSpinner(type = 8, color = "#373B38"),
   
       )))), #col, row, box close
     
@@ -130,11 +130,8 @@ mod_clean_data_ui <- function(id){
                    no = tags$i(class = "fa fa-square-o", 
                                style = "color: black"))
                ),
-               textInput(ns('nm2pn'), 
-                         'Trap Stiffness (pN/nm)',
-                         placeholder = 'Equipartition Value'),
-               verbatimTextOutput(ns('current_mv2nm')),
-               actionButton(ns('save'), 
+               uiOutput(ns("save_options")),
+               actionButton(ns('save'),
                             'Save',
                             width = '100%',   
                             icon = icon('save'),
@@ -150,7 +147,7 @@ mod_clean_data_ui <- function(id){
   box(width = 12, title = "Status Table",
       column(12,
              actionButton(ns('status_graph'), 'Update Info table'),
-     DT::DTOutput(ns('info')) %>% shinycssloaders::withSpinner(type = 8, color = "#373B38")
+     DT::DTOutput(ns('info')) |> shinycssloaders::withSpinner(type = 8, color = "#373B38")
       )
   ),
   )
@@ -160,8 +157,7 @@ mod_clean_data_ui <- function(id){
 }
     
 #' clean_data Server Function
-#' @import hexbin stringr data.table
-#' @importFrom magrittr "%<>%"
+#' @import hexbin stringr data.table ggplot2
 #' @noRd 
 
 mod_clean_data_server <- function(input, output, session, f){
@@ -175,6 +171,20 @@ mod_clean_data_server <- function(input, output, session, f){
           req(substring(f$obs_input, 1, 3) == 'obs')
           o$data <- fread(file.path(f$obs$path, "options.csv"))
          })
+
+# save options for single channel data
+  output$save_options <- renderUI({
+        req(substring(f$obs_input, 1, 3) == 'obs')
+        req(o$data)
+        if(!file.exists(file.path(f$obs$path, "header.csv"))){
+            tagList(
+               numericInput(ns('nm2pn'),
+                         label  = 'Trap Stiffness (pN/nm)',
+                         value = 1),
+               verbatimTextOutput(ns('current_mv2nm'))
+            )
+            }
+        })
 
   # decide which nm conversion input to draw
   # depending on options listed in options.csv
@@ -389,14 +399,17 @@ mod_clean_data_server <- function(input, output, session, f){
     all_obs <- list_dir(f$date$path) %>% 
       dplyr::filter(str_detect(name, 'obs')) %>% 
       nrow()
-    
+
+    has_header <- file.exists(file.path(f$obs$path, "header.csv"))
+
     move_obs(trap_selected_date = f$date$path,
              trap_selected_obs = f$obs$path,
              trim_from = trim_from(),
              trim_to = trim_to(),
              f = f,
              trap_obs = all_obs,
-             hz = hz())
+             hz = hz(),
+             has_header = has_header)
     
      rv$update_filter <- rv$update_filter + 1
      f$current_obs <- f$obs$name
@@ -523,24 +536,24 @@ mod_clean_data_server <- function(input, output, session, f){
     } else if(isolate(input$mode) == 'detrend'){
       
       break_pts <- seq(hz()*5, nrow(dg_data$data), by = hz()*5)
-      data <- isolate(dg_data$data) %>%
-        mutate(bead = as.vector(pracma::detrend(bead, tt = "linear", bp = break_pts)))
+      data <- isolate(dg_data$data)
+      data[, bead := as.vector(pracma::detrend(bead, tt = "linear", bp = break_pts)) ]
       
     } else if(isolate(input$mode) == 'range'){
       
-      data <- isolate(dg_data$data) %>%
-        mutate(bead = bead - base$range)
+      data <- isolate(dg_data$data)
+      data[, bead := bead - base$range]
       
     } else if(isolate(input$mode) == 'mv'){
-      data <- isolate(dg_data$data) %>%
-        mutate(bead = bead - base$baseline_fit$estimate[1])
+      data <- isolate(dg_data$data)
+      data[, bead := bead - base$baseline_fit$estimate[1] ]
     }
     if(isolate(input$mv2nm) == 1){
       
-      dg <- dygraphs::dygraph(data = data,  ylab = "V", xlab = "Seconds",  main = dg_data$title) %>%
-        dygraphs::dySeries("bead", color = "black") %>%
-        dygraphs::dyRangeSelector(fillColor ="", strokeColor = "black") %>%
-        dygraphs::dyUnzoom() %>%
+      dg <- dygraphs::dygraph(data = data,  ylab = "V", xlab = "Seconds",  main = dg_data$title) |>
+        dygraphs::dySeries("bead", color = "black") |>
+        dygraphs::dyRangeSelector(fillColor ="", strokeColor = "black") |>
+        dygraphs::dyUnzoom() |>
         dygraphs::dyOptions(axisLabelColor = "black",
                             gridLineColor = "black",
                             axisLineColor = "black",
@@ -548,10 +561,10 @@ mod_clean_data_server <- function(input, output, session, f){
                             axisLabelFontSize = 15,
                             drawGrid = FALSE)
     } else {
-      dg <- dygraphs::dygraph(data = data,  ylab = "nm", xlab = "Seconds",  main = dg_data$title) %>%
-        dygraphs::dySeries("bead", color = "black") %>%
-        dygraphs::dyRangeSelector(fillColor ="", strokeColor = "black") %>%
-        dygraphs::dyUnzoom() %>%
+      dg <- dygraphs::dygraph(data = data,  ylab = "nm", xlab = "Seconds",  main = dg_data$title) |>
+        dygraphs::dySeries("bead", color = "black") |>
+        dygraphs::dyRangeSelector(fillColor ="", strokeColor = "black") |>
+        dygraphs::dyUnzoom() |>
         dygraphs::dyOptions(axisLabelColor = "black",
                             gridLineColor = "black",
                             axisLineColor = "black",
@@ -569,8 +582,8 @@ mod_clean_data_server <- function(input, output, session, f){
     } else if(isolate(input$mode) == 'detrend'){
 
       break_pts <- seq(hz()*5, nrow(dg_data$data), by = hz()*5)
-      data <- dg_data$data %>%
-        mutate(bead_1 = as.vector(pracma::detrend(bead_1, tt = "linear", bp = break_pts)),
+      data <- dg_data$data |>
+        dplyr::mutate(bead_1 = as.vector(pracma::detrend(bead_1, tt = "linear", bp = break_pts)),
                bead_2 = as.vector(pracma::detrend(bead_2, tt = "linear", bp = break_pts)))
 
     }
@@ -587,11 +600,11 @@ mod_clean_data_server <- function(input, output, session, f){
     ##            bead_2 = bead_2 - base$baseline_fit$estimate[1])
     ## }
 
-      dg <- dygraphs::dygraph(data,  ylab = "nm", xlab = "Seconds",  main = dg_data$title) %>%
-        dygraphs::dySeries("bead_1", color = "black") %>%
-        dygraphs::dySeries("bead_2", color = "red") %>%
-        dygraphs::dyRangeSelector(fillColor ="", strokeColor = "black") %>%
-        dygraphs::dyUnzoom() %>%
+      dg <- dygraphs::dygraph(data,  ylab = "nm", xlab = "Seconds",  main = dg_data$title) |>
+        dygraphs::dySeries("bead_1", color = "black") |>
+        dygraphs::dySeries("bead_2", color = "red") |>
+        dygraphs::dyRangeSelector(fillColor ="", strokeColor = "black") |>
+        dygraphs::dyUnzoom() |>
         dygraphs::dyOptions(axisLabelColor = "black",
                             gridLineColor = "black",
                             axisLineColor = "black",
@@ -605,6 +618,7 @@ mod_clean_data_server <- function(input, output, session, f){
 
   output$dygraph_clean <- dygraphs::renderDygraph({
     req(trap_data_trace())
+    ## req(nrow(trap_data_trace())==rv$filter_max)
     ## validate(need(names(trap_data_trace$dygraph) %in% c("bead", "time_sec")), "Please select an obs and click graph to update.")
     trap_data_trace()
   })
@@ -682,14 +696,14 @@ output$move_files <- renderText({
                  trim_to = trim_to(),
                  f = f, 
                  hz = hz())
-    rv$update_filter <- rv$update_filter + 1
+    ## rv$update_filter <- rv$update_filter + 1
     showNotification("Data trimmed. Graph will refresh.")
 
 
+     shinyjs::hide('dygraph_clean')
      rv$update_filter <- rv$update_filter + 1
      f$current_obs <- f$obs$name
      f$new_obs <- f$new_obs + 1
-     shinyjs::hide('dygraph_clean')
   })
   
   #### Process Data ####
@@ -738,8 +752,8 @@ output$move_files <- renderText({
                         ui = 'No obs selected', 
                         type = 'error' )
 
-    a <- attempt::attempt(is.numeric(input$dygraph_clean_date_window[[1]]))
-    defend_if(attempt::is_try_error(a), ui =  showNotification('Load data before calculating baseline range'), type = 'error')
+    ## a <- attempt::attempt(is.numeric(input$dygraph_clean_date_window[[1]]))
+    allow_if(is.numeric(input$dygraph_clean_date_window[[1]]), ui =  showNotification('Load data before calculating baseline range'), type = 'error')
   
     if(length(input$dygraph_clean_date_window[[1]]:input$dygraph_clean_date_window[[2]]) > 10){
       showNotification('Baseline range selection too long. Make a selection less than 10 seconds.', type = 'error')
@@ -749,8 +763,8 @@ output$move_files <- renderText({
    
      if(var(dg_data$data$bead) == 1) showNotification('Current mV-to-nm is 1. Do you need to enter a conversion value?', type = 'warning')
     # req(var(dg_data$data$bead) > 5)
-    base$range_df <- dg_data$data %>% 
-      dplyr::filter(between(time_sec, as.numeric(trim_from()), as.numeric(trim_to())))
+    base$range_df <- dg_data$data |>
+      dplyr::filter(dplyr::between(time_sec, as.numeric(trim_from()), as.numeric(trim_to())))
     
     base$range <- mean(base$range_df$bead)
     
@@ -853,7 +867,7 @@ output$move_files <- renderText({
     mv_df  <- base$mv_df 
     #baseline data and fit to density fit
     baseline <- dplyr::filter(mv_df, dplyr::between(mean, input$mv_brush$xmin, input$mv_brush$xmax) & dplyr::between(var, input$mv_brush$ymin, input$mv_brush$ymax))
-    req(!is_empty(baseline$mean))
+    req(!rlang::is_empty(baseline$mean))
     baseline_fit <- MASS::fitdistr(baseline$mean, 'normal')
     #return values to reactive list
     base$baseline <- baseline
@@ -889,25 +903,26 @@ output$move_files <- renderText({
     #test that mv to nm is a number
     defend_if_blank(input$mv2nm, ui = 'Enter step cal', type = 'error')
 
-    mv2nm_test <- attempt::attempt(as.numeric(input$mv2nm))
-    if(attempt::is_try_error(mv2nm_test)) showNotification('nm to pN converion not a number', type = 'error')
-    req(!attempt::is_try_error(mv2nm_test))
+    ## mv2nm_test <- attempt::attempt(as.numeric(input$mv2nm))
+    ## if(attempt::is_try_error(mv2nm_test)) showNotification('nm to pN converion not a number', type = 'error')
+    ## req(!attempt::is_try_error(mv2nm_test))
     
     #test that mv to nm is a number
     defend_if_blank(input$nm2pn, ui = 'Enter trap stiffness', type = 'error')
    
-    nm2pn_test <- attempt::attempt(as.numeric(input$nm2pn))
-    if(attempt::is_try_error(nm2pn_test)) showNotification('nm to pN converion not a number', type = 'error')
-    req(!attempt::is_try_error(nm2pn_test))
+    ## nm2pn_test <- attempt::attempt(as.numeric(input$nm2pn))
+    ## if(attempt::is_try_error(nm2pn_test)) showNotification('nm to pN converion not a number', type = 'error')
+    ## req(!attempt::is_try_error(nm2pn_test))
     
     withProgress(message = 'Saving Data', {
+      if(o$data$channels == 1){
       current_obs <- f$obs$path
       
-      trap_data <- list_files(current_obs) %>%
-        dplyr::filter(str_detect(name, "trap-data.csv")) %>%
+      trap_data <- list_files(current_obs) |>
+        dplyr::filter(str_detect(name, "trap-data.csv")) |>
         dplyr::pull(path)
       
-       data <- data.table::fread(trap_data, sep = ",") %>% 
+       data <- data.table::fread(trap_data, sep = ",") |>
                 dplyr::mutate(processed_bead = raw_bead*as.numeric(input$mv2nm))
        
       setProgress(0.3)
@@ -916,15 +931,15 @@ output$move_files <- renderText({
        
        break_pts <- seq(hz()*5, nrow(dg_data$data), by = hz()*5)
        
-          data %<>% dplyr::mutate(processed_bead = as.vector(pracma::detrend(processed_bead, tt = "linear", bp = break_pts)))
+          data <- dplyr::mutate(data, processed_bead = as.vector(pracma::detrend(processed_bead, tt = "linear", bp = break_pts)))
        
      } else if(input$how_to_process == 'remove_base'){
        
-         data %<>% dplyr::mutate(processed_bead = processed_bead - base$range)
+         data <- dplyr::mutate(data, processed_bead = processed_bead - base$range)
        
      } else if(input$how_to_process == 'remove_mv'){
        
-        data %<>% dplyr::mutate(processed_bead = processed_bead - base$baseline_fit$estimate[1])
+        data <- dplyr::mutate(data, processed_bead = processed_bead - base$baseline_fit$estimate[1])
      }
       
       if(input$include == 'No'){
@@ -933,29 +948,46 @@ output$move_files <- renderText({
          input_include <- TRUE
        }
       
-      o <- list.files(path = f$obs$path, 
+      opt <- list.files(path = f$obs$path,
                       pattern = "options.csv",
                       full.names = TRUE)
-      o <- fread(o)
-      
-      o %<>%  dplyr::mutate(processor = input$how_to_process, 
-                            mv2nm = as.numeric(input$mv2nm),
-                            nm2pn = as.numeric(input$nm2pn),
-                            include = input_include)
+      opt <- fread(opt)
+      opt[, `:=`(processor = input$how_to_process,
+               mv2nm = as.numeric(input$mv2nm),
+               nm2pn = as.numeric(input$nm2pn),
+               include = input_include)
+        ]
 
      setProgress(0.5)
      
      data.table::fwrite(data, file = file.path(f$obs$path, 'trap-data.csv'), sep = ",")
-     data.table::fwrite(o, file = file.path(f$obs$path, 'options.csv'), sep = ",")
+     data.table::fwrite(opt, file = file.path(f$obs$path, 'options.csv'), sep = ",")
      
      setProgress(0.75)
 
-     golem::print_dev( logger[[as.character(input$save)]] )
+     }  else {
+
+     setProgress(0.5)
+      opt <- list.files(path = f$obs$path,
+                      pattern = "options.csv",
+                      full.names = TRUE)
+      opt <- fread(opt)
+      opt[, `:=`(processor = input$how_to_process,
+                 include = input_include)
+        ]
+
+      data.table::fwrite(opt, file = file.path(f$obs$path, 'options.csv'), sep = ",")
+
+     setProgress(0.75)
+
+      }
+
+     ## golem::print_dev( logger[[as.character(input$save)]] )
      all_trap_paths <- list_files(f$date$path, pattern = 'options.csv', recursive = T)
      
      setProgress(0.9)
     
-     status$df <- map_df(all_trap_paths$path, ~data.table::fread(., 
+     status$df <- purrr::map_df(all_trap_paths$path, ~data.table::fread(.,
                                                                  sep = ",",
                                                                  select = c("obs", "processor", "mv2nm", "nm2pn", "include"),
                                                                  nrows = 1))
@@ -971,7 +1003,7 @@ output$move_files <- renderText({
     all_trap_paths <- list_files(f$date$path, pattern = 'options.csv', recursive = T)
     defend_if_empty(all_trap_paths, ui = "No 'options.csv' files in date folder yet. Start by loading date with 'Upload Data'",  type = 'error')
     golem::print_dev(all_trap_paths$path)
-    status$df <- map_df(all_trap_paths$path, ~data.table::fread(.,
+    status$df <- purrr::map_df(all_trap_paths$path, ~data.table::fread(.,
                                                                 sep = ",",
                                                                 select = c("obs", "processor", "mv2nm", "nm2pn", "include"),
                                                                 nrows = 1))
@@ -985,13 +1017,13 @@ output$move_files <- renderText({
  
   output$info <- DT::renderDT({
     req(status$df)
-    status$df %>% 
+    status$df |>
       rename('Obs' = obs,
              'Processor' = processor,
              'mV-to-nm' = mv2nm,
              'nm-to-pN' = nm2pn,
-             'Include' = include) %>% 
-      DT::datatable() %>% 
+             'Include' = include) |>
+      DT::datatable() |>
       DT::formatStyle('Include', 
                       color = DT::styleEqual(c(F, T), c('red', 'black'))
       )

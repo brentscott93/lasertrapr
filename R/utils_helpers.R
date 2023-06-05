@@ -13,11 +13,11 @@ ms_to_dp <- function(x, hz = 5000){
 #'
 #' @param ... arguments to list.files function
 #'
-#' @return a 2 column tibble
+#' @return a 2 column df
 #' @noRd
 list_files <- function(...){
-  tibble::tibble(name = list.files(full.names = FALSE, ...),
-         path = list.files(full.names = TRUE, ...))
+  data.frame(name = list.files(full.names = FALSE, ...),
+             path = list.files(full.names = TRUE, ...))
 }
 
 #' List folders into tibble
@@ -25,13 +25,14 @@ list_files <- function(...){
 #' @param ... arguments to dir function
 #' @noRd
 list_dir <- function(path){
-  tibble::tibble(name = list.dirs(path = path, full.names = FALSE, recursive = F),
-         path = list.dirs(path = path, full.names = TRUE, recursive = F))
+  data.frame(name = list.dirs(path = path, full.names = FALSE, recursive = F),
+             path = list.dirs(path = path, full.names = TRUE, recursive = F))
 }
 
 #' Extract date time from trap data files
 #'
 #' @param x A laser trap raw data file name
+#' @return special function for debold lab
 #' @noRd
 str_trap <- function(x){
   
@@ -62,8 +63,7 @@ round_any <- function(x, accuracy, f=round){
 #' @param x a dygraph object (usually piped in)
 #' @param events a vector x-axis markers
 #' @param ... additional arguments to dyEvent
-#' 
-#' @export
+#' @noRd
 add_labels <- function(x, events, ...){
   for(event in 1:length(events)){
     x <- dygraphs::dyEvent(x, events[[event]], paste0("F", event), ...)
@@ -71,6 +71,7 @@ add_labels <- function(x, events, ...){
   x
 }
 
+#'@noRd
 add_labels_hmm <- function(x, events, ...){
   for(event in 1:length(events$peak_nm_index)){
     x <- dygraphs::dyEvent(x, events$peak_nm_index[[event]], 
@@ -81,6 +82,7 @@ add_labels_hmm <- function(x, events, ...){
   x
 }
 
+#'@noRd
 add_labels_mini <- function(x, events, hz, ...){
   for(event in 1:length(events$peak_nm_index)){
     x <- dygraphs::dyEvent(x, events$peak_nm_index[[event]]/hz, 
@@ -97,8 +99,7 @@ add_labels_mini <- function(x, events, hz, ...){
 #' @param x A dygraph object (usually piped in)
 #' @param periods A df with start and stop pairs to mark the shaded areas
 #' @param ... additional arguments to dyEvent
-#'
-#' @export
+#' @noRd
 add_shades <- function(x, periods, ...){
   for(p in 1:nrow(periods)){
     x <- dygraphs::dyShading(x, from = periods$start[[p]], to = periods$stop[[p]], color = periods$color[[p]], ...)
@@ -140,21 +141,22 @@ get_info_table <- function(f_date, f_date_input){
  
   df <- data.table::fread(all_trap_paths$path, sep = ",")
   if('hm_overlay' %not_in% colnames(df)){
-    df %<>% tidyr::nest(data = c(raw_bead, processed_bead)) %>% 
+    df <- tidyr::nest(df, data = c(raw_bead, processed_bead)) %>%
     dplyr::select(!data)
   } else {
-    df %<>% tidyr::nest(data = c(raw_bead, processed_bead, hm_overlay)) %>% 
+    df <- tidyr::nest(df, data = c(raw_bead, processed_bead, hm_overlay)) %>%
       dplyr::select(!data)
   }
 }
 
 #' Plot trap data with ID'd events
 #'
-#' @param obs_path 
-#' @param time_period_dp 
-#' @param color 
-#' @param axes 
+#' @param obs_path character string of a file path to a lasertrapr observation folder
+#' @param time_period_dp numeric vector of length 2 which denotes start/end of the trace to plot
+#' @param color character string of a valid hex color
 #' @export
+#' @return a ggplot object
+#' @import data.table ggplot2
 plot_overlay <- function(obs_path, time_period_dp, color){
    # obs_path <- "~/lasertrapr/project_myoV-phosphate/myoV-WT_pH-7.0_0mM-Pi/2020-06-25/obs-14"
    # time_period_dp <- c(500/5000, 25000/5000)
@@ -193,9 +195,10 @@ plot_overlay <- function(obs_path, time_period_dp, color){
                                   select = "processed_bead")
    trap_data <- trap_data[time_period_dp[[1]]:time_period_dp[[2]],]
    
-   trap_data %<>% mutate(real_time_index = time_period_dp[[1]]:time_period_dp[[2]],
-                       new_time_index = 1:nrow(trap_data),
-                       population = "baseline")
+  trap_data <- dplyr::mutate(trap_data,
+                             real_time_index = time_period_dp[[1]]:time_period_dp[[2]],
+                             new_time_index = 1:nrow(trap_data),
+                             population = "baseline")
    
    measured_events <- data.table::fread(measured_events_path)
    measured_events <- dplyr::filter(measured_events, 
@@ -239,23 +242,6 @@ ggplot(all_data, aes(new_time_index/hz, processed_bead, color = population))+
     axis.text = element_blank()
   )
 
-  #  if(axes){
-  #   par(mar=c(2, 2, 2, 2))
-  #   plot(trap_data$processed_bead, type = "l", axes = FALSE, xlab = "", ylab = "")
-  #   axis(2, seq(-100, 100, by = 20))
-  #   axis(1)
-  #   box(bty = "l", lwd = 1.1)
-  # }  else {
-  #   par(mar=c(0, 0, 0, 0))
-  #   plot(trap_data$processed_bead, type = "l", axes = FALSE, xlab = "", ylab = "")
-  # }
-  # 
-  # for(i in 1:nrow(measured_events)){
-  #  start <- measured_events$cp_event_start_dp[[i]]
-  #  stop <- measured_events$cp_event_stop_dp[[i]]
-  #  event_data <-  trap_data[start:stop,]
-  #  lines(start:stop, event_data$processed_bead, col = "red", lwd = 1.25)
-  # }
 }
     
     
@@ -335,7 +321,7 @@ allow_if <- function(.if, is_shiny = T, ...){
 #' Defends shiny app if object is_empty(x)
 #' @noRd
 defend_if_empty <- function(x, ...){
-  if(rlang::is_empty(x)) showNotification(...)
+  if(rlang::is_empty(x)) shiny::showNotification(...)
   req(!rlang::is_empty(x))
 }
 

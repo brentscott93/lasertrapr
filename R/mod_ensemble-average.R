@@ -282,9 +282,9 @@ mod_ensemble_average_server <- function(input, output, session, f){
          
          
          bwards <- merge(ee$fits$backwards, forward_length, by = "conditions")
-         bwards[, predict_backwards_shift := map2(predict_backwards, 
+         bwards[, predict_backwards_shift := purrr::map2(predict_backwards,
                                                   total_time_dp,
-                                                  ~mutate(.x, time_shifted = time+ (2*(.y/ee$hz)))) ]
+                                                  ~dplyr::mutate(.x, time_shifted = time+ (2*(.y/ee$hz)))) ]
          
          
          ee$backwards_predict_df <- bwards[, predict_backwards_shift[[1]] , by = conditions]

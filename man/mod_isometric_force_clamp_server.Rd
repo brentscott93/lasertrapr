@@ -2,10 +2,12 @@
 % Please edit documentation in R/mod_isometric_force_clamp.R
 \name{mod_isometric_force_clamp_server}
 \alias{mod_isometric_force_clamp_server}
-\title{isometric_force_clamp Server Functions}
+\title{isometric_force_clamp Server Functions
+Status' = status,}
 \usage{
 mod_isometric_force_clamp_server(input, output, session, f)
 }
 \description{
 isometric_force_clamp Server Functions
+Status' = status,
 }
