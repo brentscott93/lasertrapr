@@ -4,7 +4,7 @@
 #'
 #' @param id,input,output,session Internal parameters for {shiny}.
 #'
-#' @noRd 
+#' @noRd
 #'
 #' @importFrom shiny NS tagList 
 mod_isometric_force_clamp_ui <- function(id){
@@ -126,12 +126,9 @@ mod_isometric_force_clamp_ui <- function(id){
 }
     
 #' isometric_force_clamp Server Functions
-#'
-#' @noRd 
+# '@noRd
 mod_isometric_force_clamp_server <- function(input, output, session, f){
     ns <- session$ns
-
-
     hm <- reactiveValues(analyze = 0)
 
   observeEvent(input$analyze_trap, {
@@ -561,7 +558,7 @@ mod_isometric_force_clamp_server <- function(input, output, session, f){
     })
 
     observeEvent(input$set_review_options, {
-      if(!is_empty(input$exclude_event_manual)){
+      if(!rlang::is_empty(input$exclude_event_manual)){
        excluded_data <- trap_data()$events
        if(input$include_exclude == "exclude"){
        excluded_data$event_user_excluded[as.numeric(input$exclude_event_manual)] <- TRUE

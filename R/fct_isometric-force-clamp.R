@@ -68,7 +68,7 @@ isometric_force_clamp_analysis <- function(trap_data,
           stop("User Excluded")
         }
 
-        not_ready <- is_empty(trap_data$processed_bead)
+        not_ready <- rlang::is_empty(trap_data$processed_bead)
         if(not_ready){
           if(is_shiny) showNotification(paste0(trap_data$obs, ' not processed. Skipping...'), type = 'warning')
           stop('Data not processed')

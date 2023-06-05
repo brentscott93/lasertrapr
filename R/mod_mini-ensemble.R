@@ -258,7 +258,7 @@ mod_mini_ensemble_server <- function(input, output, session, f){
     defend_if_empty(f$date, ui = 'Please select a date folder', type = 'error')
     showNotification('Refreshing table', type = 'message')
     files <- list_files(f$date$path, pattern = 'options.csv', recursive = TRUE)
-    map_df(files$path, ~data.table::fread(., 
+    purrr::map_df(files$path, ~data.table::fread(.,
                                           sep = ",",
                                           select = c("obs", "include", "analyzer", "report", "review"),
                                           nrows = 1))
@@ -292,8 +292,8 @@ mod_mini_ensemble_server <- function(input, output, session, f){
     defend_if_blank(f$obs_input, ui = 'Please select an obs folder', type = 'error')
     
     filenames <- c('trap-data.csv', 'measured-events.csv', 'options.csv')
-    paths <- map(filenames, ~list_files(f$obs$path, pattern = .x))
-    data <-  map(paths, ~data.table::fread(.x$path))
+    paths <- purrr::map(filenames, ~list_files(f$obs$path, pattern = .x))
+    data <-  purrr::map(paths, ~data.table::fread(.x$path))
     names(data) <- c('trap', 'events', 'options')
     data
   })

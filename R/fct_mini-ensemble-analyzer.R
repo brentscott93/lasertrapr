@@ -56,7 +56,7 @@ mini_ensemble_analyzer <- function(opt, w_width_ms = 10, displacement_threshold 
                                obs, 
                                'trap-data.csv')
     trap_data <- data.table::fread(trap_data_path)
-    not_ready <- is_empty(trap_data$processed_bead)
+    not_ready <- rlang::is_empty(trap_data$processed_bead)
     if(not_ready){
       if(is_shiny) showNotification(paste0(trap_data$obs, ' not processed. Skipping...'), type = 'warning')
       stop('Data not processed')
@@ -203,8 +203,9 @@ mini_ensemble_analyzer <- function(opt, w_width_ms = 10, displacement_threshold 
    report_data = 'success'
    
    setProgress(0.95, detail = 'Saving Data')
-   trap_data %<>% 
-     mutate(rescaled_mini_data = rescaled_raw_data$data,
+   trap_data <-
+     mutate(trap_data,
+            rescaled_mini_data = rescaled_raw_data$data,
             run_mean_overlay = c(run_mean_rescaled0, rep(0, times)))
    
    options_df <-
@@ -280,7 +281,7 @@ id_mini_events <- function(run_mean, displacement_threshold, time_threshold){
       #if starts in state2/event get rid of it
       if(rle_object$values[[1]] == 2){
         add_to_s1 <- rle_object$lengths[[1]]
-        rle_object %<>% slice(2:nrow(rle_object))
+        rle_object <- rle_object |> dplyr::slice(2:nrow(rle_object))
         rle_object$lengths[[1]] <- rle_object$lengths[[1]] + add_to_s1
       }
       

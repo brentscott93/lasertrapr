@@ -180,7 +180,7 @@ mod_summarize_server <- function(input, output, session, f){
       
       summary_data <- merge(summary_data, tt, by = "conditions", all = TRUE)
       
-      walk2(list(all_measured_events, summary_data), 
+      purrr::walk2(list(all_measured_events, summary_data),
             c("all-measured-events.csv", "summary-data.csv"),
            ~ data.table::fwrite(.x, 
                                file.path(summary_folder, 
@@ -194,7 +194,8 @@ mod_summarize_server <- function(input, output, session, f){
       golem::print_dev("before colors")
       plot_colors <- purrr::map_chr(paste0('color', seq_along(conditions())), ~input[[.x]])
       setProgress(0.6, detail = "Step Stats")
-        rv$step <-  ggstatsplot::ggbetweenstats(rv$all_measured_events,
+        rv$step <-
+          ggstatsplot::ggbetweenstats(rv$all_measured_events,
                        x = conditions, 
                        y = displacement_nm,
                        ylab = "nanometers",
@@ -247,11 +248,11 @@ mod_summarize_server <- function(input, output, session, f){
                                    centrality.point.args = list(size = 5, color = "grey10"),
                                    ggtheme = theme_cowplot())
       setProgress(0.8, detail = "Time On ECDF")
-      rv$ton_ecdf <- time_on_ecdf(event_files_filtered = rv$all_measured_events,
-                                   plot_colors = plot_colors)
+      ## rv$ton_ecdf <- time_on_ecdf(event_files_filtered = rv$all_measured_events,
+      ##                              plot_colors = plot_colors)
       setProgress(0.85, detail = "Time Off ECDF")
-      rv$toff_ecdf <- time_off_ecdf(event_files_filtered = rv$all_measured_events,
-                                  plot_colors = plot_colors)
+      ## rv$toff_ecdf <- time_off_ecdf(event_files_filtered = rv$all_measured_events,
+      ##                             plot_colors = plot_colors)
       # setProgress(0.85, detail = "Event Frequency")
       # rv$ef <- stats_plot_event_frequency(event_file_path = rv$data$event_file_path, 
       #                                     factor_order = input$factor_order,

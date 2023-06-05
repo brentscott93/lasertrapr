@@ -6,12 +6,12 @@ options(golem.app.prod = FALSE,
 golem::detach_all_attached()
 rm(list=ls(all.names = TRUE))
 
-# Document and reload your package
+                                        # Document and reload your package
 golem::document_and_reload()
 
 # tell shiny to log all reactivity
-reactlog::reactlog_enable()
+## reactlog::reactlog_enable()
 # Run the application
 run_app()
 
-shiny::reactlogShow()
+## shiny::reactlogShow()

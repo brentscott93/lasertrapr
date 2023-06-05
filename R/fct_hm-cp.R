@@ -74,7 +74,7 @@ hidden_markov_changepoint_analysis <- function(trap_data,
           stop("User Excluded")
         }
       
-        not_ready <- is_empty(trap_data$processed_bead)
+        not_ready <- rlang::is_empty(trap_data$processed_bead)
         if(not_ready){
           if(is_shiny) showNotification(paste0(trap_data$obs, ' not processed. Skipping...'), type = 'warning')
           stop('Data not processed')
@@ -208,18 +208,19 @@ hidden_markov_changepoint_analysis <- function(trap_data,
         hmm_overlay <- bind_rows(s1_avg_4plot, s2_avg_4plot) %>%
           arrange(state_order)
 
-        overlay <- unlist(map2(hmm_overlay$avg,
+        overlay <- unlist(purrr::map2(hmm_overlay$avg,
                                measured_hm_events$viterbi_rle$lengths,
                                ~rep(.x, times = conversion * .y)))
         
         overlay <- c(overlay, rep(overlay[length(overlay)], length(processed_data) - length(overlay)))
         
-        if(measured_hm_events$did_it_flip) hm_model_results %<>% mutate(run_mean = run_mean * -1)
+        if(measured_hm_events$did_it_flip) hm_model_results <- dplyr::mutate(hm_model_results, run_mean = run_mean * -1)
   
         report_data  <- "success"
         
-        trap_data %<>% 
-          dplyr::mutate(processed_bead =  measured_hm_events$flip_raw,
+        trap_data <-
+          dplyr::mutate(trap_data,
+                        processed_bead =  measured_hm_events$flip_raw,
                         hm_overlay = overlay)
         
         opt_df <- as.data.frame(opt)

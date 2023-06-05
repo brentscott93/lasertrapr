@@ -7,13 +7,14 @@
 plot_overlay(obs_path, time_period_dp, color)
 }
 \arguments{
-\item{obs_path}{}
+\item{obs_path}{character string of a file path to a lasertrapr observation folder}
 
-\item{time_period_dp}{}
+\item{time_period_dp}{numeric vector of length 2 which denotes start/end of the trace to plot}
 
-\item{color}{}
-
-\item{axes}{}
+\item{color}{character string of a valid hex color}
+}
+\value{
+a ggplot object
 }
 \description{
 Plot trap data with ID'd events

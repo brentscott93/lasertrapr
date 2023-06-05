@@ -150,7 +150,6 @@ mod_hm_model_ui <- function(id){
     
 #' hm_model Server Function
 #' @noRd
-#' @importFrom magrittr "%<>%"
 #' @param input,output,session,f module parameters
 mod_hm_model_server <- function(input, output, session, f){
  ns <- session$ns
@@ -213,8 +212,8 @@ mod_hm_model_server <- function(input, output, session, f){
     defend_if_blank(f$obs_input, ui = 'Please select an obs folder', type = 'error')
   
     filenames <- c('trap-data.csv', 'measured-events.csv', 'hm-model-data.csv', 'options.csv')
-    paths <- map(filenames, ~list_files(f$obs$path, pattern = .x))
-    data <-  map(paths, ~data.table::fread(.x$path))
+    paths <- purrr::map(filenames, ~list_files(f$obs$path, pattern = .x))
+    data <-  purrr::map(paths, ~data.table::fread(.x$path))
     names(data) <- c('trap', 'events', 'running', 'options')
     data
   })
@@ -352,7 +351,7 @@ mod_hm_model_server <- function(input, output, session, f){
     defend_if_empty(f$date, ui = 'Please select a date folder', type = 'error')
     showNotification('Refreshing table', type = 'message')
     files <- list_files(f$date$path, pattern = 'options.csv', recursive = T)
-    map_df(files$path, ~data.table::fread(.,
+    purrr::map_df(files$path, ~data.table::fread(.,
                                           select = c("obs", "include", "analyzer", "report", "review"),
                                            nrows = 1))
   }) 
@@ -647,7 +646,7 @@ mod_hm_model_server <- function(input, output, session, f){
       ro$front_signal_ratio <- input$front_signal_ratio
       ro$back_signal_ratio <- input$back_signal_ratio
       golem::print_dev("before if")
-      if(!is_empty(input$exclude_event_manual)){
+      if(!rlang::is_empty(input$exclude_event_manual)){
        excluded_data <- trap_data()$events
        golem::print_dev("setting val true")
        if(input$include_exclude == "exclude"){

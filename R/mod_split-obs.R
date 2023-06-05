@@ -5,318 +5,315 @@
 #' @param id,input,output,session Internal parameters for {shiny}.
 #'
 #' @noRd 
-#' @import magrittr shinyFiles
+#' @import shinyFiles
 #' @importFrom shiny NS tagList 
 
 mod_split_obs_ui <- function(id){
   ns <- NS(id)
   tagList(
-     
-      fluidRow(box(width = 3,
-                   collapsible = TRUE, collapsed = FALSE,
-                           title = "Upload Data",
-                           #h4(strong("Make Trap Observations")),
-                           #strong(h5("1) Select Raw Data Files")),
-                           shinyWidgets::radioGroupButtons(
-                             inputId = ns("upload_method"),
-                             label = 'Method',
-                             choices = c("Upload" = "upload",
-                                         "Split Obs" = "split_obs"),
-                             direction = "horizontal",
-                             width = "100%",
-                             justified = TRUE,
-                             checkIcon = list(
-                               yes = tags$i(class = "fa fa-check-square",
-                                            style = "color: black"),
-                               no = tags$i(class = "fa fa-square-o",
-                                           style = "color: black"))
-                           ),          
-                           
+
+    fluidRow(box(width = 3,
+                 collapsible = TRUE, collapsed = FALSE,
+                 title = "Upload Data",
+                 shinyWidgets::radioGroupButtons(
+                                 inputId = ns("upload_method"),
+                                 label = 'Method',
+                                 choices = c("Upload" = "upload",
+                                             "Split Obs" = "split_obs"),
+                                 direction = "horizontal",
+                                 width = "100%",
+                                 justified = TRUE,
+                                 checkIcon = list(
+                                   yes = tags$i(class = "fa fa-check-square",
+                                                style = "color: black"),
+                                   no = tags$i(class = "fa fa-square-o",
+                                               style = "color: black"))
+                               ),
+
                  conditionalPanel(
                    condition = " input.upload_method == 'upload'", ns = ns,
 
                    fluidRow(
-                       column(12,
-                              shinyFiles::shinyFilesButton(ns("file_input"),
-                                               label = "Browse for file...",
-                                               title = "Select one or more file",
-                                               multiple = TRUE,
-                                               style = "width: 100%; margin-bottom: 5px;"),
-                              )
+                     column(12,
+                            shinyFiles::shinyFilesButton(ns("file_input"),
+                                                         label = "Browse for file...",
+                                                         title = "Select one or more file",
+                                                         multiple = TRUE,
+                                                         style = "width: 100%; margin-bottom: 5px;"),
+                            )
                    ),
                    fluidRow(
-                       column(6,
-                              
-                    shinyWidgets::radioGroupButtons(
-                             inputId = ns("channels"),
-                             label = 'Number of Channels',
-                             choices = c(1, 2),
-                             direction = "horizontal",
-                             width = "100%",
-                             justified = TRUE,
-                             checkIcon = list(
-                               yes = tags$i(class = "fa fa-check-square",
-                                            style = "color: black"),
-                               no = tags$i(class = "fa fa-square-o",
-                                           style = "color: black"))
-                             )),
-                       column(6,style =  "padding-top: 32px;",
-                                shinyWidgets::prettyCheckbox(ns("in_header"), 
-                                                       "Cal in header?",
-                                                       value = FALSE, 
-                                                       outline = TRUE, 
-                                                       shape = "curve",
-                                                     status = "primary" ))
+                     column(6,
+
+                            shinyWidgets::radioGroupButtons(
+                                            inputId = ns("channels"),
+                                            label = 'Number of Channels',
+                                            choices = c(1, 2),
+                                            direction = "horizontal",
+                                            width = "100%",
+                                            justified = TRUE,
+                                            checkIcon = list(
+                                              yes = tags$i(class = "fa fa-check-square",
+                                                           style = "color: black"),
+                                              no = tags$i(class = "fa fa-square-o",
+                                                          style = "color: black"))
+                                          )),
+                     column(6,style =  "padding-top: 32px;",
+                            shinyWidgets::prettyCheckbox(ns("in_header"),
+                                                         "Cal in header?",
+                                                         value = FALSE,
+                                                         outline = TRUE,
+                                                         shape = "curve",
+                                                         status = "primary" ))
 
                    ),
 
-  
+
                    conditionalPanel(
-                       condition = "input.in_header == true", ns = ns,
-                       fluidRow(
-                           column(6,
-                                  numericInput(ns("header_size"),
-                                               label = "Header Size",
-                                               value = 68,
-                                               step = 1)),
-                           column(6,
-                           numericInput(ns("header_hz"),
-                                    label = "Hz",
-                                    value = 15,
-                                    step = 1))
-                           ),
-                       fluidRow(
-                           column(6, 
-                           numericInput(ns("header_nm_v1"),
-                                    label = "nm/V",
-                                    value = 22,
-                                    step = 1,
-                                    width = "100%")),
-                           column(6,
-                           numericInput(ns("header_pn_nm1"),
-                                    label = "pN/nm",
-                                    value = 18,
-                                    step = 1,
-                                    width = "100%")
-                           )
-                       ),
-                      
-                
-                       conditionalPanel(
-                           condition = "input.channels == 2", ns = ns,
-                             fluidRow(
-                               column(6,
-
-                               numericInput(ns("header_nm_v2"),
-                                    label = "nm/V 2",
-                                    value = 24,
-                                    step = 1,
-                                    width = "100%"),
-                               ),
-                               column(6,
-                                      
-                               numericInput(ns("header_pn_nm2"),
-                                    label = "pN/nm 2",
-                                    value = 20,
-                                    step = 1,
-                                    width = "100%")
-                               )
-                             ),
-                          fluidRow(
-                               column(6,
-
-                               numericInput(ns("trap1_col"),
-                                    label = "Trap 1 Col",
-                                    value = 1,
-                                    step = 1,
-                                    width = "100%"),
-                               ),
-                               column(6,
-                                      
-                               numericInput(ns("trap2_col"),
-                                    label = "Trap 2 Col",
-                                    value = 3,
-                                    step = 1,
-                                    width = "100%")
-                               )
-                               )
-                           )
-                         ),
-                   
-                 conditionalPanel(
-                     condition = "input.in_header == false", ns = ns,
+                     condition = "input.in_header == true", ns = ns,
                      fluidRow(
-                         column(6, 
-                                numericInput(ns("hz"), "Hz", 0)
+                       column(6,
+                              numericInput(ns("header_size"),
+                                           label = "Header Size",
+                                           value = 68,
+                                           step = 1)),
+                       column(6,
+                              numericInput(ns("header_hz"),
+                                           label = "Hz",
+                                           value = 15,
+                                           step = 1))
+                     ),
+                     fluidRow(
+                       column(6,
+                              numericInput(ns("header_nm_v1"),
+                                           label = "nm/V",
+                                           value = 22,
+                                           step = 1,
+                                           width = "100%")),
+                       column(6,
+                              numericInput(ns("header_pn_nm1"),
+                                           label = "pN/nm",
+                                           value = 18,
+                                           step = 1,
+                                           width = "100%")
+                              )
+                     ),
+
+
+                     conditionalPanel(
+                       condition = "input.channels == 2", ns = ns,
+                       fluidRow(
+                         column(6,
+
+                                numericInput(ns("header_nm_v2"),
+                                             label = "nm/V 2",
+                                             value = 24,
+                                             step = 1,
+                                             width = "100%"),
                                 ),
                          column(6,
-                                div(style = "padding-top: 32px;",
-                                     shinyWidgets::prettyCheckbox(ns("ready_for_analysis"), 
-                                                       "Ready for analysis?",
-                                                       value = FALSE, 
-                                                       outline = TRUE, 
-                                                       shape = "curve",
-                                                     status = "primary" )
 
-                                              ))
+                                numericInput(ns("header_pn_nm2"),
+                                             label = "pN/nm 2",
+                                             value = 20,
+                                             step = 1,
+                                             width = "100%")
+                                )
+                       ),
+                       fluidRow(
+                         column(6,
+
+                                numericInput(ns("trap1_col"),
+                                             label = "Trap 1 Col",
+                                             value = 1,
+                                             step = 1,
+                                             width = "100%"),
+                                ),
+                         column(6,
+
+                                numericInput(ns("trap2_col"),
+                                             label = "Trap 2 Col",
+                                             value = 3,
+                                             step = 1,
+                                             width = "100%")
+                                )
+                       )
+                     )
+                   ),
+                   
+                   conditionalPanel(
+                     condition = "input.in_header == false", ns = ns,
+                     fluidRow(
+                       column(6,
+                              numericInput(ns("hz"), "Hz", 0)
+                              ),
+                       column(6,
+                              div(style = "padding-top: 32px;",
+                                  shinyWidgets::prettyCheckbox(ns("ready_for_analysis"),
+                                                               "Ready for analysis?",
+                                                               value = FALSE,
+                                                               outline = TRUE,
+                                                               shape = "curve",
+                                                               status = "primary" )
+
+                                  ))
                      ),
                      
-                   conditionalPanel(
+                     conditionalPanel(
                        condition = " input.ready_for_analysis == true", ns = ns,
                        numericInput(ns("nm_to_pn"), "Stiffness Conversion (pN/nm)", value = 0.04)
                      )
                    ),
 
                    
-                     actionButton(ns("simple_upload_button"), 
-                                   "Initialize Data",
-                                    width = "100%", 
-                                    icon = icon("play-circle"),
-                                     style = 'margin-top: 25px;')
+                   actionButton(ns("simple_upload_button"),
+                                "Initialize Data",
+                                width = "100%",
+                                icon = icon("play-circle"),
+                                style = 'margin-top: 25px;')
                  ), #conditional close
                  conditionalPanel(
                    condition = " input.upload_method == 'split_obs'", ns = ns,
-                                                        
-                           fileInput(ns("trap_txt_upload"),
-                                     'Upload Data Files (.txt)',
-                                     multiple = TRUE,
-                                     accept = ".txt",
-                                     buttonLabel = "Browse...",
-                                     placeholder = "Data.txt"),
-                           
-                          
-                         # strong( h5("2) Choose number of seconds to split by")),
-                           shinyWidgets::knobInput(inputId = ns("threshold"),
-                                     label = 'Set Threshold to Split',
-                                     value = 20,
-                                     min = 10,
-                                     max = 30),
-                                     # inputColor = '#ff41c8',
-                                     # fgColor = '#ff41c8'),
-                           
-                           
-                           # h5("3) Trap Calibration Files?"),
-                           # switchInput(inputId = "trap_cal_files",
-                           #             label = NULL,
-                           #             value = FALSE,
-                           #             onLabel = "Yes",
-                           #             offLabel =  "No",
-                           #             onStatus = "success",
-                           #             offStatus = "danger"),
-                           
-                           
-                         # strong( h5("3) Click button to make observations")),
-                           actionButton(inputId = ns("split_obs_button"),
-                                        label = "Make Observations",
-                                        icon = icon("eye"),
-                                        width = "100%", 
-                                        style = 'margin-top: 25px;')
+
+                   fileInput(ns("trap_txt_upload"),
+                             'Upload Data Files (.txt)',
+                             multiple = TRUE,
+                             accept = ".txt",
+                             buttonLabel = "Browse...",
+                             placeholder = "Data.txt"),
+
+
+                                        # strong( h5("2) Choose number of seconds to split by")),
+                   shinyWidgets::knobInput(inputId = ns("threshold"),
+                                           label = 'Set Threshold to Split',
+                                           value = 20,
+                                           min = 10,
+                                           max = 30),
+                                        # inputColor = '#ff41c8',
+                                        # fgColor = '#ff41c8'),
+
+
+                                        # h5("3) Trap Calibration Files?"),
+                                        # switchInput(inputId = "trap_cal_files",
+                                        #             label = NULL,
+                                        #             value = FALSE,
+                                        #             onLabel = "Yes",
+                                        #             offLabel =  "No",
+                                        #             onStatus = "success",
+                                        #             offStatus = "danger"),
+
+
+                                        # strong( h5("3) Click button to make observations")),
+                   actionButton(inputId = ns("split_obs_button"),
+                                label = "Make Observations",
+                                icon = icon("eye"),
+                                width = "100%",
+                                style = 'margin-top: 25px;')
                  ) #conditional close
-                           
-      ), #box close,
-    
-  
-            box(title = 'Step Calibration', width = 9, collapsible = T, collapsed = T,
-                fluidRow(column(3, fileInput(ns('step_files'), 
-                                             'Upload Step File (.txt)', 
-                                             accept = 'text/plain', 
-                                             multiple = T,
-                                             width = '100%',
-                                             placeholder = 'Step.txt'),
-                                #shinyWidgets::setSliderColor('#ff41c8', c(1, 2)),
-                                   sliderInput(ns('step_cal_stepsize'), 
-                                               'Step Cal Step Size', 
-                                               min = 1, 
-                                               max = 200,
-                                               value = 50, 
-                                               step = 1, 
-                                               ticks = F,
-                                               width = '100%'),
-                                   actionButton(ns('step_button'), 'Step Cal', width = '100%', style = 'margin-top: 25px;')),
-               
-                column(9,
-                       plotOutput(ns('step'), width = '100%') %>% 
-                         shinycssloaders::withSpinner(type = 8, color = "#373B38"))
-               )
-                
-    ) #box close
-    ), #rowclose
-  
+
+                 ), #box close,
+
+             box(title = "Simulate Data", width = 9, collapsible = T, collapsed = T,
+                 fluidRow(
+                   column(2,
+                          numericInput(ns("sim_n_events"), "Events", value = 100, min = 10, max = 200, step = 1)
+                          ),
+                   column(2,
+                          numericInput(ns("sim_signal"), "Signal", value = 2.5, min = 1.5, max = 10, step = 0.1)
+                          ),
+                   column(2,
+                          numericInput(ns("sim_hz"), "Hz", value = 5000, min = 0, max = 20000)
+                          ),
+                   column(2,
+                          actionButton(ns("sim_options"), "Options", width = "100%", style = "margin-top: 25px;")
+                          ),
+                   column(2,
+                          actionButton(ns("sim_go"), "Simulate Data", width = "100%", style = "margin-top: 25px;")
+                          ),
+                   column(2,
+                          actionButton(ns("sim_save"), "Save", width = "100%", style = "margin-top: 25px;")
+                          )
+                 ),
+
+                 fluidRow(
+                   column(3,
+                          h6("Current Simulation Parameters:"),
+                          verbatimTextOutput(ns("sim_parameters"))
+                          ),
+                   column(9,
+                          dygraphs::dygraphOutput(ns('sim')) |> shinycssloaders::withSpinner(type = 8, color = "#373B38")
+                          )
+                 )
+                 )
+             ),
+
     fluidRow(
-            box(title = 'Equipartition', width = 9, height = 350,  collapsible = T, collapsed = T,
-                                fluidRow(
-                                  column(3, fileInput(ns('equi_file'), 
-                                                      'Upload Equi File (.txt)',
-                                                      placeholder = 'Equi.txt',
-                                                      accept = '.txt'),
-                                         sliderInput(ns('equi_mv2nm'), 
-                                                     'mV to nm conversion', 
-                                                     min = 1, 
-                                                     max = 100,
-                                                     value = 30, 
-                                                     step = 1, 
-                                                     ticks = F,
-                                                     width = '100%'),
-                                  
-                                   withMathJax(helpText("$$\\alpha_{trap}=\\frac{k_B*T_k}{\\sigma^2}$$")),
-                                  actionButton(ns('equi_button'), 
-                                               'Equi Cal', 
-                                               width = '100%', 
-                                               style = 'margin-top: 25px;'),
-                                ),
-                            column(9, 
-                                plotOutput(ns('equi'), width = '100%', height = '275px') %>% 
-                                  shinycssloaders::withSpinner(type = 8, color = "#373B38"))
-                            )
-            ),
-         
-            tags$style(".small-box.bg-yellow { background-color: #1B9E77 !important; color: #f2f2f2 !important; }"), 
-            valueBoxOutput(ns("step_cal_valueBox"), width = 3),
-            valueBoxOutput(ns("equipartition_valueBox"), width = 3)
-                          
-            ), #row close
-    fluidRow(
-      box(title = "Simulate Data", width = 12, collapsible = T, collapsed = T,
+      box(title = 'Step Calibration', width = 6, collapsible = T, collapsed = T,
+          fluidRow(column(3, fileInput(ns('step_files'),
+                                       'Upload Step File (.txt)',
+                                       accept = 'text/plain',
+                                       multiple = T,
+                                       width = '100%',
+                                       placeholder = 'Step.txt'),
+                                        #shinyWidgets::setSliderColor('#ff41c8', c(1, 2)),
+                          sliderInput(ns('step_cal_stepsize'),
+                                      'Step Cal Step Size',
+                                      min = 1,
+                                      max = 200,
+                                      value = 50,
+                                      step = 1,
+                                      ticks = F,
+                                      width = '100%'),
+                          actionButton(ns('step_button'), 'Step Cal', width = '100%', style = 'margin-top: 25px;'),
+      tags$style(".small-box.bg-yellow { background-color: #1B9E77 !important; color: #f2f2f2 !important; }"),
+      valueBoxOutput(ns("step_cal_valueBox"), width = 2),
+                          ),
+
+                   column(9,
+                          plotOutput(ns('step'), width = '100%', height = '275px') |>
+                          shinycssloaders::withSpinner(type = 8, color = "#373B38"))
+                   )
+
+          ), #box close
+
+      box(title = 'Equipartition', width = 6, collapsible = T, collapsed = T,
           fluidRow(
-            column(2,
-             numericInput(ns("sim_n_events"), "Events", value = 100, min = 10, max = 200, step = 1)
-            ),
-            column(2,
-                   numericInput(ns("sim_signal"), "Signal", value = 2.5, min = 1.5, max = 10, step = 0.1)
-            ),
-            column(2,
-                   numericInput(ns("sim_hz"), "Hz", value = 5000, min = 0, max = 20000)
-            ),
-            column(2,
-                    actionButton(ns("sim_options"), "Options", width = "100%", style = "margin-top: 25px;")
-            ),
-            column(2,
-                   actionButton(ns("sim_go"), "Simulate Data", width = "100%", style = "margin-top: 25px;")
-            ),
-            column(2,
-                   actionButton(ns("sim_save"), "Save", width = "100%", style = "margin-top: 25px;")
-            )
-          ),
-          fluidRow(
-            column(3, 
-                   h6("Current Simulation Parameters:"), 
-                   verbatimTextOutput(ns("sim_parameters"))
-            ),
-            column(9, 
-                   dygraphs::dygraphOutput(ns('sim')) %>% shinycssloaders::withSpinner(type = 8, color = "#373B38")
+            column(3, fileInput(ns('equi_file'),
+                                'Upload Equi File (.txt)',
+                                placeholder = 'Equi.txt',
+                                accept = '.txt'),
+                   sliderInput(ns('equi_mv2nm'),
+                               'mV to nm conversion',
+                               min = 1,
+                               max = 100,
+                               value = 30,
+                               step = 1,
+                               ticks = F,
+                               width = '100%'),
+
+                   withMathJax(helpText("$$\\alpha_{trap}=\\frac{k_B*T_k}{\\sigma^2}$$")),
+                   actionButton(ns('equi_button'),
+                                'Equi Cal',
+                                width = '100%',
+                                style = 'margin-top: 25px;'),
+      valueBoxOutput(ns("equipartition_valueBox"), width = 2)),
+            column(9,
+                   plotOutput(ns('equi'), width = '100%', height = '275px') |>
+                   shinycssloaders::withSpinner(type = 8, color = "#373B38"))
           )
-        )
-      )
-   )
+          )
+
+
+    ) #row close
   ) #tagList
- 
+
   
 }
     
 #' split_obs Server Function
 #'
 #' @noRd 
-#' @import purrr dplyr magrittr shinyFiles
+#' @import shinyFiles
 mod_split_obs_server <- function(input, output, session, f){
     ns <- session$ns
     
@@ -387,24 +384,24 @@ mod_split_obs_server <- function(input, output, session, f){
     })
          #check if a date folder is properly selected
     observeEvent(input$split_obs_button, {
-        golem::print_dev("go")
-        if(is_empty(f$date) == TRUE){
+        ## golem::print_dev("go")
+        if(rlang::is_empty(f$date) == TRUE){
             showNotification("No 'Date' folder selected. Please select a folder with the folder chooser above. ",
                              type = "error")
             
-        } else if(is_empty(input$trap_txt_upload)){
+        } else if(rlang::is_empty(input$trap_txt_upload)){
             showNotification("No data uploaded",
                              type = "error")
         } else {
             req(nchar(f$date$path>0))
             req(input$trap_txt_upload)
-            all_data <- map(input$trap_txt_upload$name, ~substring(.x, 1, 4) == 'Data')
+            all_data <- purrr::map(input$trap_txt_upload$name, ~substring(.x, 1, 4) == 'Data')
             
             if(all(all_data != TRUE)){
                 showNotification("Not all files are valid 'Data' files. Only upload files starting with 'Data'.",
                                  type = "error")
             } else {
-                golem::print_dev('before split_obs call')
+                ## golem::print_dev('before split_obs call')
                 split_obs(input_data = input$trap_txt_upload,
                           project = f$project,
                           conditions = f$conditions,
@@ -421,13 +418,13 @@ mod_split_obs_server <- function(input, output, session, f){
   observeEvent(input$equi_button, {
     if(rlang::is_empty(input$equi_file)){
       showNotification('No data uploaded', type = 'error')
-    } else if(substring(input$equi_file$name, 1, 4) != 'Equi') {
-      showNotification("Not a valid 'Equi' file.", type = 'error')
+    ## } else if(substring(input$equi_file$name, 1, 4) != 'Equi') {
+    ##   showNotification("Not a valid 'Equi' file.", type = 'error')
     } else {
     withProgress(message = "Equipartition Calibration", min= 0, max = 1, value = 0.01, {
       incProgress(0.25, detail = "Reading Data")
-      files <- read_tsv(input$equi_file$datapath, col_names = c('bead', 'trap')) %>% 
-        dplyr::mutate(bead = bead * input$equi_mv2nm) %>% 
+      files <- data.table::fread(input$equi_file$datapath, col.names = c('bead', 'trap')) |>
+        dplyr::mutate(bead = bead * input$equi_mv2nm) |>
         dplyr::pull(bead)
       mean_equi <- mean(files)
       equi_data <- files - mean_equi
@@ -468,11 +465,11 @@ mod_split_obs_server <- function(input, output, session, f){
   
   step_calibration <- eventReactive(input$step_button, {
     req(input$step_files$datapath)
-    req(substring(input$step_files$name, 1, 4) == 'Step')
+    ## req(substring(input$step_files$name, 1, 4) == 'Step')
     withProgress(message = "Step Calibration", min= 0, max = 1, value = 0.01, {
       incProgress(0.4, detail = "Reading Data")
-      files <- purrr::map(input$step_files$datapath, read_tsv, col_names = c('bead', 'trap')) %>%
-        map(pull, bead)
+      files <- purrr::map(input$step_files$datapath, fread, col.names = c('bead', 'trap')) |>
+        purrr::map(dplyr::pull, bead)
       incProgress(0.75, detail = "Calculating...This may take a while...")
       steps <- purrr::map(files, step_cal, step = input$step_cal_stepsize)
       incProgress(1, detail = "Done!")
@@ -954,8 +951,8 @@ mod_split_obs_server <- function(input, output, session, f){
   })
   
   output$sim <- dygraphs::renderDygraph({
-    dygraphs::dygraph(data.frame(Datapoints = sim_data()$time, nm = sim_data()$data)) %>% 
-      dygraphs::dySeries("nm", color = "black") %>% 
+    dygraphs::dygraph(data.frame(Datapoints = sim_data()$time, nm = sim_data()$data)) |>
+      dygraphs::dySeries("nm", color = "black") |>
       dygraphs::dyRangeSelector()
   })
   
@@ -975,7 +972,7 @@ mod_split_obs_server <- function(input, output, session, f){
        obs_name <- paste0("obs-", num_obs_folders)
      }
      setProgress(0.5, detail = "Preparing Data")
-     trap_data_to_save <- sim_data() %>% 
+     trap_data_to_save <- sim_data() |>
        dplyr::mutate(project = f$project_input,
                 conditions = f$conditions_input,
                 date = f$date_input,

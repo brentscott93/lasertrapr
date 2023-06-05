@@ -279,9 +279,7 @@ measure_hm_events <- function(processed_data, hm_model_results, conversion, hz, 
 #' @param measured_hm_events the results from measure_hm_events()
 #' @param hz sampling frequency in Hz
 #' @param conversion 
-#'
-#' @return
-#' @export
+#' @noRd
 changepoint_analysis <- function(measured_hm_events,
                                  hz,
                                  conversion,

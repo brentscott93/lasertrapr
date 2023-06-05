@@ -5,7 +5,10 @@
 #' @param trim_to end index to delete
 #' @param f the reactiveValues list 'f' with all user selected folder info
 #' @param trap_obs obs folder numbers
-move_obs <- function(trap_selected_date, trap_selected_obs, trim_from, trim_to, f, trap_obs, hz){
+#' @param hz sampling frequency
+#' @param has_header logical denoting if header.csv exists
+#' @noRd
+move_obs <- function(trap_selected_date, trap_selected_obs, trim_from, trim_to, f, trap_obs, hz, has_header){
   withProgress(message = 'Moving Data', value = 0, max = 1, min = 0, {
     
     new_obs <- trap_obs + 1
@@ -29,13 +32,12 @@ move_obs <- function(trap_selected_date, trap_selected_obs, trim_from, trim_to, 
     from <- as.integer(trim_from*hz)
     to <- as.integer(trim_to*hz)
     
-    to_move <- 
-      data[c(from:to),] %>% 
-      dplyr::mutate(obs = new_folder)
+    to_move <- data[c(from:to),]
+    to_move[, obs := new_folder]
     
-     to_move_options <- 
-       options_data %>% 
-         dplyr::mutate( obs = new_folder,  
+    to_move_options <-
+      options_data[,
+                   `:=`( obs = new_folder,
                         processor = NA,
                         include = NA,
                         ## mv2nm = NA,
@@ -43,15 +45,22 @@ move_obs <- function(trap_selected_date, trap_selected_obs, trim_from, trim_to, 
                         analyzer = NA,
                         report = 'not run',
                         review = NA )
-     
-    setProgress(0.6)
-    data.table::fwrite(to_move, file = file.path(new_folder_path, "trap-data.csv"), sep = ',')
-    data.table::fwrite(to_move_options, file = file.path(new_folder_path, "options.csv"), sep = ',')
-    setProgress(0.8)
-    #regroup current observation after desired files moved out
-    regroup <- data[-c(from:to),]
-    data.table::fwrite(regroup, file = file.path(trap_selected_obs, "trap-data.csv"), sep = ',')
-    incProgress(1, detail = "Done")
+                   ]
+
+      if(has_header){
+        file.copy(from = file.path(trap_selected_obs, "header.csv"),
+                  to = file.path(new_folder_path, "header.csv"))
+
+      }
+
+      setProgress(0.6)
+      data.table::fwrite(to_move, file = file.path(new_folder_path, "trap-data.csv"), sep = ',')
+      data.table::fwrite(to_move_options, file = file.path(new_folder_path, "options.csv"), sep = ',')
+      setProgress(0.8)
+                                        #regroup current observation after desired files moved out
+      regroup <- data[-c(from:to),]
+      data.table::fwrite(regroup, file = file.path(trap_selected_obs, "trap-data.csv"), sep = ',')
+      incProgress(1, detail = "Done")
   })
   showNotification("Files moved to new obs.", type = "message")
 }
@@ -61,6 +70,7 @@ move_obs <- function(trap_selected_date, trap_selected_obs, trim_from, trim_to, 
 #' @param trim_from begin index to delete
 #' @param trim_to end index to delete
 #' @param f the reactiveValues list 'f' with all user selected folder info
+#' @noRd
 trim_obs <- function(trap_selected_obs, trim_from, trim_to, f, hz){
   withProgress(message = "Trimming Data", min= 0, max = 1, value = 0.3, {
     
