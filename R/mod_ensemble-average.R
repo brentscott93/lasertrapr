@@ -145,7 +145,7 @@ mod_ensemble_average_ui <- function(id){
 #' ensemble_average Server Function
 #'
 #' @noRd
-#' @import data.table
+#' @import data.table ggplot2 cowplot
 mod_ensemble_average_server <- function(input, output, session, f){
   ns <- session$ns
   ee <- reactiveValues()
@@ -300,7 +300,7 @@ mod_ensemble_average_server <- function(input, output, session, f){
          backwards_pars$direction <- "backwards"
          
          mod_table <- rbind(forward_pars, backwards_pars)
-         fwrite(mod_table, file = file.path(summary_folder, paste0(Sys.Date(), "_ensemble-average-parameters.csv")))
+         data.table::fwrite(mod_table, file = file.path(summary_folder, paste0(Sys.Date(), "_ensemble-average-parameters.csv")))
          # ee$forward <- ee$data[direction == "forward"]
          # ee$backwards <- ee$data[direction == "backwards"]
        
@@ -470,7 +470,7 @@ mod_ensemble_average_server <- function(input, output, session, f){
      ylab("nanometers")+
      xlab("seconds")+
      scale_color_manual(values = plot_colors)+
-     theme_cowplot(input$size)+
+     cowplot::theme_cowplot(input$size)+
      theme(
        strip.background = element_rect(fill = "transparent"),
        legend.position = "none"
@@ -537,12 +537,12 @@ mod_ensemble_average_server <- function(input, output, session, f){
     } else {
        
        
-       ggsave(filename = file.path(target_dir, filename),
-              plot = ee$plot,
-              height = input$save_width/ee$size_ratio,
-              width = input$save_width, 
-              units = "in",
-              bg = "white")
+      ggplot2::ggsave(filename = file.path(target_dir, filename),
+                      plot = ee$plot,
+                      height = input$save_width/ee$size_ratio,
+                      width = input$save_width,
+                      units = "in",
+                      bg = "white")
     }
     showNotification(paste("Plot saved as:", filename), type = "message")
     removeModal()

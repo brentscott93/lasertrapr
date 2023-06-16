@@ -15,7 +15,8 @@ params:
 ```{r setup, include=FALSE}
 library(flexdashboard)
 library(lasertrapr)
-library(tidyverse)
+library(ggplot2)
+library(dplyr)
 library(cowplot)
 library(DT)
 
@@ -57,7 +58,7 @@ d %>%
     )
 ```
  
-Stats
+Distributions
 =====================================  
 
 Row {.tabset .tabset-fade}
@@ -66,48 +67,29 @@ Row {.tabset .tabset-fade}
 ### Step Size
     
 ```{r, fig.height = 6, fig.width=12}
-params$rv$step
+params$rv$ggstep
 ```
     
 ### Force
 
 ```{r, fig.height = 6, fig.width=12}
- params$rv$force
+ params$rv$ggforce
 ```
 
 
 ### Time On
 
 ```{r, fig.height = 6, fig.width=12}
-params$rv$ton
+params$rv$ggton
 ```
 
 
 ### Time Off
 
 ```{r, fig.height = 6, fig.width=12}
- params$rv$toff
-```
-
-ECDF
-=============================
-
-```{r, fig.height = 6, fig.width=14}
-plot_grid(params$rv$ton_ecdf, params$rv$toff_ecdf, rel_widths = c(0.4, 0.6))
+ params$rv$ggoff
 ```
 
 
 
-
-Correlations
-==============================
-```{r fig.width=24, fig.height=8}
-params$rv$correlations
-```
-
-Stiffness
-==============================
-```{r  fig.width=14, fig.height=8}
-params$rv$stiffness
-```
 
