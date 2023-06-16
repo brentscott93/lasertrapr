@@ -53,29 +53,30 @@ mod_summarize_ui <- function(id){
       ),
     fluidRow(
       column(12,
-      tabBox(width = NULL,
+      box(width = NULL,
 
-          title = '',
+          title = 'Distributions',
           # The id lets us use input$tabset1 on the server to find the current tab
           id = ns("distributions"),
-          tabPanel("Displacements", plotOutput(ns('step'), height = '600px') %>% shinycssloaders::withSpinner(type = 8, color = '#373B38')),
-          tabPanel("Force",  plotOutput(ns('force'), height = '600px') %>% shinycssloaders::withSpinner(type = 8, color = '#373B38')),
-          tabPanel("Time On",  plotOutput(ns('ton'), height = '600px') %>% shinycssloaders::withSpinner(type = 8, color = '#373B38')),
-          tabPanel("Time Off", plotOutput(ns('toff'), height = '600px') %>% shinycssloaders::withSpinner(type = 8, color = '#373B38')),
-          tabPanel("ECDF", plotOutput(ns('ecdf'), height = '600px') %>% shinycssloaders::withSpinner(type = 8, color = '#373B38')),
-          #tabPanel("Event Frequency", plotOutput(ns('ef'), height = '600px') %>% shinycssloaders::withSpinner(type = 8, color = '#373B38')),
-          tabPanel("Stiffness", plotOutput(ns('stiffness'), height = '600px') %>% shinycssloaders::withSpinner(type = 8, color = '#373B38')),
-          tabPanel("Correlations", plotOutput(ns('correlations'), height = '600px') %>% shinycssloaders::withSpinner(type = 8, color = '#373B38'))
+           plotOutput(ns('summary_plots'), height = '400px') |> shinycssloaders::withSpinner(type = 8, color = '#373B38'),
+          ## tabPanel("Displacements", plotOutput(ns('step'), height = '600px') %>% shinycssloaders::withSpinner(type = 8, color = '#373B38')),
+          ## tabPanel("Force",  plotOutput(ns('force'), height = '600px') %>% shinycssloaders::withSpinner(type = 8, color = '#373B38')),
+          ## tabPanel("Time On",  plotOutput(ns('ton'), height = '600px') %>% shinycssloaders::withSpinner(type = 8, color = '#373B38')),
+          ## tabPanel("Time Off", plotOutput(ns('toff'), height = '600px') %>% shinycssloaders::withSpinner(type = 8, color = '#373B38')),
+          ## tabPanel("ECDF", plotOutput(ns('ecdf'), height = '600px') %>% shinycssloaders::withSpinner(type = 8, color = '#373B38')),
+          ## #tabPanel("Event Frequency", plotOutput(ns('ef'), height = '600px') %>% shinycssloaders::withSpinner(type = 8, color = '#373B38')),
+          ## tabPanel("Stiffness", plotOutput(ns('stiffness'), height = '600px') %>% shinycssloaders::withSpinner(type = 8, color = '#373B38')),
+          ## tabPanel("Correlations", plotOutput(ns('correlations'), height = '600px') %>% shinycssloaders::withSpinner(type = 8, color = '#373B38'))
       )
     )
     )
-  )
+    )
 }
 
 #' summarize Server Function
 #'
 #' @noRd
-#' @import data.table cowplot rstatix
+#' @import data.table cowplot ggplot2
 mod_summarize_server <- function(input, output, session, f){
  ns <- session$ns
   # 
@@ -147,7 +148,7 @@ mod_summarize_server <- function(input, output, session, f){
     withProgress(message = 'Summarizing Project', {
       golem::print_dev("before sum")
       
-      summary_folder <- file.path("~", "lasertrapr", f$project_input, "summary")
+      summary_folder <- file.path(path.expand("~"), "lasertrapr", f$project_input, "summary")
       if(!dir.exists(summary_folder)){
         dir.create(summary_folder)
       }
@@ -193,76 +194,167 @@ mod_summarize_server <- function(input, output, session, f){
       rv$summary_data <- summary_data
       golem::print_dev("before colors")
       plot_colors <- purrr::map_chr(paste0('color', seq_along(conditions())), ~input[[.x]])
-      setProgress(0.6, detail = "Step Stats")
-        rv$step <-
-          ggstatsplot::ggbetweenstats(rv$all_measured_events,
-                       x = conditions, 
-                       y = displacement_nm,
-                       ylab = "nanometers",
-                       xlab = "",
-                       title = "Displacements",
-                       ggplot.component = list(scale_color_manual(values = plot_colors)),
-                       centrality.point.args = list(size = 5, color = "grey10"),
-                       ggtheme = theme_cowplot())
-      
-      setProgress(0.65, detail = "Time On Stats")
-      rv$ton <- ggstatsplot::ggbetweenstats(rv$all_measured_events,
-                              x = conditions, 
-                              y = time_on_ms,
-                              ylab = "milliseconds",
-                              xlab = "",
-                              title = "Attachment Times",
-                              centrality.point.args = list(size = 5, color = "grey10"),
-                              ggtheme = theme_cowplot(),
-                              type = "nonparametric",
-                              ggstatsplot.layer = F,
-                              ggsignif.args = list(step_increase = 1),
-                              ggplot.component = list(scale_color_manual(values = plot_colors),
-                                                      scale_y_continuous(breaks = scales::trans_breaks("log10", function(x) 10^x),
-                                                                         labels = scales::trans_format("log10", scales::math_format(10^.x))),
-                                                      coord_trans(y = "log10")))
-      setProgress(0.7, detail = "Time Off Stats")
-      rv$toff <- ggstatsplot::ggbetweenstats(rv$all_measured_events,
-                               x = conditions, 
-                               y = time_off_ms,
-                               ylab = "milliseconds",
-                               xlab = "",
-                               title = "Time Between Events",
-                               centrality.point.args = list(size = 5, color = "grey10"),
-                               ggtheme = theme_cowplot(),
-                               type = "nonparametric",
-                               ggstatsplot.layer = F,
-                               ggsignif.args = list(step_increase = 1),
-                               ggplot.component = list(scale_color_manual(values = plot_colors),
-                                                       scale_y_continuous(breaks = scales::trans_breaks("log10", function(x) 10^x),
-                                                                          labels = scales::trans_format("log10", scales::math_format(10^.x))),
-                                                       coord_trans(y = "log10")))
-      setProgress(0.75, detail = "Force Stats")
-        rv$force <- ggstatsplot::ggbetweenstats(rv$all_measured_events,
-                                   x = conditions, 
-                                   y = force,
-                                   ylab = "piconewtons",
-                                   xlab = "",
-                                   title = "Forces",
-                                   ggplot.component = list(scale_color_manual(values = plot_colors)),
-                                   centrality.point.args = list(size = 5, color = "grey10"),
-                                   ggtheme = theme_cowplot())
-      setProgress(0.8, detail = "Time On ECDF")
-      ## rv$ton_ecdf <- time_on_ecdf(event_files_filtered = rv$all_measured_events,
-      ##                              plot_colors = plot_colors)
-      setProgress(0.85, detail = "Time Off ECDF")
-      ## rv$toff_ecdf <- time_off_ecdf(event_files_filtered = rv$all_measured_events,
-      ##                             plot_colors = plot_colors)
-      # setProgress(0.85, detail = "Event Frequency")
-      # rv$ef <- stats_plot_event_frequency(event_file_path = rv$data$event_file_path, 
-      #                                     factor_order = input$factor_order,
-      #                                     plot_colors = plot_colors)
-      setProgress(0.9, detail = "Correlations")
-      # rv$correlations <- correlations(event_files_filtered = rv$all_measured_events,
-      #                                 plot_colors = plot_colors)
-      setProgress(0.95, detail = "Stiffness")
-      # rv$stiffness <- stiffness(event_files_filtered = rv$all_measured_events,
-      #                              plot_colors = plot_colors)
+      setProgress(0.6)
+      ggstep <- plot_ecdf(all_measured_events,
+                          var = "displacement_nm",
+                          colorz = plot_colors,
+                          x_lab = "nanometers",
+                          title = "Displacements",
+                          basesize = 18)
+
+      rv$ggstep <- ggstep
+
+      setProgress(0.7)
+      ggforce <- plot_ecdf(all_measured_events,
+                           var = "force",
+                           colorz = plot_colors,
+                           x_lab = "piconewtons",
+                           title = "Forces",
+                           basesize = 18)
+      rv$ggforce <- ggforce
+      setProgress(0.8)
+      ggton <- plot_ecdf(all_measured_events,
+                         var = "time_on_ms",
+                         colorz = plot_colors,
+                         x_lab = "milliseconds",
+                         title = "Time On",
+                         basesize = 18)
+
+      rv$ggton <- ggton
+      setProgress(0.9)
+      ggoff <- plot_ecdf(all_measured_events,
+                         var = "time_off_ms",
+                         colorz = plot_colors,
+                         x_lab = "milliseconds",
+                         title = "Time Off",
+                         basesize = 18)
+      rv$ggoff <- ggoff
+
+      rv$summary_plots <- cowplot::plot_grid(ggstep, ggforce, ggton, ggoff, nrow = 1)
+
+
+      ## setProgress(0.6, detail = "Fitting Attachment Durations")
+      ##                                   # fit the data
+      ## ton_data <- all_measured_events[, .(conditions, time_on_ms)]
+      ## ton_data[, .(data = list(.SD)), by = conditions ]
+      ##   select(conditions, `Attachment Times`)|>
+      ##   group_by(id)|>
+      ##   nest() |>
+      ##   mutate(fit = map(data, fit_ton),
+      ##          predict = map(fit, `[[`, "predict_df"),
+      ##          parse_label  = map_chr(fit, `[[`, "parse_label"),
+      ##          html_label  = map_chr(fit, `[[`, "html_label"),
+      ##          boot_df = map(fit, `[[`, "boot_df"),
+      ##          cdf_data = map(fit, `[[`, "data_df"))
+
+
+      ##                                   # unravel data from the nest back to long data for ggplot
+      ##                                   # gets the real emperical CDF
+      ## ton_real_df <-
+      ##   ton_boot |>
+      ##   select(id, cdf_data) |>
+      ##   unnest(cols = c(cdf_data))
+
+      ##                                   # unravel data from the nest back to long data for ggplot
+      ##                                   # gets the fit prediction line
+      ## ton_predict_df <-
+      ##   ton_boot |>
+      ##   select(id, predict) |>
+      ##   unnest(cols = c(predict))
+
+      ##                                   # make the plots
+      ## ton_cdf <-
+      ##   ggplot()+
+      ##   geom_step(data = ton_real_df,
+      ##             aes(x = x,
+      ##                 y = y,
+      ##                 color = id),
+      ##             alpha = 0.6,
+      ##             linewidth= 1)+
+      ##   geom_line(data = ton_predict_df,
+      ##             aes(x = x,
+      ##                 y = y,
+      ##                 color = id),
+      ##             linetype = "dashed")+
+      ##   scale_color_manual(values = colz)+
+      ##   ggtitle("Attachment Durations")+
+      ##   ylab("Cumulative Probability")+
+      ##   xlab("Time (s)")+
+      ##   theme_cowplot(basesize)+
+      ##   theme(
+      ##     plot.title = element_text(hjust = 0.5),
+      ##     legend.position = "none")
+
+
+
+      ##     ggstatsplot::ggbetweenstats(rv$all_measured_events,
+      ##                  x = conditions,
+      ##                  y = displacement_nm,
+      ##                  ylab = "nanometers",
+      ##                  xlab = "",
+      ##                  title = "Displacements",
+      ##                  ggplot.component = list(scale_color_manual(values = plot_colors)),
+      ##                  centrality.point.args = list(size = 5, color = "grey10"),
+      ##                  ggtheme = theme_cowplot())
+
+      ## setProgress(0.65, detail = "Time On Stats")
+      ## rv$ton <- ggstatsplot::ggbetweenstats(rv$all_measured_events,
+      ##                         x = conditions,
+      ##                         y = time_on_ms,
+      ##                         ylab = "milliseconds",
+      ##                         xlab = "",
+      ##                         title = "Attachment Times",
+      ##                         centrality.point.args = list(size = 5, color = "grey10"),
+      ##                         ggtheme = theme_cowplot(),
+      ##                         type = "nonparametric",
+      ##                         ggstatsplot.layer = F,
+      ##                         ggsignif.args = list(step_increase = 1),
+      ##                         ggplot.component = list(scale_color_manual(values = plot_colors),
+      ##                                                 scale_y_continuous(breaks = scales::trans_breaks("log10", function(x) 10^x),
+      ##                                                                    labels = scales::trans_format("log10", scales::math_format(10^.x))),
+      ##                                                 coord_trans(y = "log10")))
+      ## setProgress(0.7, detail = "Time Off Stats")
+      ## rv$toff <- ggstatsplot::ggbetweenstats(rv$all_measured_events,
+      ##                          x = conditions,
+      ##                          y = time_off_ms,
+      ##                          ylab = "milliseconds",
+      ##                          xlab = "",
+      ##                          title = "Time Between Events",
+      ##                          centrality.point.args = list(size = 5, color = "grey10"),
+      ##                          ggtheme = theme_cowplot(),
+      ##                          type = "nonparametric",
+      ##                          ggstatsplot.layer = F,
+      ##                          ggsignif.args = list(step_increase = 1),
+      ##                          ggplot.component = list(scale_color_manual(values = plot_colors),
+      ##                                                  scale_y_continuous(breaks = scales::trans_breaks("log10", function(x) 10^x),
+      ##                                                                     labels = scales::trans_format("log10", scales::math_format(10^.x))),
+      ##                                                  coord_trans(y = "log10")))
+      ## setProgress(0.75, detail = "Force Stats")
+      ##   rv$force <- ggstatsplot::ggbetweenstats(rv$all_measured_events,
+      ##                              x = conditions,
+      ##                              y = force,
+      ##                              ylab = "piconewtons",
+      ##                              xlab = "",
+      ##                              title = "Forces",
+      ##                              ggplot.component = list(scale_color_manual(values = plot_colors)),
+      ##                              centrality.point.args = list(size = 5, color = "grey10"),
+      ##                              ggtheme = theme_cowplot())
+      ## setProgress(0.8, detail = "Time On ECDF")
+      ## ## rv$ton_ecdf <- time_on_ecdf(event_files_filtered = rv$all_measured_events,
+      ## ##                              plot_colors = plot_colors)
+      ## setProgress(0.85, detail = "Time Off ECDF")
+      ## ## rv$toff_ecdf <- time_off_ecdf(event_files_filtered = rv$all_measured_events,
+      ## ##                             plot_colors = plot_colors)
+      ## # setProgress(0.85, detail = "Event Frequency")
+      ## # rv$ef <- stats_plot_event_frequency(event_file_path = rv$data$event_file_path,
+      ## #                                     factor_order = input$factor_order,
+      ## #                                     plot_colors = plot_colors)
+      ## setProgress(0.9, detail = "Correlations")
+      ## # rv$correlations <- correlations(event_files_filtered = rv$all_measured_events,
+      ## #                                 plot_colors = plot_colors)
+      ## setProgress(0.95, detail = "Stiffness")
+      ## # rv$stiffness <- stiffness(event_files_filtered = rv$all_measured_events,
+      ## #                              plot_colors = plot_colors)
     })
     showNotification("Summary data saved!")
   })
@@ -298,8 +390,8 @@ mod_summarize_server <- function(input, output, session, f){
         factor(rv$summary_data$conditions ,
                levels = input$factor_order)
     }
-    rv$summary_data %>%
-      dplyr::arrange(conditions) %>%
+    rv$summary_data |>
+      dplyr::arrange(conditions) |>
       dplyr::select("Conditions" = conditions, 
                     "Step Size (nm)" = displacement_avg,
                     "SE Step Size" = displacement_se,
@@ -312,8 +404,8 @@ mod_summarize_server <- function(input, output, session, f){
                     "SE Toff" = time_off_se, 
                     "No. Events" = num_events,
                     "Minutes Collected" = minutes
-      ) %>% 
-      mutate_if(is.numeric, ~round(.,digits = 2)) %>% 
+      ) |>
+      dplyr::mutate_if(is.numeric, ~round(.,digits = 2)) |>
       DT::datatable(
                 extensions = 'FixedColumns',
                 options = list(
@@ -322,38 +414,44 @@ mod_summarize_server <- function(input, output, session, f){
                   fixedColumns = list(leftColumns = 2)
                 ))
   })
-  output$step <- renderPlot({
-    req(rv$step)
-    rv$step
-  })
-  output$ton <- renderPlot({
-    req(rv$ton)
-    rv$ton
-  })
-  output$toff <- renderPlot({
-    req(rv$toff)
-    rv$toff
-  })
-  output$force <- renderPlot({
-    req(rv$force)
-    rv$force
-  })
-  output$ecdf <- renderPlot({
-    req(rv$ton_ecdf)
-    plot_grid(rv$ton_ecdf, rv$toff_ecdf)
-  })
-  output$ef <- renderPlot({
-    req(rv$ef)
-    rv$ef
-  })
-  output$correlations <- renderPlot({
-    req(rv$correlations)
-    rv$correlations
-  })
-  output$stiffness <- renderPlot({
-    req(rv$stiffness)
-    rv$stiffness
-  })
+
+
+ output$summary_plots <- renderPlot({
+   req(rv$summary_plots)
+   rv$summary_plots
+ })
+  ## output$step <- renderPlot({
+  ##   req(rv$step)
+  ##   rv$step
+  ## })
+  ## output$ton <- renderPlot({
+  ##   req(rv$ton)
+  ##   rv$ton
+  ## })
+  ## output$toff <- renderPlot({
+  ##   req(rv$toff)
+  ##   rv$toff
+  ## })
+  ## output$force <- renderPlot({
+  ##   req(rv$force)
+  ##   rv$force
+  ## })
+  ## output$ecdf <- renderPlot({
+  ##   req(rv$ton_ecdf)
+  ##   plot_grid(rv$ton_ecdf, rv$toff_ecdf)
+  ## })
+  ## output$ef <- renderPlot({
+  ##   req(rv$ef)
+  ##   rv$ef
+  ## })
+  ## output$correlations <- renderPlot({
+  ##   req(rv$correlations)
+  ##   rv$correlations
+  ## })
+  ## output$stiffness <- renderPlot({
+  ##   req(rv$stiffness)
+  ##   rv$stiffness
+  ## })
 
 }
 

@@ -116,28 +116,28 @@ prep_ensemble <- function(trap_selected_project,
       longest_event <- longest_event_df[which(longest_event_df$conditions == measured_events$conditions[[event]]),]
       longest_event <- longest_event$longest_event
       if(length(event_chunk) == longest_event){
-        forward_event <- data.frame(data = event_chunk,
+        forward_event <- data.table(data = event_chunk,
                                     ensemble_index = 0:(longest_event-1))
-        backwards_event <- data.frame(data = event_chunk,
+        backwards_event <- data.table(data = event_chunk,
                                       ensemble_index = -(longest_event-1):0)
       } else {
         s2_avg <- mean(trap_trace[(stop - dp_extend_s2):stop])
         time_diff <- longest_event - length(event_chunk)
         forward_extended_event <- c(event_chunk, rep(s2_avg, time_diff))
-        forward_event <- data.frame(data = forward_extended_event,
+        forward_event <- data.table(data = forward_extended_event,
                                     ensemble_index = 0:(longest_event-1))
         delay_s1_start <- ms_2_skip*hz/1000
         s1_total_time <- delay_s1_start+dp_extend_s1
         if(length(event_chunk) <= s1_total_time) next
         s1_avg <-  mean(event_chunk[(delay_s1_start:(delay_s1_start+dp_extend_s1))])
         backwards_extended_event <- c(rep(s1_avg, (time_diff+delay_s1_start)), event_chunk[-c(1:delay_s1_start)])
-        backwards_event <- data.frame(data = backwards_extended_event,
+        backwards_event <- data.table(data = backwards_extended_event,
                                       ensemble_index = -(longest_event-1):0)
       }
       
       ms_10 <- 10*hz/1000
       end_forward_base <- start - 1
-      before_forwards <- data.frame(data = trap_trace[(end_forward_base - ((ms_10*5)-1)):end_forward_base],
+      before_forwards <- data.table(data = trap_trace[(end_forward_base - ((ms_10*5)-1)):end_forward_base],
                                     ensemble_index = -(ms_10*5):-1)
 
       ms_1 <- 1*hz/1000
@@ -146,36 +146,36 @@ prep_ensemble <- function(trap_selected_project,
       mean_baseline_prior <- mean( trap_trace[(end_forward_base - (ms_5-1)):(end_forward_base-ms_1)] )
 
       start_backwards_base <- stop + 1
-      after_backwards <- data.frame(data = trap_trace[start_backwards_base:(start_backwards_base + ((ms_10*5)-1))],
+      after_backwards <- data.table(data = trap_trace[start_backwards_base:(start_backwards_base + ((ms_10*5)-1))],
                                     ensemble_index = 1:(ms_10*5))
       
-      forward_ensemble <- 
-        rbind(before_forwards, forward_event) %>% 
-        mutate(direction = "forward",
-               forward_backward_index = -(ms_10*5):(longest_event-1),
-               event_index = event,
-               signal_ratio =  measured_events$front_signal_ratio[[event]])
+      forward_ensemble <- rbind(before_forwards, forward_event)
+      forward_ensemble[,
+                       `:=`(direction = "forward",
+                            forward_backward_index = -(ms_10*5):(longest_event-1),
+                            event_index = event,
+                            signal_ratio =  measured_events$front_signal_ratio[[event]])
+                       ]
       
-      backwards_ensemble <- 
-        rbind(backwards_event, after_backwards) %>% 
-        mutate(direction = "backwards",
-               forward_backward_index = longest_event:((2*longest_event)+((ms_10*5)-1)),
-               event_index = event,
-               signal_ratio = measured_events$back_signal_ratio[[event]])
+      backwards_ensemble <- rbind(backwards_event, after_backwards)
+      backwards_ensemble[,
+                         `:=`(direction = "backwards",
+                              forward_backward_index = longest_event:((2*longest_event)+((ms_10*5)-1)),
+                              event_index = event,
+                              signal_ratio = measured_events$back_signal_ratio[[event]])
+                         ]
       
-      ensemble <- 
-        rbind(forward_ensemble, backwards_ensemble) %>% 
-        mutate(
-               project = options_data$project[[i]],
-               conditions = options_data$conditions[[i]],
-               date = options_data$date[[i]],
-               obs = options_data$obs[[i]]
-        ) %>%
-        arrange(forward_backward_index)
-      
+      ensemble <-  rbind(forward_ensemble, backwards_ensemble)
+      ensemble[,
+               `:=`(project = options_data$project[[i]],
+                    conditions = options_data$conditions[[i]],
+                    date = options_data$date[[i]],
+                    obs = options_data$obs[[i]])
+               ]
+      setorder(ensemble, cols = "forward_backward_index")
       event_ensembles[[event]] <- ensemble
 
-      substeps[[event]] <- data.frame(
+      substeps[[event]] <- data.table(
         project = options_data$project[[i]],
         conditions = options_data$conditions[[i]],
         date = options_data$date[[i]],
@@ -209,6 +209,7 @@ prep_ensemble <- function(trap_selected_project,
 #' @param trap_selected_project full path to currently selected project
 #' @param is_shiny logical. is function being used in shiny or not. 
 #' @noRd
+#' @import data.table
 avg_ensembles <- function(project, is_shiny = TRUE){
   #con <-lasertrapr:::list_dir(path = "~/lasertrapr/project_hitch-simulations")
   #project <- "project_hitch-simulations"
@@ -235,14 +236,14 @@ avg_ensembles <- function(project, is_shiny = TRUE){
                                         .(avg = mean(data, na.rm = TRUE),
                                           n = .N,
                                           sd = sd(data, na.rm = TRUE),
-                                          se = plotrix::std.error(data, na.rm = TRUE)), 
+                                          se = sd(data, na.rm = TRUE)/sqrt(.N)),
                                         by = .(conditions, direction, ensemble_index, forward_backward_index)]
     
     ee_backwards_data[[i]] <- ee_con_data[direction == "backwards",  
                                           .(avg = mean(data, na.rm = TRUE),
                                             n = .N,
                                             sd = sd(data, na.rm = TRUE),
-                                            se = plotrix::std.error(data, na.rm = TRUE)), 
+                                            se = sd(data, na.rm = TRUE)/sqrt(.N)),
                                           by = .(conditions, direction, ensemble_index, forward_backward_index)]
     rm(ee_con_data)
     
@@ -253,44 +254,20 @@ avg_ensembles <- function(project, is_shiny = TRUE){
   forward_backward <- rbind(ee_forward_data, ee_backwards_data)
   print("Completed Avg")
    return(forward_backward)
-  #if(is_shiny) incProgress(1/(length(con)*2), message = paste0("Plotting...", con[[i]]))
-  # ggplot(data = forward_backward)+
-  #   geom_point(aes(x = forward_backward_index, 
-  #                  y = avg, 
-  #                  color = conditions), 
-  #              alpha = 0.3,
-  #              shape = 16)+
-  #   facet_wrap(~conditions, scales = "free_x")+
-  #   xlab("Displacement (nm)")+
-  #   
-  #   theme_cowplot()+
-  #   theme(
-  #     strip.background = element_rect(fill = "transparent"),
-  #     legend.position = "none"
-  #   )
-  
-  #ee_forward_data <- data.table::rbindlist(ee_forward_data)
-  # 
-  # forward_avg <-
-  #   ee_forward_data %>% 
-  #   as_tibble() %>% 
-  #   dplyr::select(conditions, ensemble_index, avg, sd, se, n) %>% 
-  #   group_by(conditions) %>% 
-  #   tidyr::nest(ensemble = c(ensemble_index, avg, sd, se, n))
-  # 
-  #ee_backwards_data <- data.table::rbindlist(ee_backwards_data)
-  # 
-  # backwards_avg <- 
-  #   ee_backwards_data %>% 
-  #   as_tibble() %>% 
-  #   dplyr::select(conditions, ensemble_index, avg, sd, se, n) %>% 
-  #   group_by(conditions) %>% 
-  #   tidyr::nest(ensemble = c(ensemble_index, avg, sd, se, n))
-  
-  
 }
 
-#data <- forward_backward
+
+
+#' Internal function to fit ensembles averages
+#'
+#' @param data ensemble averaged data from prep and avg ensembles
+#' @param fit type of fit/
+#' @param hz sampling frequency
+#' @param max_l length of longest event in condition.
+#' @param is_shiny logical. is used in shiny app.
+#' @return nothing. Saves ensemble-data.csv in each obs-## folder.
+#' @import data.table
+#' @noRd
 fit_ensembles <- function(data, fit, hz, max_l, is_shiny = TRUE){
   print("starting fits")
 

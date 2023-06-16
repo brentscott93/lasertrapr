@@ -8,19 +8,20 @@ ee_fread <- function(path, is_shiny = TRUE){
 
 #' @noRd
 prep_forward_ensemble_lm <- function(x, hz){
-  x %>% 
-    dplyr::filter(between(ensemble_index, 0, 10)) %>%
+  x |>
+    dplyr::filter(between(ensemble_index, 0, 10)) |>
     mutate(time = ensemble_index/hz) 
 }
 
 #' @noRd
 prep_forward_ensemble_exp <- function(x, max_l, hz){
-  x[ensemble_index >= 0 & ensemble_index <= max_l, .(ensemble_index,
-                                      avg,
-                                      sd,
-                                      se,
-                                      n,
-                                      time = ensemble_index/hz)]
+  x[ensemble_index >= 0 & ensemble_index <= max_l,
+    .(ensemble_index,
+      avg,
+      sd,
+      se,
+      n,
+      time = ensemble_index/hz)]
 }
 
 #' @noRd
@@ -39,12 +40,13 @@ fit_forward_ee_2exp <- function(ee_data, start){
 
 #' @noRd
 prep_backwards_ensemble_exp <- function(x, max_l, hz){
-  x[ensemble_index <= 0 & ensemble_index >= -max_l, .(ensemble_index,
-                           avg,
-                           sd, 
-                           se, 
-                           n,
-                           time = sort(seq(0, by = -1/hz, along.with = ensemble_index)))]
+  x[ensemble_index <= 0 & ensemble_index >= -max_l,
+    .(ensemble_index,
+      avg,
+      sd,
+      se,
+      n,
+      time = sort(seq(0, by = -1/hz, along.with = ensemble_index)))]
 }
 
 #' @noRd
