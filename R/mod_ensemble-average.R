@@ -49,7 +49,7 @@ mod_ensemble_average_ui <- function(id){
                shinyWidgets::radioGroupButtons(
                  inputId = ns('fit'),
                  label = "Fit Exponential?",
-                 choices = c("None", "1exp", "2exp"),
+                 choices = c("1exp", "2exp"),
                  justified = TRUE,
                  checkIcon = list(
                    yes = tags$i(class = "fa fa-check-square",
@@ -92,18 +92,21 @@ mod_ensemble_average_ui <- function(id){
              width = 8,
               title = "Ensemble Averages",
              tabPanel(
-                "Backwards Parameter",
+                "Substeps",
+                tableOutput(ns("substeps"))
+             ),
+             tabPanel(
+                "Fit - Backwards Pars",
                 tableOutput(ns("backwards_par"))
-                
              ),
              
              tabPanel(
-                "Forward Parameter",
+                "Fit - Forward Pars",
                 tableOutput(ns("forward_par"))
              ),
              tabPanel(
                 "Plot",
-                plotOutput(ns("forward_backward_ensembles"), height = "auto") %>% shinycssloaders::withSpinner(type = 8, color = "#373B38")
+                plotOutput(ns("forward_backward_ensembles"), height = "auto") |> shinycssloaders::withSpinner(type = 8, color = "#373B38")
              ), 
              
             ),
@@ -277,20 +280,36 @@ mod_ensemble_average_server <- function(input, output, session, f){
          
          
          ee$forward_predict_df <- ee$fits$forward[, predict_forward[[1]], by = conditions]
-         
+         ee$forward_fitted_raw_df <- ee$fits$forward[, ensemble_k1_prep[[1]], by = conditions]
+
+         ee$avg_tail <- ee$fits$forward[, .(conditions, avg_tail)]
+
          forward_length <- ee$fits$forward[, .(conditions, total_time_dp)]
-         
-         
+
+
+
          bwards <- merge(ee$fits$backwards, forward_length, by = "conditions")
          bwards[, predict_backwards_shift := purrr::map2(predict_backwards,
                                                   total_time_dp,
-                                                  ~dplyr::mutate(.x, time_shifted = time+ (2*(.y/ee$hz)))) ]
-         
-         
+                                                  ~dplyr::mutate(.x, time_shifted = time+(2*(.y/ee$hz)))) ]
+
+
+
+         bwards[, raw_backwards_shift := purrr::map2(ensemble_k2_prep,
+                                                  total_time_dp,
+                                                  ~dplyr::mutate(.x, time_shifted = time+(2*(.y/ee$hz)))) ]
+
+         bwards[, raw_backwards_baseline_shift := purrr::map2(backwards_baseline_shifted,
+                                                  total_time_dp,
+                                                  ~dplyr::mutate(.x, time_shifted = time+(2*(.y/ee$hz)))) ]
+
+
          ee$backwards_predict_df <- bwards[, predict_backwards_shift[[1]] , by = conditions]
-         
-         
-         
+         ee$backwards_fitted_raw_df <- bwards[, raw_backwards_shift[[1]] , by = conditions]
+         ee$backwards_baseline_df <- bwards[, raw_backwards_baseline_shift[[1]] , by = conditions]
+
+         ee$avg_head <- bwards[, .(conditions, avg_head)]
+
          ee$fdat <- ee$fits$forward[, forward_fit_par_table[[1]], by=conditions]
          forward_pars <- ee$fdat
          forward_pars$direction <- "forward"
@@ -313,8 +332,8 @@ mod_ensemble_average_server <- function(input, output, session, f){
 
    conditions <- reactive({
      req(f$project$path)
-     list_dir(f$project$path) %>%
-       dplyr::filter(str_detect(name, "summary", negate = TRUE)) %>% 
+     list_dir(f$project$path) |>
+       dplyr::filter(str_detect(name, "summary", negate = TRUE)) |>
        dplyr::pull(name)
    })
    
@@ -381,7 +400,12 @@ mod_ensemble_average_server <- function(input, output, session, f){
    ee_data <- ee$data
    ee_forward_predict_df <- ee$forward_predict_df
    ee_backwards_predict_df <- ee$backwards_predict_df
-   
+
+   ee_forward_fitted_raw_df <- ee$forward_fitted_raw_df
+   ee_backwards_fitted_raw_df <- ee$backwards_fitted_raw_df
+
+   ee_backwards_baseline_df <- ee$backwards_baseline_df
+
    facet_nrow <- if(length(conditions()) >=2 ){
      req(input$nrow)
      as.numeric(input$nrow)
@@ -411,6 +435,22 @@ mod_ensemble_average_server <- function(input, output, session, f){
        ee_backwards_predict_df$conditions <- factor(ee_backwards_predict_df$conditions, 
                                                   levels = input$factor_order, 
                                                   labels = new_labels)
+
+
+
+       ee_backwards_baseline_df$conditions <- factor(ee_backwards_baseline_df$conditions,
+                                                  levels = input$factor_order,
+                                                  labels = new_labels)
+
+       ee_forward_fitted_raw_df$conditions <- factor(ee_forward_fitted_raw_df$conditions,
+                                                  levels = input$factor_order,
+                                                  labels = new_labels)
+
+
+       ee_backwards_fitted_raw_df$conditions <- factor(ee_backwards_fitted_raw_df$conditions,
+                                                  levels = input$factor_order,
+                                                  labels = new_labels)
+
         }
        }
       }
@@ -423,6 +463,17 @@ mod_ensemble_average_server <- function(input, output, session, f){
        
        ee_backwards_predict_df$conditions <- factor(ee_backwards_predict_df$conditions, 
                                                     levels = input$factor_order)
+
+
+       ee_backwards_baseline_df$conditions <- factor(ee_backwards_baseline_df$conditions,
+                                                  levels = input$factor_order)
+
+       ee_forward_fitted_raw_df$conditions <- factor(ee_forward_fitted_raw_df$conditions,
+                                                  levels = input$factor_order)
+
+       ee_backwards_fitted_raw_df$conditions <- factor(ee_forward_fitted_raw_df$conditions,
+                                                  levels = input$factor_order)
+
      }
    }
 
@@ -433,38 +484,53 @@ mod_ensemble_average_server <- function(input, output, session, f){
 
    original_length <- nrow(ee_data[direction == "forward" & ensemble_index >= 0])
    max_forward_fit_index <- nrow(ee_forward_predict_df)
-   ee_data_forward <- ee_data[direction=="forward" & forward_backward_index <= max_forward_fit_index]
+   ee_data_forward_baseline <- ee_data[direction=="forward" & forward_backward_index < 0 ]
 
-   ee_data_backwards <- ee_data[direction=="backwards" & ensemble_index >= -max_forward_fit_index]
+   ee_data_backwards_baseline <- ee_data[direction=="backwards" & ensemble_index > 0]
+   ## ee_data_backwards_baseline[, time_shifted := time+2]
 
-   if(max_forward_fit_index < original_length){
-     filter_diff <- original_length-max_forward_fit_index
-     ee_data_backwards[, forward_backward_index := forward_backward_index-(2*filter_diff)]
-     }
+   ## if(max_forward_fit_index < original_length){
+   ##   filter_diff <- original_length-max_forward_fit_index
+   ##   ee_data_backwards[, forward_backward_index := forward_backward_index-(2*filter_diff)]
+   ##   }
 
 
 
    ee$plot <-
    ggplot()+
-     geom_point(data = ee_data_forward,
-                aes(x = forward_backward_index/hz, 
+     geom_point(data = ee_data_forward_baseline,
+                aes(x = ensemble_index/hz,
+                    y = avg,
+                    color = conditions),
+                alpha = 0.3,
+                shape = 16,
+                size = 0.8)+
+     geom_point(data = ee_backwards_baseline_df,
+                aes(x = time_shifted - shift,
+                    y = avg,
+                    color = conditions),
+                alpha = 0.3,
+                shape = 16,
+                size = 0.8)+
+     geom_point(data = ee_forward_fitted_raw_df,
+                aes(x = time,
                     y = avg, 
                     color = conditions), 
                 alpha = 0.3,
                 shape = 16,
                 size = 0.8)+
-     geom_point(data = ee_data_backwards,
-                aes(x = (forward_backward_index/hz) - shift, 
+     geom_point(data = ee_backwards_fitted_raw_df,
+                aes(x = time_shifted - shift,
                     y = avg, 
                     color = conditions), 
                 alpha = 0.3,
                 shape = 16,
                 size = 0.8)+
      geom_line(data = ee_forward_predict_df,
-               aes(x = time, 
+               aes(x = time,
                    y = predict_y))+
      geom_line(data = ee_backwards_predict_df,
-               aes(x = time_shifted - shift, 
+               aes(x = time_shifted - shift,
                    y = predict_y))+
      facet_wrap(~conditions, scales = "free_x", nrow = facet_nrow)+
      ylab("nanometers")+
@@ -479,7 +545,7 @@ mod_ensemble_average_server <- function(input, output, session, f){
  
  output$forward_backward_ensembles <- renderPlot({
    validate(need(ee$data, "Prep & Average Ensembles"))
-   validate(need(ee$fits,"Average Ensembles Before Continuing"))
+   ## validate(need(ee$fits,"Average Ensembles Before Continuing"))
    validate(need(input$color1, "Navigate to 'Plot' tab to view Ensemble Plots")) 
    
   ee$plot
@@ -557,7 +623,17 @@ mod_ensemble_average_server <- function(input, output, session, f){
  output$backwards_par <- renderTable({
     validate(need(ee$bdat, "Please average & fit ensembles"))
     dcast(ee$bdat, conditions ~ term, value.var = "estimate")
+
  })
+
+  output$substeps <- renderTable({
+    validate(need(ee$fdat, "Please average & fit ensembles"))
+    tab <- merge(ee$avg_tail, ee$avg_head, by = "conditions")
+    tab[, .(Conditions = conditions,
+            "Total Step" = avg_tail,
+            "Substep 1" = avg_head,
+            "Substep 2" = avg_tail - avg_head)]
+    })
 }
     
 ## To be copied in the UI

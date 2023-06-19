@@ -330,6 +330,7 @@ fit_ensembles <- function(data, fit, hz, max_l, is_shiny = TRUE){
   backwards_nest <- backwards_avg[, .(ensemble_data = list(.SD)), by = conditions]
   
   backwards_nest[, `:=`(ensemble_k2_prep = lapply(ensemble_data, prep_backwards_ensemble_exp, hz = hz, max_l = max_l),
+                        backwards_baseline_shifted = lapply(ensemble_data, prep_backwards_baseline_shift, hz = hz),
                         avg_head = vapply(ensemble_data, function(x) mean(head(x$avg, 100)), FUN.VALUE = numeric(1)),
                         n = vapply(ensemble_data, function(x) unique(x$n),  FUN.VALUE = numeric(1)))]
   

@@ -50,6 +50,16 @@ prep_backwards_ensemble_exp <- function(x, max_l, hz){
 }
 
 #' @noRd
+prep_backwards_baseline_shift <- function(x, hz){
+  x[ensemble_index > 0,
+    .(ensemble_index,
+      avg,
+      sd,
+      se,
+      n,
+      time = seq(1/hz, by = 1/hz, along.with = ensemble_index))]
+}
+#' @noRd
 fit_backwards_ee_1exp <- function(ee_data, start){
   minpack.lm::nlsLM(avg ~ d1+(d2*exp(time*k2)),
                     data = ee_data,

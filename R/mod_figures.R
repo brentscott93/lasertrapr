@@ -147,6 +147,7 @@ mod_figures_server <- function(input, output, session, f){
                           theme_size = 12)
     
     observeEvent(input$load_data, ignoreInit = TRUE, {
+
       defend_if_null(f$project_input, ui = "Please select a project before plotting", type = "error")
       req(f$project_input)
       summary_folder <- file.path(f$project$path, "summary")
@@ -163,12 +164,22 @@ mod_figures_server <- function(input, output, session, f){
                               pattern = path,
                               full.names = TRUE)
       fig$data <- fread(full_path)
-      split_conditions <- list.files(f$project$path, pattern = "split-conditions.csv", recursive = TRUE, full.names = TRUE)
-      if(length(split_conditions) == 0){
+
+      split_conditions_path <- list.files(summary_folder, pattern = "split-conditions.csv", recursive = TRUE, full.names = FALSE)
+
+      if(length(split_conditions_path) == 0){
         fig$data_summary <- summarize_trap(fig$data, by = "conditions")
         fig$split_conditions <- data.frame(conditions = fig$data_summary$conditions)
       } else {
-        split_conditions <- fread(split_conditions)
+
+
+      split_dates <- sub("_.*", "", split_conditions_path)
+      split_conditions_path <- split_conditions_path[which.max(as.Date(split_dates))]
+      split_full_path <- list.files(summary_folder,
+                                   pattern = split_conditions_path,
+                                   full.names = TRUE)
+
+        split_conditions <- fread(split_full_path)
         fig$data_summary <- summarize_trap(fig$data, by = names(split_conditions))
         fig$split_conditions <- split_conditions
       }
@@ -267,8 +278,7 @@ mod_figures_server <- function(input, output, session, f){
 
     output$xy_labels <- renderUI({
       req(input$x)
-      req(input$y)
-     
+
       tagList(
         textInput(ns("xlab"), "X Label", value = input$x),
         textInput(ns("ylab"), "Y Label", value = input$y),
