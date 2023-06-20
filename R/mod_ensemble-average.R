@@ -93,7 +93,8 @@ mod_ensemble_average_ui <- function(id){
               title = "Ensemble Averages",
              tabPanel(
                 "Substeps",
-                tableOutput(ns("substeps"))
+                tableOutput(ns("substeps")),
+               plotOutput(ns("substeps_plot"))
              ),
              tabPanel(
                 "Fit - Backwards Pars",
@@ -322,7 +323,21 @@ mod_ensemble_average_server <- function(input, output, session, f){
          data.table::fwrite(mod_table, file = file.path(summary_folder, paste0(Sys.Date(), "_ensemble-average-parameters.csv")))
          # ee$forward <- ee$data[direction == "forward"]
          # ee$backwards <- ee$data[direction == "backwards"]
-       
+
+         substeps_path <-
+           list.files(f$project$path,
+                      pattern = "substeps.csv",
+                      recursive = TRUE,
+                      full.names = TRUE)
+
+         ee$substeps_data <-
+           rbindlist(
+             lapply(
+               substeps_path,
+               fread
+             )
+           )
+
          showNotification("Ensembles Averaged & Fit", type = "message")
        }
      })
@@ -414,6 +429,7 @@ mod_ensemble_average_server <- function(input, output, session, f){
    }
    
    plot_colors <- purrr::map_chr(seq_along(conditions()), ~input[[paste0('color', .x)]])
+   ee$plot_colors <- plot_colors
    
    if(!is.null(input$factor_order)){
      if(input$custom_labels){
@@ -627,15 +643,65 @@ mod_ensemble_average_server <- function(input, output, session, f){
  })
 
   output$substeps <- renderTable({
-    validate(need(ee$fdat, "Please average & fit ensembles"))
-    tab <- merge(ee$avg_tail, ee$avg_head, by = "conditions")
+    validate(need(ee$substeps_data, "Please average & fit ensembles"))
+
+    tab <- ee$substeps_data[, .(total_step = mean(bead_position_substep_2_nm - prior_2ms_unbound_position_nm),
+                                substep_1 = mean(substep_1_nm, na.rm = TRUE),
+                                substep_2  = mean(substep_2_nm, na.rm = TRUE)),
+                            by = "conditions"]
+
     tab[, .(Conditions = conditions,
-            "Total Step" = avg_tail,
-            "Substep 1" = avg_head,
-            "Substep 2" = avg_tail - avg_head)]
+            "Total Step" = total_step,
+            "Substep 1" = substep_1 ,
+            "Substep 2" = substep_2)]
+
+    ## tab <- merge(ee$avg_tail, ee$avg_head, by = "conditions")
+    ## tab[, .(Conditions = conditions,
+    ##         "Total Step" = avg_tail,
+    ##         "Substep 1" = avg_head,
+    ##         "Substep 2" = avg_tail - avg_head)]
     })
+
+  output$substeps_plot <- renderPlot({
+    req(ee$substeps_data)
+
+    substeps_data <- ee$substeps_data
+
+    substeps_data[, total_step := bead_position_substep_2_nm - prior_2ms_unbound_position_nm]
+
+    if(is.null(ee$plot_colors)){
+      plot_colors <- unname(palette.colors())
+    } else {
+      plot_colors <- ee$plot_colors
+    }
+
+    total <- plot_ecdf(measured_events = substeps_data,
+                      var = "total_step",
+                      colorz = plot_colors,
+                      x_lab = "nanometers",
+                      title = "Total Displacement",
+                      basesize = 12)
+
+    sub1 <- plot_ecdf(measured_events = substeps_data,
+                      var = "substep_1_nm",
+                      colorz = plot_colors,
+                      x_lab = "nanometers",
+                      title = "Substep 1",
+                      basesize = 12)
+
+
+    sub2 <- plot_ecdf(measured_events = substeps_data,
+                      var = "substep_2_nm",
+                      colorz = plot_colors,
+                      x_lab = "Nanometers",
+                      title = "Substep 2",
+                      basesize = 12)
+
+    cowplot::plot_grid(total, sub1, sub2, nrow = 1)
+  })
+
+
 }
-    
 ## To be copied in the UI
 # mod_ensemble_average_ui("ensemble_average")
     

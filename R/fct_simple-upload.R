@@ -51,15 +51,15 @@ simple_upload <- function(input_data, project, conditions, date, ready_for_analy
       dir.create(paste0(date$path, "/obs-0", r))
       t <- t |> dplyr::mutate(obs =  paste0("obs-0", r)) |> dplyr::select(project, conditions, date, obs, everything())
       data.table::fwrite(t, file = file.path(date$path, paste0("obs-0", r), "trap-data.csv"), sep = ",")
-      o <- o |> mutate(obs =  paste0("obs-0", r)) |> dplyr::select(project, conditions, date, obs, everything())
+      o <- o |> dplyr::mutate(obs =  paste0("obs-0", r)) |> dplyr::select(project, conditions, date, obs, everything())
       data.table::fwrite(o, file = file.path(date$path, paste0("obs-0", r), "options.csv"), sep = ",")
     } else {
       #dev
       #dir.create(paste0(date,"/obs-", r))
       dir.create(paste0(date$path,"/obs-", r))
-      t <- t |> mutate(obs =  paste0("obs-", r)) |> dplyr::select(project, conditions, date, obs, everything())
+      t <- t |> dplyr::mutate(obs =  paste0("obs-", r)) |> dplyr::select(project, conditions, date, obs, everything())
       data.table::fwrite(t, file = file.path(date$path, paste0("obs-", r), "trap-data.csv"), sep = ",")
-      o <- o |> mutate(obs =  paste0("obs-", r)) |> dplyr::select(project, conditions, date, obs, everything())
+      o <- o |> dplyr::mutate(obs =  paste0("obs-", r)) |> dplyr::select(project, conditions, date, obs, everything())
       data.table::fwrite(o, file = file.path(date$path, paste0("obs-", r), "options.csv"), sep = ",")
     }
   }

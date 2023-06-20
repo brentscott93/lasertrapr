@@ -142,7 +142,7 @@ measure_hm_events <- function(processed_data, hm_model_results, conversion, hz, 
     time_off_windows <- viterbi_rle %>%
       dplyr::filter(values == 1) %>%
       tail(-1) %>% #this gets rid of the first state 1 when that begins with the start of the trace recording
-      mutate(off_length_hz = lengths*conversion,
+      dplyr::mutate(off_length_hz = lengths*conversion,
              time_off_ms = (off_length_hz/hz)*1000)
     
   } else {
@@ -151,7 +151,7 @@ measure_hm_events <- function(processed_data, hm_model_results, conversion, hz, 
       dplyr::filter(values == 1) %>%
       tail(-1) %>% #this gets rid of the first state 1 when that begins with the start of the trace recording
       head(-1) %>% #this gets rid of the last state 1 that only ends because we stopped collecting
-      mutate(off_length_hz = lengths*conversion,
+      dplyr::mutate(off_length_hz = lengths*conversion,
              time_off_ms = (off_length_hz/hz)*1000)
   }
   
@@ -186,7 +186,7 @@ measure_hm_events <- function(processed_data, hm_model_results, conversion, hz, 
   #data is recmombined in a state_1 column and a state_2
   #the values in these columns represent the last window in either state 1 or state 2
   #So the range of values between the end of state 1 (or start of state 2) and the end of state 2 is the estimate event duration
-  hm_event_transitions <- bind_cols(state_1_end = split_data[[1]]$cumsum, state_2_end = split_data[[2]]$cumsum)
+  hm_event_transitions <- dplyr::bind_cols(state_1_end = split_data[[1]]$cumsum, state_2_end = split_data[[2]]$cumsum)
   
   #loop over regrouped data to find the mean of the events displacements
   state_2_avg <- vector("list", length = nrow(hm_event_transitions)) #allocate space for output storage of loop
@@ -302,13 +302,14 @@ changepoint_analysis <- function(measured_hm_events,
   state_1_avg <-  measured_hm_events$state_1_avg
   
   if(is.null(cp_running_var_window)){
-    trap_data <- tibble(data = flip_raw,
-                        index = 1:length(data))
+    trap_data <- data.table(data = flip_raw)
   } else {
-    trap_data <- tibble(data = flip_raw,
-                        index = 1:length(data),
+    trap_data <- data.table(data = flip_raw,
+                        ## index = 1:length(data),
                         run_var = RcppRoll::roll_varl(flip_raw, n = cp_running_var_window))
   }
+
+    trap_data$index <- 1:length(data)
   
   time_prior <- viterbi_rle %>% 
     dplyr::filter(values == 1)
@@ -566,20 +567,20 @@ changepoint_analysis <- function(measured_hm_events,
     
   } #loop close
   
-  cp_transitions <- tibble(start = better_time_on_starts,
-                           stop = better_time_on_stops,
-                           cp_found_start = cp_found_start,
-                           cp_found_stop = cp_found_stop,
-                           index = 1:length(start),
-                           is_positive = is_positive,
-                           keep = keep_event,
-                           cp_displacements = better_displacements,
-                           trap_stiffness = trap_stiffness,
-                           myo_stiffness = myo_stiffness,
-                           front_signal_ratio = front_var_ratio,
-                           back_signal_ratio = back_var_ratio) %>%
-    mutate(cp_time_on_dp = (stop - start) + 1,
-           cp_time_on_ms = (cp_time_on_dp/hz)*1000)
+  cp_transitions <- tibble::tibble(start = better_time_on_starts,
+                                   stop = better_time_on_stops,
+                                   cp_found_start = cp_found_start,
+                                   cp_found_stop = cp_found_stop,
+                                   index = 1:length(start),
+                                   is_positive = is_positive,
+                                   keep = keep_event,
+                                   cp_displacements = better_displacements,
+                                   trap_stiffness = trap_stiffness,
+                                   myo_stiffness = myo_stiffness,
+                                   front_signal_ratio = front_var_ratio,
+                                   back_signal_ratio = back_var_ratio) %>%
+    dplyr::mutate(cp_time_on_dp = (stop - start) + 1,
+                  cp_time_on_ms = (cp_time_on_dp/hz)*1000)
   
   return(list(cp_event_transitions = cp_transitions,
               cp_displacements = better_displacements,

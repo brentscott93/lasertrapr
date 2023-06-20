@@ -42,7 +42,7 @@ add_event_user_excluded <- function(project_path){
   add_col <- function(path){
     print(path)
     d <- data.table::fread(path) %>% 
-      mutate(event_user_excluded = FALSE)
+      dplyr::mutate(event_user_excluded = FALSE)
 
    
     data.table::fwrite(d, path)
