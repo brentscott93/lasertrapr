@@ -10,7 +10,7 @@ ee_fread <- function(path, is_shiny = TRUE){
 prep_forward_ensemble_lm <- function(x, hz){
   x |>
     dplyr::filter(between(ensemble_index, 0, 10)) |>
-    mutate(time = ensemble_index/hz) 
+    dplyr::mutate(time = ensemble_index/hz)
 }
 
 #' @noRd

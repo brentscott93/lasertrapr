@@ -8,7 +8,6 @@
 #'
 #' @return nothing
 #' @export
-#'
 #' @examples push_project_to_lasertrapr_cloud("project_something", "myemail")
 push_project_to_lasertrapr_cloud <- function(project, email){
   
@@ -29,14 +28,14 @@ push_project_to_lasertrapr_cloud <- function(project, email){
                         full.names = TRUE)
   
   included <-
-    map_df(options, data.table::fread) %>% 
+    purrr::map_df(options, data.table::fread) |>
     dplyr::filter(include == TRUE, report == "success", review == TRUE) 
   
   events <-
-    included %>% 
-    mutate(path = file.path(path.expand("~"), "lasertrapr", project, conditions, date, obs, "measured-events.csv")) %>% 
-    pull(path) %>% 
-    map_df(., data.table::fread)
+    included %>%
+    dplyr::mutate(path = file.path(path.expand("~"), "lasertrapr", project, conditions, date, obs, "measured-events.csv")) %>%
+    dplyr::pull(path) %>%
+    purrr::map_df(., data.table::fread)
     
   folders <- 
     included %>% 
@@ -61,9 +60,9 @@ push_project_to_lasertrapr_cloud <- function(project, email){
         dplyr::filter(name == conditions)
     }
     
-    drive_dates <- drive_ls(drive_condition_path)
+    drive_dates <- googledrive::drive_ls(drive_condition_path)
     if(!date %in% drive_dates$name){
-      drive_date_path <- drive_mkdir(date, drive_condition_path)
+      drive_date_path <- googledrive::drive_mkdir(date, drive_condition_path)
     } else {
       drive_date_path <-
         drive_dates %>% 

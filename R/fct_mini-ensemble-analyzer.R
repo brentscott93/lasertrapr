@@ -118,8 +118,8 @@ mini_ensemble_analyzer <- function(opt, w_width_ms = 10, displacement_threshold 
       rescaled_raw_data <- c(rescaled_raw_data, processed_data[p1:p2])
     }
     
-    rescaled_raw_data <- tibble(data = rescaled_raw_data, 
-                                index = 1:length(data))
+    rescaled_raw_data <- tibble::tibble(data = rescaled_raw_data,
+                                        index = 1:length(data))
     
     setProgress(0.65, detail = 'Calculate Rescaled Running Mean')
     run_mean_rescaled <- na.omit(RcppRoll::roll_meanl(rescaled_raw_data$data, n =  w_width))
@@ -137,8 +137,8 @@ mini_ensemble_analyzer <- function(opt, w_width_ms = 10, displacement_threshold 
     minus2 <- rescaled_events$state_2_end[-length(rescaled_events$state_2_end)]
     
     off_time_index <- 
-      bind_cols(state_1_start = minus2 + 1, state_1_end = minus1) %>%
-      mutate(off_time_dp = (state_1_end - state_1_start) +1,
+      dplyr::bind_cols(state_1_start = minus2 + 1, state_1_end = minus1) %>%
+      dplyr::mutate(off_time_dp = (state_1_end - state_1_start) +1,
              off_time_sec = off_time_dp/hz,
              off_time_ms = off_time_sec*1000)
     
@@ -148,7 +148,7 @@ mini_ensemble_analyzer <- function(opt, w_width_ms = 10, displacement_threshold 
     peak_nm_index <- vector()
     for(i in 1:nrow(rescaled_events)){
       temp_vector <- rescaled_raw_data[(rescaled_events$state_1_end[i] + 1) : (rescaled_events$state_2_end[i]),]
-      run_mean_event <- tibble(data = na.omit(RcppRoll::roll_meanl(temp_vector$data, n = 10)),
+      run_mean_event <- tibble::tibble(data = na.omit(RcppRoll::roll_meanl(temp_vector$data, n = 10)),
                                index = min(temp_vector$index):(min(temp_vector$index) + (length(data)-1)))
       peak_window <- max(run_mean_event$data)
       peak_displacement[i] <- peak_window
@@ -162,7 +162,7 @@ mini_ensemble_analyzer <- function(opt, w_width_ms = 10, displacement_threshold 
    
     final_events <-  
       rescaled_events %>%
-      mutate(off_time_prior_dp = c(NA, off_time_index$off_time_dp),
+      dplyr::mutate(off_time_prior_dp = c(NA, off_time_index$off_time_dp),
              off_time_prior_sec = off_time_prior_dp/hz,
              time_off_ms = off_time_prior_sec * 1000,
              time_on_dp = state_2_end - state_1_end,
@@ -178,7 +178,7 @@ mini_ensemble_analyzer <- function(opt, w_width_ms = 10, displacement_threshold 
              event_start = state_1_end + 1,
              peak_nm_index = peak_nm_index,
              index = 1:nrow(rescaled_events)) %>% 
-      rename("event_stop" = state_2_end) %>% 
+      dplyr::rename("event_stop" = state_2_end) %>%
       dplyr::select(project,
                     conditions,
                     date, 
@@ -204,7 +204,7 @@ mini_ensemble_analyzer <- function(opt, w_width_ms = 10, displacement_threshold 
    
    setProgress(0.95, detail = 'Saving Data')
    trap_data <-
-     mutate(trap_data,
+     dplyr::mutate(trap_data,
             rescaled_mini_data = rescaled_raw_data$data,
             run_mean_overlay = c(run_mean_rescaled0, rep(0, times)))
    
@@ -305,8 +305,8 @@ id_mini_events <- function(run_mean, displacement_threshold, time_threshold){
       #data is recombined in a state_1 column and a state_2
       #the values in these columns represent the last data point in either state 1 or state 2
       #So the range of values between the end of state 1 (or start of state 2) and the end of state 2 is the event duration
-      regroup_data <- bind_cols(state_1_end = split_data[[1]]$cumsum, state_2_end = split_data[[2]]$cumsum) %>%
-        mutate(event_duration_dp = state_2_end - state_1_end)
+      regroup_data <- dplyr::bind_cols(state_1_end = split_data[[1]]$cumsum, state_2_end = split_data[[2]]$cumsum) %>%
+        dplyr::mutate(event_duration_dp = state_2_end - state_1_end)
       
       #filter out state 2s that are less than threshold
       events <- 

@@ -211,7 +211,7 @@ plot_overlay <- function(obs_path, time_period_dp, color){
         trap_data %>% 
           dplyr::filter(real_time_index >= measured_events$start[[i]],
                         real_time_index <= measured_events$stop[[i]]) %>% 
-          mutate(population = paste0("event", measured_events$index[[i]])) %>% 
+          dplyr::mutate(population = paste0("event", measured_events$index[[i]])) %>%
         dplyr::select(new_time_index, 
                       real_time_index, 
                       processed_bead, 
