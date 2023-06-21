@@ -317,7 +317,7 @@ mod_isometric_force_clamp_server <- function(input, output, session, f){
     defend_if_empty(f$date, ui = 'Please select a date folder', type = 'error')
     showNotification('Refreshing table', type = 'message')
     files <- list_files(f$date$path, pattern = 'options.csv', recursive = T)
-    map_df(files$path, ~data.table::fread(.,
+    purrr::map_df(files$path, ~data.table::fread(.,
                                           select = c("obs", "include", "analyzer", "report", "review"),
                                            nrows = 1))
   })
@@ -565,7 +565,7 @@ mod_isometric_force_clamp_server <- function(input, output, session, f){
        } else if(input$include_exclude == "include"){
        excluded_data$event_user_excluded[as.numeric(input$exclude_event_manual)] <- FALSE
        }
-       data.table::fwrite(excluded_data, file = file.path(f$obs$path, 'measured-events.csv'))
+       data.table::fwrite(excluded_data, file = file.path(f$obs$path, 'ifc-measured-events.csv'))
        showNotification(paste0("The following events were modified: ", toString(input$exclude_event_manual), " - Refreshing..."), duration = 3, type = "message")
       }
       removeModal()

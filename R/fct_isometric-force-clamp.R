@@ -120,7 +120,7 @@ isometric_force_clamp_analysis <- function(trap_data,
           transducer_bead <- trap_data$processed_bead_1
         }
 
-        force_clamp_data <- data.table(time = 1:length(motor_bead)/20000,
+        force_clamp_data <- data.table(time = 1:length(motor_bead)/hz,
                                        transducer_bead = transducer_bead,
                                        motor_bead = motor_bead,
                                        index = 1:length(motor_bead))
@@ -343,6 +343,7 @@ isometric_force_clamp_analysis <- function(trap_data,
           }
                                         #find length of event
           attachment_durations[[i]] <- nrow(force_clamp_data[cp_start:cp_stop,])
+          length_of_event <- nrow(force_clamp_data[cp_start:cp_stop,])
                                         #
                                         #
           if(length_of_event <= 0 ||  cp_found_start[[i]] == FALSE || cp_found_stop[[i]] == FALSE || cp_start >= cp_stop){
@@ -410,17 +411,19 @@ isometric_force_clamp_analysis <- function(trap_data,
 
         if(is_shiny == T) setProgress(0.95, detail = 'Saving Data')
 
-        file_names <-  c('trap-data.csv',
-                         'ifc-measured-events.csv',
-                         'hm-model-data.csv',
-                         'options.csv')
+        file_names <-  c(
+          ## 'trap-data.csv',
+          'ifc-measured-events.csv',
+          'hm-model-data.csv',
+          'options.csv')
 
         file_paths <-  file.path(path.expand("~"), "lasertrapr", project,  conditions, date, obs, file_names)
 
-        data_to_save <- list(trap_data,
-                             analyzed_force_clamp,
-                             hm_model_results,
-                             options_df)
+        data_to_save <- list(
+          ## trap_data,
+          analyzed_force_clamp,
+          hm_model_results,
+          options_df)
 
         purrr::walk2(data_to_save, file_paths, ~data.table::fwrite(x = .x, file = .y, sep = ","))
 

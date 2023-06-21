@@ -899,27 +899,35 @@ output$move_files <- renderText({
     defend_if_not_equal(substring(f$obs_input, 1, 3),
                         'obs',
                         'No obs selected', type = 'error')
-    
+
+      if(input$include == 'No'){
+         input_include <- FALSE
+       } else {
+         input_include <- TRUE
+       }
     #test that mv to nm is a number
-    defend_if_blank(input$mv2nm, ui = 'Enter step cal', type = 'error')
 
     ## mv2nm_test <- attempt::attempt(as.numeric(input$mv2nm))
     ## if(attempt::is_try_error(mv2nm_test)) showNotification('nm to pN converion not a number', type = 'error')
     ## req(!attempt::is_try_error(mv2nm_test))
     
     #test that mv to nm is a number
-    defend_if_blank(input$nm2pn, ui = 'Enter trap stiffness', type = 'error')
-   
+
     ## nm2pn_test <- attempt::attempt(as.numeric(input$nm2pn))
     ## if(attempt::is_try_error(nm2pn_test)) showNotification('nm to pN converion not a number', type = 'error')
     ## req(!attempt::is_try_error(nm2pn_test))
     
     withProgress(message = 'Saving Data', {
       if(o$data$channels == 1){
+
+
+    defend_if_blank(input$mv2nm, ui = 'Enter step cal', type = 'error')
+    defend_if_blank(input$nm2pn, ui = 'Enter trap stiffness', type = 'error')
+
       current_obs <- f$obs$path
       
       trap_data <- list_files(current_obs) |>
-        dplyr::filter(str_detect(name, "trap-data.csv")) |>
+        dplyr::filter(stringr::str_detect(name, "trap-data.csv")) |>
         dplyr::pull(path)
       
        data <- data.table::fread(trap_data, sep = ",") |>
@@ -942,12 +950,7 @@ output$move_files <- renderText({
         data <- dplyr::mutate(data, processed_bead = processed_bead - base$baseline_fit$estimate[1])
      }
       
-      if(input$include == 'No'){
-         input_include <- FALSE
-       } else {
-         input_include <- TRUE
-       }
-      
+
       opt <- list.files(path = f$obs$path,
                       pattern = "options.csv",
                       full.names = TRUE)
