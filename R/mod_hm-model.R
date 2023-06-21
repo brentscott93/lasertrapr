@@ -315,7 +315,7 @@ mod_hm_model_server <- function(input, output, session, f){
   output$n_events <- renderValueBox({
     req(trap_data())
     valueBox(
-      nrow(filter(trap_data()$events, keep == T)),
+      nrow(trap_data()$events[keep == T]),
       "Events",
       icon = icon("slack-hash"),
       color = 'yellow'

@@ -205,8 +205,8 @@ hidden_markov_changepoint_analysis <- function(trap_data,
                                                     cp_data$absolute_displacements),
                                       state_order = seq(from = 2, length.out = length(avg), by = 2))
         
-        hmm_overlay <- bind_rows(s1_avg_4plot, s2_avg_4plot) %>%
-          arrange(state_order)
+        hmm_overlay <- dplyr::bind_rows(s1_avg_4plot, s2_avg_4plot) %>%
+          dplyr::arrange(state_order)
 
         overlay <- unlist(purrr::map2(hmm_overlay$avg,
                                measured_hm_events$viterbi_rle$lengths,
