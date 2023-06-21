@@ -302,15 +302,15 @@ changepoint_analysis <- function(measured_hm_events,
   state_1_avg <-  measured_hm_events$state_1_avg
   
   if(is.null(cp_running_var_window)){
-    trap_data <- data.table(data = flip_raw)
+    trap_data <- tibble::tibble(data = flip_raw,
+                                index = 1:length(data))
   } else {
-    trap_data <- data.table(data = flip_raw,
-                        ## index = 1:length(data),
-                        run_var = RcppRoll::roll_varl(flip_raw, n = cp_running_var_window))
+    trap_data <- tibble::tibble(data = flip_raw,
+                                index = 1:length(data),
+                                run_var = RcppRoll::roll_varl(flip_raw, n = cp_running_var_window))
   }
 
-    trap_data$index <- 1:length(data)
-  
+
   time_prior <- viterbi_rle %>% 
     dplyr::filter(values == 1)
   

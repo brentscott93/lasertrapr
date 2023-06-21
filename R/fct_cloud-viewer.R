@@ -295,7 +295,7 @@ lasertrapr_cloud <- function(email){
     
     output$obs <- renderUI({
       req(input$date != "Choose...")
-      obs <- dplyr::filter(obs(), str_detect(name, "obs")) %>% arrange(name)
+      obs <- dplyr::filter(obs(), str_detect(name, "obs")) %>% dplyr::arrange(name)
       selectInput("obs",
                   "Obs",
                   c("Choose...", obs$name))
