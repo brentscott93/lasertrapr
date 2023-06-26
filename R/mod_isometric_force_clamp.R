@@ -188,6 +188,7 @@ mod_isometric_force_clamp_server <- function(input, output, session, f){
 
 
   output$overlay_dygraph <- dygraphs::renderDygraph({
+    ## browser()
     req(trap_data())
     hz <- trap_data()$options$hz[[1]]
     feedback_motor_bead <- as.integer(trap_data()$options$feedback_motor_bead[[1]])
@@ -196,7 +197,7 @@ mod_isometric_force_clamp_server <- function(input, output, session, f){
 
     d <- data.table::data.table(index = (1:nrow(trap_data()$trap)/hz),
                                 motor_bead = trap_data()$trap$processed_bead_1,
-                                transducer_bead = trap_data()$trap$processed_bead_2,
+                                transducer_bead = trap_data()$trap$processed_bead_2
                                 ## model = trap_data()$trap$hm_overlay
                                 )
 
@@ -204,7 +205,7 @@ mod_isometric_force_clamp_server <- function(input, output, session, f){
 
     d <- data.table::data.table(index = (1:nrow(trap_data()$trap)/hz),
                                 motor_bead = trap_data()$trap$processed_bead_2,
-                                transducer_bead = trap_data()$trap$processed_bead_1,
+                                transducer_bead = trap_data()$trap$processed_bead_1
                                 ## model = trap_data()$trap$hm_overlay
                                 )
     }
@@ -225,11 +226,15 @@ mod_isometric_force_clamp_server <- function(input, output, session, f){
     # so when user filters out events, the events retain their real event number
     # making it easier to pick other events to exclude
    labels <- trap_data()$events[keep == TRUE & event_user_excluded == FALSE]
+   str(labels)
+   labels$peak_nm_index <- labels$midpoint_index_dp/hz
 
 
     overlay_dy <-
       dygraphs::dygraph(d) |> #raw_data_dygraph
-      dygraphs::dySeries('raw', color = 'black') |>
+      dygraphs::dySeries('motor_bead', color = "black") |>
+      dygraphs::dySeries('transducer_bead', color = 'black') |>
+      dygraphs::dyAxis("y", valueRange = c(min(d$transducer_bead)-100, max(d$motor_bead)+10)) |>
     ## dygraphs::dySeries('model', color = "#1B9E77",  strokeWidth = 2) %>%
       dygraphs::dyRangeSelector(fillColor ='white', strokeColor = 'black') |>
       add_shades(periods_df) |>#raw_periods
@@ -243,29 +248,29 @@ mod_isometric_force_clamp_server <- function(input, output, session, f){
 
   output$mv_by_state <- renderPlot({
 
-   req(trap_data())
-    mv_data <- trap_data()$running
-    mv_data$state <- factor(mv_data$state, levels = c(1, 2))
+   ## req(trap_data())
+   ##  mv_data <- trap_data()$running
+   ##  mv_data$state <- factor(mv_data$state, levels = c(1, 2))
 
-    mv1 <- ggplot2::ggplot(mv_data)+
-              geom_point(aes(x = run_mean, y = run_var, color = state), size = 3, alpha = 0.5)+
-              scale_color_manual(values = c("#1B9E77", "#D95F02"))+
-              ggtitle('Mean-Variance (overlayed)')+
-              ylab('Variance')+
-              xlab('Mean (nm)')+
-              theme_linedraw(base_size = 18)+
-              theme(legend.position = 'none')
+   ##  mv1 <- ggplot2::ggplot(mv_data)+
+   ##            geom_point(aes(x = run_mean, y = run_var, color = state), size = 3, alpha = 0.5)+
+   ##            scale_color_manual(values = c("#1B9E77", "#D95F02"))+
+   ##            ggtitle('Mean-Variance (overlayed)')+
+   ##            ylab('Variance')+
+   ##            xlab('Mean (nm)')+
+   ##            theme_linedraw(base_size = 18)+
+   ##            theme(legend.position = 'none')
 
-    mv2 <- ggplot(mv_data)+
-              geom_point(aes(x = run_mean, y = run_var, color = state), size = 3, alpha = 0.5)+
-              scale_color_manual(values = c("#1B9E77", "#D95F02"))+
-              facet_wrap(~state)+
-              ggtitle('Mean-Variance (by state)')+
-              ylab('')+
-              xlab('Mean (nm)')+
-              theme_linedraw(base_size = 18)
+   ##  mv2 <- ggplot(mv_data)+
+   ##            geom_point(aes(x = run_mean, y = run_var, color = state), size = 3, alpha = 0.5)+
+   ##            scale_color_manual(values = c("#1B9E77", "#D95F02"))+
+   ##            facet_wrap(~state)+
+   ##            ggtitle('Mean-Variance (by state)')+
+   ##            ylab('')+
+   ##            xlab('Mean (nm)')+
+   ##            theme_linedraw(base_size = 18)
 
-      gridExtra::grid.arrange(mv1, mv2, nrow = 1)
+   ##    gridExtra::grid.arrange(mv1, mv2, nrow = 1)
   })
 
   output$observation <- renderValueBox({
@@ -281,7 +286,7 @@ mod_isometric_force_clamp_server <- function(input, output, session, f){
   output$n_events <- renderValueBox({
     req(trap_data())
     valueBox(
-      nrow(filter(trap_data()$events, keep == T)),
+      nrow(trap_data()$events[keep == TRUE]),
       "Events",
       icon = icon("slack-hash"),
       color = 'yellow'
@@ -365,7 +370,7 @@ mod_isometric_force_clamp_server <- function(input, output, session, f){
 
 
 
-    a <- reactiveValues(w_width = 20,
+    a <- reactiveValues(w_width = 2000,
                         w_slide = "1/2",
                         em_random_start = FALSE,
                         displacement_type = "avg")
@@ -387,7 +392,8 @@ mod_isometric_force_clamp_server <- function(input, output, session, f){
           tabPanel("HM-Model",
                        fluidRow(
                          column(6,
-                                sliderInput(ns("w_width"), "Window Width", min = 10, max = 300, value = a$w_width, width = "100%",step = 5)
+                                numericInput(ns("w_width"), "Window Width", value = 2000, min = 1, max = 50000),
+                                ## sliderInput(ns("w_width"), "Window Width", min = 1, max = , value = a$w_width, width = "100%",step = 5)
                          ),
                          column(6,
                                 shinyWidgets::sliderTextInput(ns("w_slide"),
