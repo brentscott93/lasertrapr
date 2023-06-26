@@ -11,7 +11,7 @@ isometric_force_clamp_analysis <- function(trap_data,
                                            em_random_start,
                                            is_shiny = F,
                                            ...){
-  #browser()
+  ## browser()
   project <- unique(trap_data$project)
   conditions <- unique(trap_data$conditions)
   date <- unique(trap_data$date)
@@ -33,6 +33,12 @@ isometric_force_clamp_analysis <- function(trap_data,
   ## nm2pn <- o$nm2pn
   hz <- o$hz
   feedback_motor_bead <- o$feedback_motor_bead
+
+
+  ## project = "project_feedback-test"
+  ## conditions = "unregulated"
+  ## date = "2023-06-02"
+  ## obs = "obs-01"
 
   path <- file.path(path.expand("~"),
                     "lasertrapr",
@@ -68,16 +74,16 @@ isometric_force_clamp_analysis <- function(trap_data,
           stop("User Excluded")
         }
 
-        not_ready <- rlang::is_empty(trap_data$processed_bead)
-        if(not_ready){
-          if(is_shiny) showNotification(paste0(trap_data$obs, ' not processed. Skipping...'), type = 'warning')
-          stop('Data not processed')
-          }
+        ## not_ready <- rlang::is_empty(trap_data$processed_bead)
+        ## if(not_ready){
+        ##   if(is_shiny) showNotification(paste0(trap_data$obs, ' not processed. Skipping...'), type = 'warning')
+        ##   stop('Data not processed')
+        ##   }
 
-        if(is_shiny){
-          setProgress(0.05, paste("Analyzing", conditions, obs))
-          defend_if_empty(trap_data$processed_bead, ui = paste0(obs, ' data not processed.'), type = 'error')
-        }
+        ## if(is_shiny){
+        ##   setProgress(0.05, paste("Analyzing", conditions, obs))
+        ##   defend_if_empty(trap_data$processed_bead, ui = paste0(obs, ' data not processed.'), type = 'error')
+        ## }
 
         #####################3333
         ## library(data.table)
@@ -114,7 +120,7 @@ isometric_force_clamp_analysis <- function(trap_data,
 
         if(o$feedback_motor_bead == 1){
           motor_bead <- trap_data$processed_bead_1
-          transducer_bead <- trap_data$processed_bead2
+          transducer_bead <- trap_data$processed_bead_2
         } else {
           motor_bead <- trap_data$processed_bead_2
           transducer_bead <- trap_data$processed_bead_1
@@ -146,13 +152,10 @@ isometric_force_clamp_analysis <- function(trap_data,
 
         seed <- floor(runif(1, 0, 1e6))
 
-        hmm <- depmixS4::depmix(list(run_var_transducer~1,
-                                     run_mean_motor~1),
-                                data = data.frame(run_mean_motor = run_mean_motor,
-                                                  run_var_transducer = run_var_transducer),
+        hmm <- depmixS4::depmix(run_mean_motor~1,
+                                data = data.frame(run_mean_motor = run_mean_motor),
                                 nstates = 2,
-                                family = list(stats::gaussian(),
-                                              stats::gaussian()))
+                                family = stats::gaussian())
 
 
         hmm_initial_parameters <- c(0.98, 0.02,        #Initial state probabilities
@@ -160,15 +163,11 @@ isometric_force_clamp_analysis <- function(trap_data,
                                     0.02, 0.98)       #transition probs s2 to s1/s2. Again a guess
 
 
-        sd_run_mean <- sd(run_mean_motor)
-        mean_run_var <- mean(run_var_transducer)
-        sd_run_var <- sd(run_var_transducer)
-
         if(em_random_start == T){
           hmm_fit <- depmixS4::fit(hmm, emcontrol = depmixS4::em.control(random.start = TRUE))
         } else {
-          estimate_hmm_gaussians <- c(mean_run_var, sd_run_var, 0, sd_run_mean,
-                                      mean_run_var/2, sd_run_var, 20, sd_run_mean*2)
+          estimate_hmm_gaussians <- c(mean(run_mean_motor), sd(run_mean_motor),
+                                      max(run_mean_motor), sd(run_mean_motor)*2)
 
           hmm <- depmixS4::setpars(hmm, c(hmm_initial_parameters, estimate_hmm_gaussians))
           set.seed(seed)
@@ -201,7 +200,7 @@ isometric_force_clamp_analysis <- function(trap_data,
     # writeLines(c("Skipping",
     #              trap_data$obs,
     #              "HMM starts in State 2. Try trimming the beginning of the observation."), error_file);
-          obs_o_exit <- o  %>%
+          obs_o_exit <- o  |>
             dplyr::mutate(report = 'hmm-error',
                           analyzer = 'hm/cp')
           data.table::fwrite(obs_trap_data_exit, file = file.path(path.expand('~'), 'lasertrapr', project, conditions, date, obs, 'options'), sep = ",")
@@ -364,13 +363,13 @@ isometric_force_clamp_analysis <- function(trap_data,
             baseline_position <- mean(mb[1]:mb[cp_start-1])
           } else {
             prior_event_end <- cp_stops[[i-1]]+1
-            baseline_position <- mean(mb[prior_event_end]:mb[cp_start-1])
+            baseline_position <- mean(mb[prior_event_end:(cp_start-1)])
           }
                                         #
           baseline_position_prior[[i]] <- baseline_position
           absolute_displacements[[i]] <- mean(mb[cp_start:cp_stop])
           relative_displacements[[i]] <- mean(mb[cp_start:cp_stop]) - baseline_position
-          displacement_markers[[i]] <- round(mean(cp_start, cp_stop), 0)
+          displacement_markers[[i]] <- round(mean(c(cp_start, cp_stop)), 0)
                                         #
   } #loop close
 
@@ -389,17 +388,18 @@ isometric_force_clamp_analysis <- function(trap_data,
             id = 1:nrow(hm_event_transitions),
             cp_found_start = cp_found_start,
             cp_found_stop = cp_found_stop,
-            cp_start_dp = cp_starts,
-            cp_stop_dp = cp_stops,
-            keep = keep_event,
+            cp_event_start_dp = cp_starts,
+            cp_event_stop_dp = cp_stops,
+            midpoint_index_dp = displacement_markers,
             time_on_dp = attachment_durations,
             time_on_s = attachment_durations/hz,
             time_on_ms = attachment_durations/hz*1000,
             baseline_position_prior_nm = baseline_position_prior,
             absolute_displacements_nm = absolute_displacements,
             displacement_nm = relative_displacements,
-            peak_nm_index = displacement_markers,
-            force_pn = relative_displacements*nm2pn
+            force_pn = relative_displacements*nm2pn,
+            event_user_excluded = FALSE,
+            keep = keep_event
           )
 
 
@@ -408,6 +408,8 @@ isometric_force_clamp_analysis <- function(trap_data,
         o$analyzer <- "ifc"
         o$status <- "analyzed"
         o$report <- "success"
+        o$w_slide <- w_slide
+        o$w_width <- w_width
 
         if(is_shiny == T) setProgress(0.95, detail = 'Saving Data')
 
@@ -423,7 +425,7 @@ isometric_force_clamp_analysis <- function(trap_data,
           ## trap_data,
           analyzed_force_clamp,
           hm_model_results,
-          options_df)
+          o)
 
         purrr::walk2(data_to_save, file_paths, ~data.table::fwrite(x = .x, file = .y, sep = ","))
 

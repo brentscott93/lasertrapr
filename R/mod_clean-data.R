@@ -918,11 +918,12 @@ output$move_files <- renderText({
     ## req(!attempt::is_try_error(nm2pn_test))
     
     withProgress(message = 'Saving Data', {
+
+## browser()
       if(o$data$channels == 1){
-
-
-    defend_if_blank(input$mv2nm, ui = 'Enter step cal', type = 'error')
-    defend_if_blank(input$nm2pn, ui = 'Enter trap stiffness', type = 'error')
+      defend_if_blank(input$mv2nm, ui = 'Enter step cal', type = 'error')
+      defend_if_blank(input$nm2pn, ui = 'Enter trap stiffness', type = 'error')
+      }
 
       current_obs <- f$obs$path
       
@@ -930,74 +931,106 @@ output$move_files <- renderText({
         dplyr::filter(stringr::str_detect(name, "trap-data.csv")) |>
         dplyr::pull(path)
       
-       data <- data.table::fread(trap_data, sep = ",") |>
-                dplyr::mutate(processed_bead = raw_bead*as.numeric(input$mv2nm))
-       
+      data <- data.table::fread(trap_data, sep = ",")
+
       setProgress(0.3)
-      
-     if(input$how_to_process == 'detrend'){
-       
-       break_pts <- seq(hz()*5, nrow(dg_data$data), by = hz()*5)
-       
-          data <- dplyr::mutate(data, processed_bead = as.vector(pracma::detrend(processed_bead, tt = "linear", bp = break_pts)))
-       
-     } else if(input$how_to_process == 'remove_base'){
-       
-         data <- dplyr::mutate(data, processed_bead = processed_bead - base$range)
-       
-     } else if(input$how_to_process == 'remove_mv'){
-       
-        data <- dplyr::mutate(data, processed_bead = processed_bead - base$baseline_fit$estimate[1])
-     }
-      
 
-      opt <- list.files(path = f$obs$path,
-                      pattern = "options.csv",
-                      full.names = TRUE)
-      opt <- fread(opt)
-      opt[, `:=`(processor = input$how_to_process,
-               mv2nm = as.numeric(input$mv2nm),
-               nm2pn = as.numeric(input$nm2pn),
-               include = input_include)
-        ]
+      if(o$data$channels == 1){
 
-     setProgress(0.5)
-     
-     data.table::fwrite(data, file = file.path(f$obs$path, 'trap-data.csv'), sep = ",")
-     data.table::fwrite(opt, file = file.path(f$obs$path, 'options.csv'), sep = ",")
-     
-     setProgress(0.75)
+        data[, processed_bead := raw_bead*as.numeric(input$mv2nm) ]
 
-     }  else {
 
-     setProgress(0.5)
-      opt <- list.files(path = f$obs$path,
-                      pattern = "options.csv",
-                      full.names = TRUE)
-      opt <- fread(opt)
-      opt[, `:=`(processor = input$how_to_process,
-                 include = input_include)
-        ]
+        if(input$how_to_process == 'detrend'){
 
-      data.table::fwrite(opt, file = file.path(f$obs$path, 'options.csv'), sep = ",")
+          break_pts <- seq(hz()*5, nrow(dg_data$data), by = hz()*5)
 
-     setProgress(0.75)
+          data[, processed_bead := as.vector(pracma::detrend(processed_bead, tt = "linear", bp = break_pts)) ]
 
-      }
+        } else if(input$how_to_process == 'remove_base'){
 
-     ## golem::print_dev( logger[[as.character(input$save)]] )
-     all_trap_paths <- list_files(f$date$path, pattern = 'options.csv', recursive = T)
-     
-     setProgress(0.9)
-    
-     status$df <- purrr::map_df(all_trap_paths$path, ~data.table::fread(.,
-                                                                 sep = ",",
-                                                                 select = c("obs", "processor", "mv2nm", "nm2pn", "include"),
-                                                                 nrows = 1))
-     setProgress(1)
+          data[, processed_bead := processed_bead - base$range ]
+
+        } else if(input$how_to_process == 'remove_mv'){
+
+          data[, processed_bead := processed_bead - base$baseline_fit$estimate[1] ]
+        }
+
+
+        opt <- list.files(path = f$obs$path,
+                          pattern = "options.csv",
+                          full.names = TRUE)
+        opt <- fread(opt)
+        opt[, `:=`(processor = input$how_to_process,
+                   mv2nm = as.numeric(input$mv2nm),
+                   nm2pn = as.numeric(input$nm2pn),
+                   include = input_include)
+            ]
+
+        setProgress(0.5)
+
+        data.table::fwrite(data, file = file.path(f$obs$path, 'trap-data.csv'), sep = ",")
+        data.table::fwrite(opt, file = file.path(f$obs$path, 'options.csv'), sep = ",")
+
+        setProgress(0.75)
+
+      }  else if(o$data$channels == 2){
+## browser()
+        opt <- list.files(path = f$obs$path,
+                          pattern = "options.csv",
+                          full.names = TRUE)
+        opt <- fread(opt)
+
+        if(input$how_to_process == 'detrend'){
+
+          break_pts <- seq(hz()*5, nrow(dg_data$data), by = hz()*5)
+
+          pb1 <- as.vector(pracma::detrend(raw_bead_1, tt = "linear", bp = break_pts))
+          pb2 <- as.vector(pracma::detrend(raw_bead_2, tt = "linear", bp = break_pts))
+
+          } else if(input$how_to_process == 'remove_base'){
+
+            ## data <- dplyr::mutate(data, processed_bead = processed_bead - base$range)
+
+          } else if(input$how_to_process == 'remove_mv'){
+
+            ## data <- dplyr::mutate(data, processed_bead = processed_bead - base$baseline_fit$estimate[1])
+          } else {
+            pb1 <- data$raw_bead_1
+            pb2 <- data$raw_bead_2
+          }
+
+          setProgress(0.5)
+
+          data[, `:=`(processed_bead_1 = pb1*o$data$mv2nm[1],
+                        processed_bead_2 = pb2*o$data$mv2nm2[1]) ]
+
+          opt[, `:=`(processor = input$how_to_process,
+                     include = input_include)
+              ]
+
+
+          data.table::fwrite(data, file = file.path(f$obs$path, 'trap-data.csv'), sep = ",")
+          data.table::fwrite(opt, file = file.path(f$obs$path, 'options.csv'), sep = ",")
+
+
+          setProgress(0.75)
+
+
+        }
+
+        ## golem::print_dev( logger[[as.character(input$save)]] )
+        all_trap_paths <- list_files(f$date$path, pattern = 'options.csv', recursive = T)
+
+        setProgress(0.9)
+
+        status$df <- purrr::map_df(all_trap_paths$path, ~data.table::fread(.,
+                                                                           sep = ",",
+                                                                           select = c("obs", "processor", "mv2nm", "nm2pn", "include"),
+                                                                           nrows = 1))
+        setProgress(1)
+      })
+      showNotification(paste(f$conditions$name, f$obs$name, 'successfully processed and saved.'), type = 'message')
     })
-    showNotification(paste(f$conditions$name, f$obs$name, 'successfully processed and saved.'), type = 'message')
-  })
   
   observeEvent(input$status_graph, {
     defend_if_null(f$date_input, ui = 'Whoops. You forgot to select a date folder.', type = 'error')
@@ -1021,7 +1054,7 @@ output$move_files <- renderText({
   output$info <- DT::renderDT({
     req(status$df)
     status$df |>
-      rename('Obs' = obs,
+      dplyr::rename('Obs' = obs,
              'Processor' = processor,
              'mV-to-nm' = mv2nm,
              'nm-to-pN' = nm2pn,
