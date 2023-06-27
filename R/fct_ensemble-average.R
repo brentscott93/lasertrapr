@@ -357,3 +357,211 @@ fit_ensembles <- function(data, fit, hz, max_l, is_shiny = TRUE){
 }
 
 
+
+
+
+
+##' Internal function to align mini ensemble data for ensemble averages
+##' @description defines a function to align/extend all events
+##' will save a .csv file for each observation in its observation folder
+##'  this "mini-events-aligned.csv" file will contain all the running mean trap-data
+##'  for each event extended out to the longest event per condition
+##' events are extended by padding with NA values
+##' @param project a character string specyfing a lasertrapr project folder
+##' @return nothing. Saves ensemble-data.csv in each obs-## folder.
+##' @import data.table
+##' @noRd
+align_mini_events <- function(project, is_shiny = FALSE){
+
+  project_path <- file.path(path.expand("~"), "lasertrapr", project)
+
+  #get options.csv to see what data should be included
+  options_paths <-
+    list.files(project_path,
+               pattern = "options.csv",
+               recursive = TRUE,
+               full.names = TRUE)
+
+  options_data <- data.table::rbindlist(lapply(options_paths, data.table::fread, nrows = 1), fill = TRUE)
+  filtered_options <- options_data[include == TRUE & report == "success" & review == TRUE]
+
+  filtered_options[, obs_to_avg := file.path(path.expand("~"),
+                                             "lasertrapr",
+                                              project,
+                                              conditions,
+                                              date,
+                                              obs)]
+
+  filtered_options[, measured_events_path := file.path(path.expand("~"),
+                                                       "lasertrapr",
+                                                       project,
+                                                       conditions,
+                                                       date,
+                                                       obs,
+                                                       "mini-measured-events.csv")]
+
+  all_measured_events <- data.table::rbindlist(lapply(filtered_options$measured_events_path, data.table::fread), fill = TRUE)
+  measured_events_filtered  <- all_measured_events[keep == TRUE & event_user_excluded == FALSE]
+
+  ## calculate the length of each event
+  all_lengths <- vector("list")
+  for(z in 1:nrow(all_measured_events)){
+
+    if(is_shiny) incProgress(1/(10*nrow(all_measured_events)))
+
+    event_start <- all_measured_events$event_start[z]
+    event_stop <- all_measured_events$event_stop[z]
+    event_length <- length(event_start:event_stop)
+    all_lengths[[z]] <- data.table(event_length = event_length,
+                                 conditions = all_measured_events$conditions[z])
+    }
+
+  ## find the longest event per each condition
+  all_lengths <- data.table::rbindlist(all_lengths)
+  max_length_df <- all_lengths[, .(longest_event = max(event_length)), by = conditions]
+
+  ## for every included observation align all events to the longest event per conditions
+  for(o in seq_along(filtered_options$obs_to_avg)){
+
+    if(is_shiny) incProgress(1/(10*length(filtered_options$obs_to_avg)))
+
+    print(paste0("Analyzing ", filtered_options$obs_to_avg[o]))
+    obs_path <- filtered_options$obs_to_avg[o]
+## read the measured event for the observation
+    measured_events <- fread(file.path(obs_path, "mini-measured-events.csv"))
+    measured_events  <- measured_events[keep == TRUE & event_user_excluded == FALSE]
+## read the trap data for the observation
+    trap_data <- fread(file.path(obs_path, "trap-data.csv"))
+## extend each event padding with NA
+    equal_length_events <- vector("list")
+    for(i in 1:nrow(measured_events)){
+
+    if(is_shiny) incProgress(1/(10*nrow(measured_events)))
+
+      start <- measured_events$event_start[i]
+      stop <- measured_events$event_stop[i]
+      event_data <- trap_data$run_mean_overlay[start:stop]
+      event_data <- event_data[1:which.max(event_data)]
+      ## t <- 1:length(event_data)
+      ## slope <- lm(event_data~t)
+      max_length <- max_length_df$longest_event[which(max_length_df$conditions == measured_events$conditions[i])]
+
+      if(length(event_data) < max_length){
+        ## extension <- predict(slope, newdata = data.frame(t = 1:max_length))
+        diff_to_pad <- max_length - length(event_data)
+        event_data <- c(event_data, rep(tail(event_data, 1), diff_to_pad))
+        ## event_data <- c(event_data, extension[(length(event_data)+1):max_length])
+      }
+      ## print(length(event_data))
+      equal_length_events[[i]] <- data.table(project = measured_events$project[[i]],
+                                             conditions = measured_events$conditions[[i]],
+                                             date = measured_events$date[[i]],
+                                             obs = measured_events$obs[[i]],
+                                             event = i,
+                                             index = 1:length(event_data),
+                                             data = event_data)
+     }
+
+    equal_length_events_df <- data.table::rbindlist(equal_length_events)
+    fwrite(equal_length_events_df, file = file.path(filtered_options$obs_to_avg[o], "mini-events-aligned.csv"))
+    }
+
+
+  if(is_shiny) setProgress(1)
+
+  return(invisible())
+}
+
+
+# defines a function to then read all the aligned data and averages it
+# fitting a weighted linear regression model to the data
+# this function returns the mini-ensemble-average traces and
+# the linear regression fit lines for each condition and
+# a ggplot with basic plot to furhter customize
+# and the linear regression models are returns to get the slopes
+##' Internal function to avg mini ensemble data
+##' @param project a character string specyfing a lasertrapr project folder
+##' @return a list with 'avg_data', 'predict_df', 'nls_mod', and 'gg'
+##' @import data.table ggplot2
+##' @noRd
+avg_aligned_mini_events <- function(project, is_shiny = FALSE){
+
+ project_path <- file.path(path.expand("~"), "lasertrapr", project)
+
+ options_paths <-
+    list.files(project_path,
+               pattern = "options.csv",
+               recursive = TRUE,
+               full.names = TRUE)
+
+  options_data <- data.table::rbindlist(lapply(options_paths, data.table::fread, nrows = 1), fill = TRUE)
+  filtered_options <- options_data[include == TRUE & report == "success" & review == TRUE]
+
+  hz <- unique(filtered_options$hz)
+  if(length(hz)>1){
+   stop("Detected more than one sampling frequency (Hz). Aborting. Cannot perform ensemble averaging.")
+  }
+
+  all_conditions <- unique(filtered_options$conditions)
+  all_mini_avg <- vector("list")
+  all_predict_df <- vector("list")
+  ## all_lm_mod <- vector("list")
+  all_nls_mod <- vector("list")
+  for(i in seq_along(all_conditions)){
+
+    if(is_shiny) incProgress(1/2*length(all_conditions))
+
+    aligned_events_paths <- list.files(file.path(project_path, all_conditions[i]),
+                                 pattern = "mini-events-aligned.csv",
+                                 recursive = TRUE,
+                                 full.names = TRUE)
+
+    aligned_events <- data.table::rbindlist(lapply(aligned_events_paths, data.table::fread))
+
+    mini_avg <- aligned_events[, .(avg_nm = mean(data, na.rm = TRUE),
+                                   n = sum(ifelse(is.na(data), 0, 1))), by = .(project, conditions, index)]
+    mini_avg[, time_s := .I/hz]
+
+    ## mod <- lm(avg_nm~index, data=mini_avg, weights = n)
+
+
+  nls_mod <- minpack.lm::nlsLM(avg_nm ~ d1 + (1 - exp(-k1 * time)),
+                    data = mini_avg,
+                    start = list(d1 = 7, k1 = 100))
+
+    predict_df <- data.table(x = 1:nrow(mini_avg),
+                             fitted_y = predict(nls_mod),
+                             conditions = all_conditions[i])
+
+    predict_df[, time_s := .I/hz]
+
+    all_mini_avg[[i]] <- mini_avg
+    all_predict_df[[i]] <- predict_df
+    all_nls_mod[[i]] <- nls_mod
+  }
+
+  if(is_shiny) setProgres(0.95)
+
+  names(all_nls_mod) <- all_conditions
+
+  all_mini_avg <- data.table::rbindlist(all_mini_avg)
+  all_predict_df <- data.table::rbindlist(all_predict_df)
+
+  gg <- ggplot()+
+         geom_line(data = all_mini_avg,
+                   aes(x = time_s,
+                       y = avg_nm,
+                       color = conditions),
+                   alpha = 0.5)+
+         geom_line(data = all_predict_df,
+                   aes(x = time_s, y = fitted_y,
+                       color = conditions),
+                   linetype = "dashed")+
+    ylab("Displacement (nm)")+
+    xlab("Time (ms)")
+
+  return(list(avg_data = all_mini_avg,
+              predict_df = all_predict_df,
+              nls_models = all_nls_mod,
+              gg = gg))
+}
