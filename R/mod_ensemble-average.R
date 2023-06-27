@@ -14,57 +14,33 @@ mod_ensemble_average_ui <- function(id){
         tabBox(width = 3,
                tabPanel(
                title = "Prep",
-                 sliderInput(ns("ms_extend_s2"),
-                             "Avg of ms to extend forward",
-                             value = 3,
-                             min = 1, 
-                             max = 10, 
-                             step = 1, 
-                             width = "100%"),
-                 sliderInput(ns("ms_2_skip"),
-                             "Number of ms to skip before s1 avg",
-                             value = 5,
-                             min = 1, 
-                             max = 10, 
-                             step = 1, 
-                             width = "100%"),
-             sliderInput(ns("ms_extend_s1"),
-                         "Avg of ms to extend s1 backwards",
-                         value = 3,
-                         min = 1, 
-                         max = 10, 
-                         step = 1, 
-                         width = "100%"),
-             actionButton(ns("prep_ensemble"), "Prep Ensembles", width = "100%", icon = icon("align-justify"))
+               uiOutput(ns("prep_tab")),
+             ##     sliderInput(ns("ms_extend_s2"),
+             ##                 "Avg of ms to extend forward",
+             ##                 value = 3,
+             ##                 min = 1,
+             ##                 max = 10,
+             ##                 step = 1,
+             ##                 width = "100%"),
+             ##     sliderInput(ns("ms_2_skip"),
+             ##                 "Number of ms to skip before s1 avg",
+             ##                 value = 5,
+             ##                 min = 1,
+             ##                 max = 10,
+             ##                 step = 1,
+             ##                 width = "100%"),
+             ## sliderInput(ns("ms_extend_s1"),
+             ##             "Avg of ms to extend s1 backwards",
+             ##             value = 3,
+             ##             min = 1,
+             ##             max = 10,
+             ##             step = 1,
+             ##             width = "100%"),
+             ## actionButton(ns("prep_ensemble"), "Prep Ensembles", width = "100%", icon = icon("align-justify"))
              ),
              tabPanel(
                title = "Average",
-               sliderInput(ns("length_of_ensembles"), 
-                           "Ensemble Length (seconds)", 
-                           min = 0.1, 
-                           max = 2, 
-                           step = 0.05, 
-                           value = 1),
-               
-               shinyWidgets::radioGroupButtons(
-                 inputId = ns('fit'),
-                 label = "Fit Exponential?",
-                 choices = c("1exp", "2exp"),
-                 justified = TRUE,
-                 checkIcon = list(
-                   yes = tags$i(class = "fa fa-check-square",
-                                style = "color: black"),
-                   no = tags$i(class = "fa fa-square-o",
-                               style = "color: black"))
-               ),
-               
-               conditionalPanel("input.fit == '1exp'", ns=ns,
-               withMathJax(helpText("$$ y = d_1 + d_2(1-e^{-k_1x}) $$"))),
-               
-               conditionalPanel("input.fit == '2exp'", ns=ns,
-               withMathJax(helpText("$$ y = d_1(1-e^{-k_0x}) + d_2(1-e^{-k_1x}) $$"))),
-               
-               actionButton(ns("avg_ensembles"), "Avg Ensembles", width = "100%", style  = "margin-top: 25px", icon = icon("calculator"))
+               uiOutput(ns("average_tab")),
                ),
              tabPanel(
                title = "Plot Options",
@@ -87,30 +63,32 @@ mod_ensemble_average_ui <- function(id){
                
                
                ),
+
+      uiOutput(ns("main_box")),
                
-            tabBox(side = "right",
-             width = 8,
-              title = "Ensemble Averages",
-             tabPanel(
-                "Substeps",
-                tableOutput(ns("substeps")),
-               plotOutput(ns("substeps_plot"))
-             ),
-             tabPanel(
-                "Fit - Backwards Pars",
-                tableOutput(ns("backwards_par"))
-             ),
+            ## tabBox(side = "right",
+            ##  width = 8,
+            ##   title = "Ensemble Averages",
+            ##  tabPanel(
+            ##     "Substeps",
+            ##     tableOutput(ns("substeps")),
+            ##    plotOutput(ns("substeps_plot"))
+            ##  ),
+            ##  tabPanel(
+            ##     "Fit - Backwards Pars",
+            ##     tableOutput(ns("backwards_par"))
+            ##  ),
+
+            ##  tabPanel(
+            ##     "Fit - Forward Pars",
+            ##     tableOutput(ns("forward_par"))
+            ##  ),
+            ##  tabPanel(
+            ##     "Plot",
+            ##     plotOutput(ns("forward_backward_ensembles"), height = "auto") |> shinycssloaders::withSpinner(type = 8, color = "#373B38")
+            ##  ),
              
-             tabPanel(
-                "Fit - Forward Pars",
-                tableOutput(ns("forward_par"))
-             ),
-             tabPanel(
-                "Plot",
-                plotOutput(ns("forward_backward_ensembles"), height = "auto") |> shinycssloaders::withSpinner(type = 8, color = "#373B38")
-             ), 
-             
-            ),
+            ## ),
             box(width = 1, 
                    title = "Height",
                    shinyWidgets::noUiSliderInput(ns("plot_height"),
@@ -154,26 +132,150 @@ mod_ensemble_average_server <- function(input, output, session, f){
   ns <- session$ns
   ee <- reactiveValues()
   
-  # observe({
-  #    req(f$project_input)
-  #    req(f$project$path)
-  # 
-  #    options_paths <- list.files(path = f$project$path, 
-  #                                pattern = "options.csv",
-  #                                full.names = TRUE,
-  #                                recursive = TRUE)
-  #    
-  #    options_data <-
-  #       data.table::rbindlist(
-  #          lapply(options_paths, data.table::fread),
-  #          fill = TRUE
-  #       )
-  #    
-  #    options_data[include == TRUE & review == TRUE & report == "success"]
-  #    ee$hz <- unique(options_data$hz)
-  #   
-  # })
-  
+  observe({
+     req(f$project_input)
+     req(f$project$path)
+
+     options_paths <- list.files(path = f$project$path,
+                                 pattern = "options.csv",
+                                 full.names = TRUE,
+                                 recursive = TRUE)
+
+     options_data <-
+        data.table::rbindlist(
+           lapply(options_paths, data.table::fread),
+           fill = TRUE
+        )
+
+     options_data[include == TRUE & review == TRUE & report == "success"]
+
+     ee$analyzer <- unique(options_data$analyzer)
+    
+  })
+
+  output$main_box <- renderUI({
+    ## req(ee$analyzer)
+    if(is.null(ee$analyzer) || ee$analyzer == "hm/cp"){
+
+      tagList(
+        tabBox(side = "right",
+               width = 8,
+               title = "Ensemble Averages",
+               tabPanel(
+                 "Substeps",
+                 tableOutput(ns("substeps")),
+                 plotOutput(ns("substeps_plot"))
+               ),
+               tabPanel(
+                 "Fit - Backwards Pars",
+                 tableOutput(ns("backwards_par"))
+               ),
+
+               tabPanel(
+                 "Fit - Forward Pars",
+                 tableOutput(ns("forward_par"))
+               ),
+               tabPanel(
+                 "Plot",
+                 plotOutput(ns("forward_backward_ensembles"), height = "auto") |> shinycssloaders::withSpinner(type = 8, color = "#373B38")
+               )
+               )
+      )
+
+    } else if(ee$analyzer == "mini"){
+      tagList(
+        tabBox(side = "right",
+               width = 8,
+               title = "Mini Ensemble, Ensemble Averages",
+               tabPanel(
+                 "Fits",
+                 tableOutput(ns("mini_fit"))
+               ),
+               tabPanel(
+                 "Plot",
+                 plotOutput(ns("mini_ensemble_plot"), height = "auto") |> shinycssloaders::withSpinner(type = 8, color = "#373B38")
+               ),
+               )
+
+      )
+    }
+
+  })
+
+
+  output$prep_tab <- renderUI({
+    if(is.null(ee$analyzer) || ee$analyzer == "hm/cp"){
+      tagList(
+        sliderInput(ns("ms_extend_s2"),
+                    "Avg of ms to extend forward",
+                    value = 3,
+                    min = 1,
+                    max = 10,
+                    step = 1,
+                    width = "100%"),
+        sliderInput(ns("ms_2_skip"),
+                    "Number of ms to skip before s1 avg",
+                    value = 5,
+                    min = 1,
+                    max = 10,
+                    step = 1,
+                    width = "100%"),
+        sliderInput(ns("ms_extend_s1"),
+                    "Avg of ms to extend s1 backwards",
+                    value = 3,
+                    min = 1,
+                    max = 10,
+                    step = 1,
+                    width = "100%"),
+        actionButton(ns("prep_ensemble"), "Prep Ensembles", width = "100%", icon = icon("align-justify"))
+      )
+    } else if(ee$analyzer == "mini"){
+      tagList(
+        actionButton(ns("prep_ensemble"), "Prep Mini Ensembles", width = "100%", icon = icon("align-justify"))
+      )
+    }
+
+  })
+
+  output$average_tab <- renderUI({
+    if(is.null(ee$analyzer) || ee$analyzer == "hm/cp"){
+      tagList(
+        sliderInput(ns("length_of_ensembles"),
+                    "Ensemble Length (seconds)",
+                    min = 0.1,
+                    max = 2,
+                    step = 0.05,
+                    value = 1),
+
+        shinyWidgets::radioGroupButtons(
+                        inputId = ns('fit'),
+                        label = "Fit Exponential?",
+                        choices = c("1exp", "2exp"),
+                        justified = TRUE,
+                        checkIcon = list(
+                          yes = tags$i(class = "fa fa-check-square",
+                                       style = "color: black"),
+                          no = tags$i(class = "fa fa-square-o",
+                                      style = "color: black"))
+                      ),
+
+        conditionalPanel("input.fit == '1exp'", ns=ns,
+                         withMathJax(helpText("$$ y = d_1 + d_2(1-e^{-k_1x}) $$"))),
+
+        conditionalPanel("input.fit == '2exp'", ns=ns,
+                         withMathJax(helpText("$$ y = d_1(1-e^{-k_0x}) + d_2(1-e^{-k_1x}) $$"))),
+
+        actionButton(ns("avg_ensembles"), "Avg Ensembles", width = "100%", style  = "margin-top: 25px", icon = icon("calculator"))
+      )
+
+    } else if(ee$analyzer == "mini"){
+      tagList(
+        actionButton(ns("avg_ensembles"), "Avg Ensembles", width = "100%", style  = "margin-top: 25px", icon = icon("calculator"))
+      )
+    }
+})
+
+
   observeEvent(input$prep_ensemble, {
    ## browser()
     
@@ -199,13 +301,25 @@ mod_ensemble_average_server <- function(input, output, session, f){
     defend_if(length(ee$hz) != 1, 
               ui = "Data has different sampling frequencies. Ensmeble averaging not currently supported.", 
               type = "error")
+
+    analyzer <- unique(options_data$hz)
+    defend_if(length(analyzer) != 1,
+              ui = "Multiple analyzers detected for trap data. Unable to ensemble average.",
+              type = "error")
     
     withProgress(message = "Preparing Ensembles", {
+
+      if(analyzer == "hm/cp"){
       prep_ensemble(trap_selected_project = f$project$path,
                     ms_extend_s2 = input$ms_extend_s2, 
                     ms_extend_s1 = input$ms_extend_s1, 
                     ms_2_skip = input$ms_2_skip,
                     hz = ee$hz)
+      } else if(analyzer == "mini"){
+        align_mini_events(project = f$project$name, is_shiny = TRUE)
+      } else {
+        showNotification("Whoops. Data analyzed with an analyzer that does not support ensemble averaging.")
+      }
     })
     showNotification("Ensembles Prepared", type= "message")
   })
@@ -232,9 +346,17 @@ mod_ensemble_average_server <- function(input, output, session, f){
      defend_if(length(ee$hz) != 1, 
                ui = "Data has different sampling frequencies. Ensmeble averaging not currently supported.", 
                type = "error")
-    
+
+    analyzer <- unique(options_data$hz)
+    defend_if(length(analyzer) != 1,
+              ui = "Multiple analyzers detected for trap data. Unable to ensemble average.",
+              type = "error")
+
+
      withProgress(message = "Averaging Ensembles", {
        ## browser()
+
+       if(analyzer == "hm/cp"){
        print(f$project_path)
        ee$data <- avg_ensembles(project = f$project_input)
        if(is.null(input$fit) || input$fit == "None"){
@@ -340,6 +462,37 @@ mod_ensemble_average_server <- function(input, output, session, f){
 
          showNotification("Ensembles Averaged & Fit", type = "message")
        }
+
+} else if(analyzer == "mini"){
+
+  ee$mini_ensemble_ensembles <- avg_aligned_mini_events(project = f$project_input, is_shiny = TRUE)
+
+
+
+         summary_folder <- file.path(f$project$path, "summary")
+         if(!file.exists(summary_folder)){
+           dir.create(summary_folder)
+         }
+
+         mini_fits <- ee$mini_ensemble_ensembles$nls_models
+
+         sink(file.path(summary_folder, paste0(Sys.Date(), "_mini-ensemble-ensemble-average-models.txt")))
+         writeLines("\n
+██╗      █████╗ ███████╗███████╗██████╗ ████████╗██████╗  █████╗ ██████╗ ██████╗
+██║     ██╔══██╗██╔════╝██╔════╝██╔══██╗╚══██╔══╝██╔══██╗██╔══██╗██╔══██╗██╔══██╗
+██║     ███████║███████╗█████╗  ██████╔╝   ██║   ██████╔╝███████║██████╔╝██████╔╝
+██║     ██╔══██║╚════██║██╔══╝  ██╔══██╗   ██║   ██╔══██╗██╔══██║██╔═══╝ ██╔══██╗
+███████╗██║  ██║███████║███████╗██║  ██║   ██║   ██║  ██║██║  ██║██║     ██║  ██║
+╚══════╝╚═╝  ╚═╝╚══════╝╚══════╝╚═╝  ╚═╝   ╚═╝   ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝     ╚═╝  ╚═╝
+\n")
+         writeLines("############################### \n Mini Ensemble, Ensemble Average Fits \n ############################### \n")
+         print(lapply(mini_fits, base::summary))
+         sink()
+
+         showNotification("Mini Ensembles Averaged & Fit", type = "message")
+
+}
+
      })
      
    })
