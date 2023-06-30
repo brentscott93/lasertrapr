@@ -133,6 +133,9 @@ mod_ensemble_average_server <- function(input, output, session, f){
   ee <- reactiveValues()
   
   observe({
+    req(input$sidemenu)
+str(input$sidemenu)
+    if(input$sidemenu == "ensemble_average"){
      req(f$project_input)
      req(f$project$path)
 
@@ -147,10 +150,11 @@ mod_ensemble_average_server <- function(input, output, session, f){
            fill = TRUE
         )
 
+     req(options_data)
      options_data[include == TRUE & review == TRUE & report == "success"]
 
      ee$analyzer <- unique(options_data$analyzer)
-    
+    }
   })
 
   output$main_box <- renderUI({

@@ -24,7 +24,7 @@ app_ui <- function(request) {
                       ),#header close
       
       dashboardSidebar(
-       shinydashboard::sidebarMenu( 
+       shinydashboard::sidebarMenu(id = "sidemenu",
           menuItem(text = 'Home', tabName =  'home', icon = icon('home')),
           menuItem(text = 'Upload Data', tabName = 'obs',  icon = icon('play-circle')),
           menuItem(text = 'Clean & Process', tabName = 'clean', icon = icon('broom')),
