@@ -442,7 +442,11 @@ mod_clean_data_server <- function(input, output, session, f){
 
   # draw the filter
   output$trap_filter <- renderUI({
+
     req(substring(f$obs_input, 1, 3) == 'obs')
+    if(file.exists(file.path(f$obs$path, "header.csv"))){
+tagList(
+column(9,
     sliderInput(ns("trap_filter_sliderInput"),
                 label = "Filter large dataset",
                 value = c(1, rv$filter_max),
@@ -450,7 +454,35 @@ mod_clean_data_server <- function(input, output, session, f){
                 max = rv$filter_max,
                 ticks = F,
                 width = "100%")
-    
+
+
+),
+column(3,
+                   shinyWidgets::radioGroupButtons(
+                     inputId = ns("flip_trace"),
+                     label = 'Flip Trace?',
+                     choices = c("N" = "n",## ,
+                                 "Y" = "y"),
+                     direction = "horizontal",
+                     width = "100%",
+                     justified = TRUE,
+                     checkIcon = list(
+                       yes = tags$i(class = "fa fa-check-square",
+                                    style = "color: black"),
+                       no = tags$i(class = "fa fa-square-o",
+                                   style = "color: black"))
+                   )
+       )
+)
+    } else {
+    sliderInput(ns("trap_filter_sliderInput"),
+                label = "Filter large dataset",
+                value = c(1, rv$filter_max),
+                min = 1,
+                max = rv$filter_max,
+                ticks = F,
+                width = "100%")
+    }
   })
   
   ## observeEvent(f$obs_input, ignoreInit = T, {
@@ -491,6 +523,11 @@ mod_clean_data_server <- function(input, output, session, f){
         trap_data <- trap_data[, .(time_sec = .I/hz(),
                          bead = raw_bead*as.numeric(mv2nm))
                      ]
+
+        if(input$flip_trace == "y"){
+          trap_data$bead <- trap_data$bead*-1
+        }
+
         } else if(o$data$channels == 2){
 
         if(has_header){
@@ -506,6 +543,12 @@ mod_clean_data_server <- function(input, output, session, f){
                          bead_2 = raw_bead_2*as.numeric(mv2nm2)
                          )
              ]
+
+        if(input$flip_trace == "y"){
+          trap_data$bead_1 <- trap_data$bead_1*-1
+          trap_data$bead_2 <- trap_data$bead_2*-1
+        }
+
         }
 
 
@@ -939,6 +982,9 @@ output$move_files <- renderText({
 
         data[, processed_bead := raw_bead*as.numeric(input$mv2nm) ]
 
+        if(input$flip_trace == "y"){
+          data$processed_bead <- data$processed_bead*-1
+        }
 
         if(input$how_to_process == 'detrend'){
 
@@ -975,17 +1021,19 @@ output$move_files <- renderText({
 
       }  else if(o$data$channels == 2){
 ## browser()
-        opt <- list.files(path = f$obs$path,
-                          pattern = "options.csv",
-                          full.names = TRUE)
-        opt <- fread(opt)
+            pb1 <- data$raw_bead_1
+            pb2 <- data$raw_bead_2
+        if(input$flip_trace == "y"){
+             pb1 <- pb1*-1
+             pb2 <- pb2*-1
+        }
 
         if(input$how_to_process == 'detrend'){
 
           break_pts <- seq(hz()*5, nrow(dg_data$data), by = hz()*5)
 
-          pb1 <- as.vector(pracma::detrend(raw_bead_1, tt = "linear", bp = break_pts))
-          pb2 <- as.vector(pracma::detrend(raw_bead_2, tt = "linear", bp = break_pts))
+          pb1 <- as.vector(pracma::detrend(pb1, tt = "linear", bp = break_pts))
+          pb2 <- as.vector(pracma::detrend(pb2, tt = "linear", bp = break_pts))
 
           } else if(input$how_to_process == 'remove_base'){
 
@@ -995,14 +1043,17 @@ output$move_files <- renderText({
 
             ## data <- dplyr::mutate(data, processed_bead = processed_bead - base$baseline_fit$estimate[1])
           } else {
-            pb1 <- data$raw_bead_1
-            pb2 <- data$raw_bead_2
           }
 
           setProgress(0.5)
 
           data[, `:=`(processed_bead_1 = pb1*o$data$mv2nm[1],
                         processed_bead_2 = pb2*o$data$mv2nm2[1]) ]
+
+        opt <- list.files(path = f$obs$path,
+                          pattern = "options.csv",
+                          full.names = TRUE)
+        opt <- fread(opt)
 
           opt[, `:=`(processor = input$how_to_process,
                      include = input_include)
