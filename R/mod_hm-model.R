@@ -161,7 +161,7 @@ mod_hm_model_server <- function(input, output, session, f){
    if(o$channels == 1){
     hm$use_channel_options <- c("Mean/Var", "Variance")
    } else {
-    hm$use_channel_options <- c("Mean/Covar", "Mean/Var", "Variance")
+    hm$use_channel_options <- c("Covariance", "Mean/Var", "Variance")
     }
  })
 
