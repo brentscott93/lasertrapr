@@ -131,7 +131,7 @@ isometric_force_clamp_analysis <- function(trap_data,
                                        motor_bead = motor_bead,
                                        index = 1:length(motor_bead))
 
-        if(w_slide == "1-pt"){
+        if(w_slide == "1-Pt"){
           ws <- 1
         } else if(w_slide == "1/4"){
           ws <- round_any(w_width*0.25, 1)

@@ -157,7 +157,7 @@ get_info_table <- function(f_date, f_date_input){
 #' @export
 #' @return a ggplot object
 #' @import data.table ggplot2
-plot_overlay <- function(obs_path, time_period_dp, color){
+plot_overlay <- function(obs_path, time_period_dp, color, bead_offset = 0){
    # obs_path <- "~/lasertrapr/project_myoV-phosphate/myoV-WT_pH-7.0_0mM-Pi/2020-06-25/obs-14"
    # time_period_dp <- c(500/5000, 25000/5000)
    # color = "red"
@@ -184,34 +184,40 @@ plot_overlay <- function(obs_path, time_period_dp, color){
    trap_data_path <- list.files(obs_path,
                            pattern = "trap-data.csv",
                            full.names = TRUE)
+
+   if(options$channels == 1){
+   trap_data <- data.table::fread(trap_data_path,
+                                  select = "processed_bead")
+  } else if(options$channels == 2 ){
+
+   trap_data <- data.table::fread(trap_data_path,
+                                  select = c("processed_bead_1", "processed_bead_2"))
+  }
+
+
+   trap_data <- trap_data[time_period_dp[[1]]:time_period_dp[[2]],]
+
+  trap_data <- trap_data[, `:=`(real_time_index = time_period_dp[[1]]:time_period_dp[[2]],
+                             new_time_index = .I,
+                             population = "baseline")]
    
    measured_events_path <-  list.files(obs_path,
                                   pattern = "measured-events.csv",
                                   full.names = TRUE)
    
   
-   
-   trap_data <- data.table::fread(trap_data_path, 
-                                  select = "processed_bead")
-   trap_data <- trap_data[time_period_dp[[1]]:time_period_dp[[2]],]
-   
-  trap_data <- dplyr::mutate(trap_data,
-                             real_time_index = time_period_dp[[1]]:time_period_dp[[2]],
-                             new_time_index = 1:nrow(trap_data),
-                             population = "baseline")
-   
    measured_events <- data.table::fread(measured_events_path)
-   measured_events <- dplyr::filter(measured_events, 
-                                    start >= time_period_dp[[1]],
-                                    stop <= time_period_dp[[2]])
+   measured_events <- measured_events[cp_event_start_dp >= time_period_dp[[1]] & cp_event_stop_dp <= time_period_dp[[2]] ]
+
+if(options$analyzer == "hm/cp"){
    
    events <- list()
    for(i in 1:nrow(measured_events)){
       events[[i]] <- 
-        trap_data %>% 
+        trap_data |>
           dplyr::filter(real_time_index >= measured_events$start[[i]],
-                        real_time_index <= measured_events$stop[[i]]) %>% 
-          dplyr::mutate(population = paste0("event", measured_events$index[[i]])) %>%
+                        real_time_index <= measured_events$stop[[i]]) |>
+          dplyr::mutate(population = paste0("event", measured_events$index[[i]])) |>
         dplyr::select(new_time_index, 
                       real_time_index, 
                       processed_bead, 
@@ -221,11 +227,11 @@ plot_overlay <- function(obs_path, time_period_dp, color){
 events <- data.table::rbindlist(events)
   
 all_data <- 
-  trap_data %>% 
+  trap_data |>
    dplyr::select(new_time_index, 
                  real_time_index, 
                  processed_bead, 
-                 population) %>% 
+                 population) |>
   rbind(events)
 
 
@@ -242,6 +248,56 @@ ggplot(all_data, aes(new_time_index/hz, processed_bead, color = population))+
     axis.text = element_blank()
   )
 
+} else if(options$analyzer == "ifc"){
+
+  if(options$feedback_motor_bead == 1){
+
+    gg_ifc <-
+      ggplot(trap_data, aes(x = new_time_index/hz))+
+      geom_line(aes(y = processed_bead_1 + bead_offset[1]),
+                color = alpha(color, 0.5))+
+      geom_line(aes( y = processed_bead_2 + bead_offset[2]),
+                color = color)
+
+  } else {
+
+    gg_ifc <-
+      ggplot(trap_data, aes(x = new_time_index/hz))+
+      geom_line(aes(y = processed_bead_1 + bead_offset[1]),
+                color = color)+
+      geom_line(aes(y = processed_bead_2 + bead_offset[2]),
+                color = alpha(color, 0.5))
+  }
+
+  minmin <-
+    min(
+      c(
+        min(trap_data$processed_bead_1+bead_offset[1]),
+        min(trap_data$processed_bead_2+bead_offset[2])
+      )
+    )
+
+
+  maxmax <-
+    max(
+      c(
+        max(trap_data$processed_bead_1+bead_offset[1]),
+        max(trap_data$processed_bead_2+bead_offset[2])
+      )
+    )
+
+  gg_ifc+
+    xlab("")+
+    scale_x_continuous(breaks = seq(0, 100, 0.1))+
+    ylab("")+
+    scale_y_continuous(breaks = seq(minmin, maxmax, by = 100))+
+    theme_minimal_grid()+
+    theme(
+      legend.position = "none",
+      axis.text = element_blank()
+    )
+
+}
 }
     
     

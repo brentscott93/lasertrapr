@@ -4,7 +4,7 @@
 \alias{plot_overlay}
 \title{Plot trap data with ID'd events}
 \usage{
-plot_overlay(obs_path, time_period_dp, color)
+plot_overlay(obs_path, time_period_dp, color, bead_offset = 0)
 }
 \arguments{
 \item{obs_path}{character string of a file path to a lasertrapr observation folder}

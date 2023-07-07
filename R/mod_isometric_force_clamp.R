@@ -69,7 +69,7 @@ mod_isometric_force_clamp_ui <- function(id){
              valueBoxOutput(ns('n_events'), width = NULL)
             ),
             column(4,
-             valueBoxOutput(ns('max_load'), width = NULL)
+             valueBoxOutput(ns('s2n'), width = NULL)
           )),
       fluidRow(
         column(9,
@@ -179,7 +179,7 @@ mod_isometric_force_clamp_server <- function(input, output, session, f){
     defend_if_empty(f$obs, ui = 'Please select an obs folder', type = 'error')
     defend_if_blank(f$obs_input, ui = 'Please select an obs folder', type = 'error')
 
-    filenames <- c('trap-data.csv', 'measured-events.csv', 'hm-model-data.csv', 'options.csv')
+    filenames <- c('trap-data.csv', 'ifc-measured-events.csv', 'hm-model-data.csv', 'options.csv')
     paths <- purrr::map(filenames, ~list_files(f$obs$path, pattern = .x))
     data <-  purrr::map(paths, ~data.table::fread(.x$path))
     names(data) <- c('trap', 'events', 'running', 'options')
@@ -217,7 +217,7 @@ mod_isometric_force_clamp_server <- function(input, output, session, f){
                                          color = scales::alpha("#D95F02" , 0.4))
 
 
-   preiods_df <- periods_df[keep == T & event_user_excluded == F]
+   periods_df <- periods_df[keep == TRUE & event_user_excluded == FALSE]
 
     # get the peak nm index to put the labels here
    pni <-  trap_data()$events$peak_nm_index
@@ -248,29 +248,20 @@ mod_isometric_force_clamp_server <- function(input, output, session, f){
 
   output$mv_by_state <- renderPlot({
 
-   ## req(trap_data())
-   ##  mv_data <- trap_data()$running
-   ##  mv_data$state <- factor(mv_data$state, levels = c(1, 2))
+   req(trap_data())
+    mv_data <- trap_data()$running
+    mv_data$state <- factor(mv_data$state, levels = c(1, 2))
+    ggplot(mv_data)+
+      geom_point(aes(x = index,
+                     y = run_mean_motor,
+                     color = state),
+                 alpha = 0.5,
+                 shape = 16)+
+      scale_color_manual(values = c("#1B9E77", "#D95F02"))+
+      ylab("Position (nm)")+
+      xlab("Running Window Time Index (dp)")+
+      cowplot::theme_cowplot(18)
 
-   ##  mv1 <- ggplot2::ggplot(mv_data)+
-   ##            geom_point(aes(x = run_mean, y = run_var, color = state), size = 3, alpha = 0.5)+
-   ##            scale_color_manual(values = c("#1B9E77", "#D95F02"))+
-   ##            ggtitle('Mean-Variance (overlayed)')+
-   ##            ylab('Variance')+
-   ##            xlab('Mean (nm)')+
-   ##            theme_linedraw(base_size = 18)+
-   ##            theme(legend.position = 'none')
-
-   ##  mv2 <- ggplot(mv_data)+
-   ##            geom_point(aes(x = run_mean, y = run_var, color = state), size = 3, alpha = 0.5)+
-   ##            scale_color_manual(values = c("#1B9E77", "#D95F02"))+
-   ##            facet_wrap(~state)+
-   ##            ggtitle('Mean-Variance (by state)')+
-   ##            ylab('')+
-   ##            xlab('Mean (nm)')+
-   ##            theme_linedraw(base_size = 18)
-
-   ##    gridExtra::grid.arrange(mv1, mv2, nrow = 1)
   })
 
   output$observation <- renderValueBox({
@@ -283,6 +274,7 @@ mod_isometric_force_clamp_server <- function(input, output, session, f){
     )
 
   })
+
   output$n_events <- renderValueBox({
     req(trap_data())
     valueBox(
@@ -294,17 +286,17 @@ mod_isometric_force_clamp_server <- function(input, output, session, f){
 
   })
 
-  output$max_load <- renderValueBox({
+
+  output$s2n <- renderValueBox({
     req(trap_data())
     valueBox(
-      round(max(trap_data()$events$force_pn), 2),
-      "Max Load",
-      icon = icon("signal"),
+      round(max(trap_data()$events[keep == TRUE]$force_pn), 2),
+      "Max Force",
+      icon = icon("dumbbell"),
       color = 'yellow'
     )
 
   })
-
 
   output$selected_folders <- renderPrint({
     ob <- if(input$which_obs == 'single'){
@@ -530,17 +522,31 @@ mod_isometric_force_clamp_server <- function(input, output, session, f){
                                                 label = "Events Color",
                                                 value = "red",
                                                 showColour = "both"),
+
                ),
-               column(4,
-                      sliderInput(ns("export_plot_height"),
+
+               column(2,
+                     numericInput(ns("bead_offset_1"),
+                                  label = "Bead Offset 1",
+                                  value = 0 )
+               ),
+
+               column(2,
+                     numericInput(ns("bead_offset_2"),
+                                  label = "Bead Offset 1",
+                                  value = 0 )
+               ),
+               column(2,
+
+                      numericInput(ns("export_plot_height"),
                                   label = "Height (in)",
                                   min = 0,
                                   max = 20,
                                   step = 0.5,
                                   value = 2.5),
                ),
-               column(4,
-                      sliderInput(ns("export_plot_width"),
+               column(2,
+                      numericInput(ns("export_plot_width"),
                                   label = "Width (in)",
                                   min = 0,
                                   max = 50,
@@ -582,7 +588,8 @@ mod_isometric_force_clamp_server <- function(input, output, session, f){
     output$export_ggplot <- renderPlot(height = 175, {
       plot_overlay(obs_path = f$obs$path,
                    time_period_dp = input$overlay_dygraph_date_window,
-                   color = input$export_plot_event_color)
+                   color = input$export_plot_event_color,
+                   bead_offset = c(input$bead_offset_1, input$bead_offset_2))
     })
 
     })
@@ -611,7 +618,8 @@ mod_isometric_force_clamp_server <- function(input, output, session, f){
 
       gg <- plot_overlay(obs_path = f$obs$path,
                          time_period_dp = input$overlay_dygraph_date_window,
-                         color = input$export_plot_event_color)
+                         color = input$export_plot_event_color,
+                         bead_offset = c(input$bead_offset_1, input$bead_offset_2))
 
       if(input$save_as_gg){
         saveRDS(gg, file = paste0(file_name, ".rds"))
@@ -629,34 +637,40 @@ mod_isometric_force_clamp_server <- function(input, output, session, f){
     output$numbers <- renderPlot({
 
       req(trap_data())
-      measured_events <- trap_data()$events
+      measured_events <- trap_data()$events[keep == TRUE & event_user_excluded == FALSE]
       to <-
         ggplot()+
         stat_ecdf(data = measured_events,
-                     aes(x = time_on_ms))+
-        ggtitle("Time On")+
-        xlab("milliseconds")+
+                     aes(x = time_on_ms),
+                  size = 1,
+                  pad = FALSE)+
+        ggtitle("Time on")+
+        xlab("Time (ms)")+
         ylab('ECDF')+
         # scale_x_continuous(breaks = sort(c(seq(-100, 100, by = 20), round(mean(measured_events$displacement_nm), 1))))+
         cowplot::theme_cowplot(18)+
         theme(
-          axis.text.y = element_blank(),
-          axis.line.y = element_blank(),
-          axis.ticks.y = element_blank()
+          ## axis.text.y = element_blank(),
+          ## axis.line.y = element_blank(),
+          ## axis.ticks.y = element_blank()
         )
 
 
       to_vs_force <-
         ggplot()+
-        geom_point(data = measured_events, aes(x = force_pn, y = time_on_ms))+
+        geom_point(data = measured_events,
+                   aes(x = force_pn,
+                       y = time_on_ms),
+                   alpha = 0.5,
+                   shape = 16)+
         ggtitle("Force Vs. Time On")+
-        xlab("milliseconds")+
-        ylab('piconewtons')+
+        xlab("Force (pN)")+
+        ylab("Time (ms)")+
         cowplot::theme_cowplot(18)+
         theme(
-          axis.text.y = element_blank(),
-          axis.line.y = element_blank(),
-          axis.ticks.y = element_blank()
+          ## axis.text.y = element_blank(),
+          ## axis.line.y = element_blank(),
+          ## axis.ticks.y = element_blank()
         )
 
 
