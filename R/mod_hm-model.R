@@ -153,9 +153,19 @@ mod_hm_model_ui <- function(id){
 #' @param input,output,session,f module parameters
 mod_hm_model_server <- function(input, output, session, f){
  ns <- session$ns
- 
-  
- hm <- reactiveValues(analyze = 0)
+
+
+ observeEvent(f$obs$path, {
+   req(f$obs$path)
+    o <- fread(file.path(f$obs$path), "options.csv")
+   if(o$channels == 1){
+    hm$use_channel_options <- c("Mean/Var", "Variance")
+   } else {
+    hm$use_channel_options <- c("Mean/Covar", "Mean/Var", "Variance")
+    }
+ })
+
+ hm <- reactiveValues(analyze = 0, use_channels_options = c("Mean/Var", "Variance"))
  
   observeEvent(input$analyze_trap, {
     golem::print_dev(input$which_obs)
@@ -261,15 +271,15 @@ mod_hm_model_server <- function(input, output, session, f){
       #                   dygraphs::dyUnzoom()
       # } else {
         
-        overlay_dy <-  dygraphs::dygraph(d) %>% #raw_data_dygraph
-                        dygraphs::dySeries('raw', color = 'black') %>%
-                        dygraphs::dySeries('model', color = "#1B9E77",  strokeWidth = 2) %>%
-                        dygraphs::dyRangeSelector(fillColor ='white', strokeColor = 'black') %>%
-                        add_shades(periods_df) %>% #raw_periods
+        overlay_dy <-  dygraphs::dygraph(d) |> #raw_data_dygraph
+                        dygraphs::dySeries('raw', color = 'black') |>
+                        dygraphs::dySeries('model', color = "#1B9E77",  strokeWidth = 2) |>
+                        dygraphs::dyRangeSelector(fillColor ='white', strokeColor = 'black') |>
+                        add_shades(periods_df) |> #raw_periods
                         #add_shades(excluded_events, color = "#BDBDBD") %>%
-                        add_labels_hmm(labels, labelLoc = 'bottom') %>% #results$events
-                        dygraphs::dyAxis('x', label = 'seconds', drawGrid = FALSE) %>%
-                        dygraphs::dyAxis('y', label = 'nm', drawGrid = FALSE) %>%
+                        add_labels_hmm(labels, labelLoc = 'bottom') |> #results$events
+                        dygraphs::dyAxis('x', label = 'seconds', drawGrid = FALSE) |>
+                        dygraphs::dyAxis('y', label = 'nm', drawGrid = FALSE) |>
                         dygraphs::dyUnzoom()
      # }
         
@@ -450,13 +460,13 @@ mod_hm_model_server <- function(input, output, session, f){
                                                               selected = a$w_slide, 
                                                               width = "100%")
                          )
-                       ),
+                       ) ,
                        fluidRow(
                          column(6, 
                                 shinyWidgets::prettyRadioButtons(
                                   inputId = ns("use_channels"),
                                   label = "Channels", 
-                                  choices = c("Mean/Var", "Variance"),
+                                  choices = hm$use_channels_options,
                                   selected = a$use_channels,
                                   inline = TRUE,  
                                   status = "primary",
