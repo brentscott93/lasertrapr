@@ -17,7 +17,7 @@ mod_summarize_ui <- function(id){
                  h4('Selected Project'),
                  verbatimTextOutput(ns('current_project')),
                  uiOutput(ns('user_defaults')),
-                 numericInput(ns("hz"), "Sampling Frequency", value = 5000, min = 0, max = 20000),
+                 ## numericInput(ns("hz"), "Sampling Frequency", value = 5000, min = 0, max = 20000),
                  shinyWidgets::materialSwitch(ns('split_conditions'), 
                                               'Split Conditions',
                                               value = FALSE, 
@@ -55,7 +55,7 @@ mod_summarize_ui <- function(id){
       column(12,
       box(width = NULL,
 
-          title = 'Distributions',
+          title = 'Plots',
           # The id lets us use input$tabset1 on the server to find the current tab
           id = ns("distributions"),
            plotOutput(ns('summary_plots'), height = '400px') |> shinycssloaders::withSpinner(type = 8, color = '#373B38'),
@@ -88,8 +88,8 @@ mod_summarize_server <- function(input, output, session, f){
   conditions <- reactive({
   
     req(f$project$path)
-    list_dir(f$project$path) %>%
-      dplyr::filter(str_detect(name, "summary", negate = TRUE)) %>% 
+    list_dir(f$project$path) |>
+      dplyr::filter(str_detect(name, "summary", negate = TRUE)) |>
       dplyr::pull(name)
   })
   
@@ -152,7 +152,24 @@ mod_summarize_server <- function(input, output, session, f){
       if(!dir.exists(summary_folder)){
         dir.create(summary_folder)
       }
-      
+
+      opt_path <- list.files(f$project$path,
+                            pattern = "options.csv",
+                            recursive = TRUE,
+                            full.names = TRUE)
+
+      opt <- data.table::rbindlist(lapply(opt_path, data.table::fread), fill = TRUE)
+      opt <- opt[include == TRUE & review == TRUE & report == "success"]
+
+      is_unique <- length(unique(opt$analyzer))==1
+      if(!is_unique){
+        showNotification("Data are not all analyzed with the same analyzer.", type = "error")
+      }
+      req(is_unique)
+
+      plot_colors <- purrr::map_chr(paste0('color', seq_along(conditions())), ~input[[.x]])
+      analyzer <- unique(opt$analyzer)
+      if(analyzer %in% c("hm/cp", "mini")){
       if(input$split_conditions){
         variables <- strsplit(conditions(), "_")
         number_variables <- sapply(variables, length)
@@ -193,7 +210,6 @@ mod_summarize_server <- function(input, output, session, f){
       rv$all_measured_events <- all_measured_events
       rv$summary_data <- summary_data
       golem::print_dev("before colors")
-      plot_colors <- purrr::map_chr(paste0('color', seq_along(conditions())), ~input[[.x]])
       setProgress(0.6)
       ggstep <- plot_ecdf(all_measured_events,
                           var = "displacement_nm",
@@ -232,135 +248,103 @@ mod_summarize_server <- function(input, output, session, f){
 
       rv$summary_plots <- cowplot::plot_grid(ggstep, ggforce, ggton, ggoff, nrow = 1)
 
+} else if(analyzer == "ifc") {
 
-      ## setProgress(0.6, detail = "Fitting Attachment Durations")
-      ##                                   # fit the data
-      ## ton_data <- all_measured_events[, .(conditions, time_on_ms)]
-      ## ton_data[, .(data = list(.SD)), by = conditions ]
-      ##   select(conditions, `Attachment Times`)|>
-      ##   group_by(id)|>
-      ##   nest() |>
-      ##   mutate(fit = map(data, fit_ton),
-      ##          predict = map(fit, `[[`, "predict_df"),
-      ##          parse_label  = map_chr(fit, `[[`, "parse_label"),
-      ##          html_label  = map_chr(fit, `[[`, "html_label"),
-      ##          boot_df = map(fit, `[[`, "boot_df"),
-      ##          cdf_data = map(fit, `[[`, "data_df"))
+      if(input$split_conditions){
+        variables <- strsplit(conditions(), "_")
+        number_variables <- sapply(variables, length)
+        var_names <- purrr::map_chr(paste0('var', seq_len(number_variables[[1]])), ~input[[.x]])
 
+        all_measured_events <- rbind_measured_events(project = f$project$name, save_to_summary = FALSE)
+        ## currently doing nothing with split columns in ifc summarize,
+        ## but leaving here for future possibilites
+        all_measured_events <- split_conditions_column(all_measured_events, var_names = var_names, sep = "_")
+        all_measured_events <- all_measured_events[keep == TRUE & event_user_excluded == FALSE]
 
-      ##                                   # unravel data from the nest back to long data for ggplot
-      ##                                   # gets the real emperical CDF
-      ## ton_real_df <-
-      ##   ton_boot |>
-      ##   select(id, cdf_data) |>
-      ##   unnest(cols = c(cdf_data))
+        all_measured_events <- all_measured_events[force_pn >= -1]
 
-      ##                                   # unravel data from the nest back to long data for ggplot
-      ##                                   # gets the fit prediction line
-      ## ton_predict_df <-
-      ##   ton_boot |>
-      ##   select(id, predict) |>
-      ##   unnest(cols = c(predict))
+        if(!is.null(input$factor_order)){
+          all_measured_events$conditions <- factor(all_measured_events$conditions, levels = input$factor_order)
+        }
 
-      ##                                   # make the plots
-      ## ton_cdf <-
-      ##   ggplot()+
-      ##   geom_step(data = ton_real_df,
-      ##             aes(x = x,
-      ##                 y = y,
-      ##                 color = id),
-      ##             alpha = 0.6,
-      ##             linewidth= 1)+
-      ##   geom_line(data = ton_predict_df,
-      ##             aes(x = x,
-      ##                 y = y,
-      ##                 color = id),
-      ##             linetype = "dashed")+
-      ##   scale_color_manual(values = colz)+
-      ##   ggtitle("Attachment Durations")+
-      ##   ylab("Cumulative Probability")+
-      ##   xlab("Time (s)")+
-      ##   theme_cowplot(basesize)+
-      ##   theme(
-      ##     plot.title = element_text(hjust = 0.5),
-      ##     legend.position = "none")
+        clamp_fit <- fit_force_clamp(measured_events = all_measured_events,
+                              tmin = NULL,
+                              plot_colors = plot_colors,
+                              basesize = 20,
+                              textsize = 18,
+                              is_shiny = TRUE)
+
+        rv$clamp_fit
+        ## summary_data <- summarize_trap(all_measured_events, by = c("conditions", var_names))
+
+        sc <- split_conditions_column(data.frame(conditions=summary_data$conditions), var_names = var_names, sep = "_")
+        data.table::fwrite(sc,
+                           file.path(summary_folder,
+                                     paste(Sys.Date(),
+                                           f$project_input,
+                                           "split-conditions.csv",
+                                           sep = "_")
+                                     )
+                                )
+      } else {
 
 
 
-      ##     ggstatsplot::ggbetweenstats(rv$all_measured_events,
-      ##                  x = conditions,
-      ##                  y = displacement_nm,
-      ##                  ylab = "nanometers",
-      ##                  xlab = "",
-      ##                  title = "Displacements",
-      ##                  ggplot.component = list(scale_color_manual(values = plot_colors)),
-      ##                  centrality.point.args = list(size = 5, color = "grey10"),
-      ##                  ggtheme = theme_cowplot())
+        all_measured_events <- rbind_measured_events(project = f$project_input, save_to_summary = TRUE)
+        all_measured_events <- all_measured_events[keep == TRUE & event_user_excluded == FALSE]
 
-      ## setProgress(0.65, detail = "Time On Stats")
-      ## rv$ton <- ggstatsplot::ggbetweenstats(rv$all_measured_events,
-      ##                         x = conditions,
-      ##                         y = time_on_ms,
-      ##                         ylab = "milliseconds",
-      ##                         xlab = "",
-      ##                         title = "Attachment Times",
-      ##                         centrality.point.args = list(size = 5, color = "grey10"),
-      ##                         ggtheme = theme_cowplot(),
-      ##                         type = "nonparametric",
-      ##                         ggstatsplot.layer = F,
-      ##                         ggsignif.args = list(step_increase = 1),
-      ##                         ggplot.component = list(scale_color_manual(values = plot_colors),
-      ##                                                 scale_y_continuous(breaks = scales::trans_breaks("log10", function(x) 10^x),
-      ##                                                                    labels = scales::trans_format("log10", scales::math_format(10^.x))),
-      ##                                                 coord_trans(y = "log10")))
-      ## setProgress(0.7, detail = "Time Off Stats")
-      ## rv$toff <- ggstatsplot::ggbetweenstats(rv$all_measured_events,
-      ##                          x = conditions,
-      ##                          y = time_off_ms,
-      ##                          ylab = "milliseconds",
-      ##                          xlab = "",
-      ##                          title = "Time Between Events",
-      ##                          centrality.point.args = list(size = 5, color = "grey10"),
-      ##                          ggtheme = theme_cowplot(),
-      ##                          type = "nonparametric",
-      ##                          ggstatsplot.layer = F,
-      ##                          ggsignif.args = list(step_increase = 1),
-      ##                          ggplot.component = list(scale_color_manual(values = plot_colors),
-      ##                                                  scale_y_continuous(breaks = scales::trans_breaks("log10", function(x) 10^x),
-      ##                                                                     labels = scales::trans_format("log10", scales::math_format(10^.x))),
-      ##                                                  coord_trans(y = "log10")))
-      ## setProgress(0.75, detail = "Force Stats")
-      ##   rv$force <- ggstatsplot::ggbetweenstats(rv$all_measured_events,
-      ##                              x = conditions,
-      ##                              y = force,
-      ##                              ylab = "piconewtons",
-      ##                              xlab = "",
-      ##                              title = "Forces",
-      ##                              ggplot.component = list(scale_color_manual(values = plot_colors)),
-      ##                              centrality.point.args = list(size = 5, color = "grey10"),
-      ##                              ggtheme = theme_cowplot())
-      ## setProgress(0.8, detail = "Time On ECDF")
-      ## ## rv$ton_ecdf <- time_on_ecdf(event_files_filtered = rv$all_measured_events,
-      ## ##                              plot_colors = plot_colors)
-      ## setProgress(0.85, detail = "Time Off ECDF")
-      ## ## rv$toff_ecdf <- time_off_ecdf(event_files_filtered = rv$all_measured_events,
-      ## ##                             plot_colors = plot_colors)
-      ## # setProgress(0.85, detail = "Event Frequency")
-      ## # rv$ef <- stats_plot_event_frequency(event_file_path = rv$data$event_file_path,
-      ## #                                     factor_order = input$factor_order,
-      ## #                                     plot_colors = plot_colors)
-      ## setProgress(0.9, detail = "Correlations")
-      ## # rv$correlations <- correlations(event_files_filtered = rv$all_measured_events,
-      ## #                                 plot_colors = plot_colors)
-      ## setProgress(0.95, detail = "Stiffness")
-      ## # rv$stiffness <- stiffness(event_files_filtered = rv$all_measured_events,
-      ## #                              plot_colors = plot_colors)
+
+        if(!is.null(input$factor_order)){
+          all_measured_events$conditions <- factor(all_measured_events$conditions, levels = input$factor_order)
+        }
+
+
+        all_measured_events <- all_measured_events[force_pn >= -1]
+
+        clamp_fit <- fit_force_clamp(measured_events = all_measured_events,
+                                     tmin = NULL,
+                                     plot_colors = plot_colors,
+                                     basesize = 20,
+                                     textsize = 18,
+                                     is_shiny = TRUE)
+        rv$clamp_fit <- clamp_fit
+      }
+## browser()
+  rv$summary_plots <- clamp_fit$plot
+  ## rv$summary_data <- clamp_fit$data
+
+}
     })
     showNotification("Summary data saved!")
   })
 
   observeEvent(input$export, ignoreInit = T,  {
+
+    defend_if_null(f$project_input, ui = 'Please Select a Project', type = 'error')
+    defend_if_blank(f$project_input, ui = "Please Select a Project", type = "error")
+
     withProgress(message = 'Saving Report', {
+
+      opt_path <- list.files(f$project$path,
+                            pattern = "options.csv",
+                            recursive = TRUE,
+                            full.names = TRUE)
+
+      opt <- data.table::rbindlist(lapply(opt_path, data.table::fread), fill = TRUE)
+      opt <- opt[include == TRUE & review == TRUE & report == "success"]
+
+      is_unique <- length(unique(opt$analyzer))==1
+      if(!is_unique){
+        showNotification("Data are not all analyzed with the same analyzer.", type = "error")
+      }
+      req(is_unique)
+
+      plot_colors <- purrr::map_chr(paste0('color', seq_along(conditions())), ~input[[.x]])
+      analyzer <- unique(opt$analyzer)
+      if(analyzer %in% c("hm/cp", "mini")){
+
+
+
       temp_report <- file.path(tempdir(), "project-summary.Rmd")
 
       report_file <- system.file("rmd", "project-summary-flex.Rmd", package = "lasertrapr")
@@ -378,8 +362,25 @@ mod_summarize_server <- function(input, output, session, f){
       rmarkdown::render(temp_report, output_dir = out_dir,
                         params = params,
                         envir = new.env(parent = globalenv()))
+
+      } else if(analyzer == "ifc"){
+
+      figures_folder <- file.path(path.expand("~"), "lasertrapr", f$project_input, "summary", "figures")
+      if(!dir.exists(figures_folder)){
+        dir.create(figures_folder)
+      }
+        saveRDS(rv$summary_plots, file = file.path(f$project$path,
+                                                   "summary",
+                                                   "figures",
+                                                   paste0(Sys.Date(), "_ifc-bell-plots.rds")))
+        ## cowplot::ggsave2(rv$summary_plots, file = file.path(path.expand("~"), "lasertrapr", "summary", Sys.Date(),"_ifc-bell-plots.png")
+        data.table::fwrite(rv$clamp_fit$boot_params, file.path(f$project$path,
+                                                               "summary",
+                                                               paste0(Sys.Date(), "_ifc-bootstrap-bell-parameters.csv")))
+      }
     })
   })
+
   output$table <- DT::renderDT({
     validate(need('conditions' %in% colnames(rv$summary_data), 'Select completed project, choose options, and click summarize'))
     # rv$summary_data$conditions <- factor(summarize_trap$conditions,
