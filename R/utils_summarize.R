@@ -19,6 +19,14 @@ rbind_measured_events <- function(project, save_to_summary = FALSE){
   options_data <- data.table::rbindlist(lapply(options_paths, data.table::fread, nrows = 1), fill = TRUE)
   filtered_options <- options_data[include == TRUE & report == "success" & review == TRUE]
 
+  is_unique <- length(unique(filtered_options$analyzer))==1
+   if(!is_unique){
+        stop("Data are not all analyzed with the same analyzer.")
+      }
+
+  analyzer <- unique(filtered_options$analyzer)
+
+  if(analyzer == "hm/cp"){
   filtered_options[, measured_events_path := file.path(path.expand("~"),
                                                        "lasertrapr",
                                                        project,
@@ -26,6 +34,24 @@ rbind_measured_events <- function(project, save_to_summary = FALSE){
                                                        date,
                                                        obs,
                                                        "measured-events.csv")]
+  } else if(analyzer == "mini"){
+  filtered_options[, measured_events_path := file.path(path.expand("~"),
+                                                       "lasertrapr",
+                                                       project,
+                                                       conditions,
+                                                       date,
+                                                       obs,
+                                                       "mini-measured-events.csv")]
+  } else if(analyzer == "ifc"){
+
+  filtered_options[, measured_events_path := file.path(path.expand("~"),
+                                                       "lasertrapr",
+                                                       project,
+                                                       conditions,
+                                                       date,
+                                                       obs,
+                                                       "ifc-measured-events.csv")]
+  }
 
   measured_events <- data.table::rbindlist(lapply(filtered_options$measured_events_path, data.table::fread), fill = TRUE)
   measured_events_filtered  <- measured_events[keep == TRUE & event_user_excluded == FALSE]
