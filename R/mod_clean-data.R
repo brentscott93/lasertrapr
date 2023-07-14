@@ -169,7 +169,9 @@ mod_clean_data_server <- function(input, output, session, f){
      observeEvent(f$obs_input, {
           req(f$obs_input)
           req(substring(f$obs_input, 1, 3) == 'obs')
-          o$data <- fread(file.path(f$obs$path, "options.csv"))
+          ## print("here-172")
+          req(f$obs$path)
+          o$data <- fread(file = file.path(f$obs$path, "options.csv"))
          })
 
 # save options for single channel data
@@ -429,14 +431,14 @@ mod_clean_data_server <- function(input, output, session, f){
   # when it updates get length of data trace for filter
   observeEvent(f$obs_input, {
     req(substring(f$obs_input, 1, 3) == 'obs')
-    trap_path <- list_files(f$obs$path, pattern = 'trap-data.csv')
-    rv$filter_max <- nrow(data.table::fread(trap_path$path, select = "project"))
+    trap_path <- file.path(f$obs$path, 'trap-data.csv')
+    rv$filter_max <- nrow(data.table::fread(trap_path, select = "project"))
   })
 
   #recaculates the length of trace when update_filter is triggered
   observeEvent(rv$update_filter, ignoreInit = T, {
-    trap_path <- list_files(f$obs$path, pattern = 'trap-data.csv')
-    rv$filter_max <- nrow(data.table::fread(trap_path$path, select = "project"))
+    trap_path <- file.path(f$obs$path, 'trap-data.csv')
+    rv$filter_max <- nrow(data.table::fread(trap_path, select = "project"))
     
   })
 

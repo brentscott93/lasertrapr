@@ -157,7 +157,7 @@ mod_hm_model_server <- function(input, output, session, f){
 
  observeEvent(f$obs$path, {
    req(f$obs$path)
-    o <- fread(file.path(f$obs$path), "options.csv")
+    o <- fread(file.path(f$obs$path, "options.csv"))
    if(o$channels == 1){
     hm$use_channel_options <- c("Mean/Var", "Variance")
    } else {
