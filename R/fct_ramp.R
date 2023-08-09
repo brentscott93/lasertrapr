@@ -1,133 +1,141 @@
-trap_data <- data.table::fread("~/lasertrapr/project_vinculin/vinculin/2023-07-11/obs-06/trap-data.csv")
-options <- data.table::fread("~/lasertrapr/project_vinculin/vinculin/2023-07-11/obs-06/options.csv")
+## trap_data <- data.table::fread("~/lasertrapr/project_vinculin/vinculin/2023-07-11/obs-06/trap-data.csv")
+## options <- data.table::fread("~/lasertrapr/project_vinculin/vinculin/2023-07-11/obs-06/options.csv")
 
-trap_data$processed_bead_1 <- trap_data$raw_bead_1 * options$mv2nm
+## trap_data$processed_bead_1 <- trap_data$raw_bead_1 * options$mv2nm
 
-pb1 <- RcppRoll::roll_meanl(trap_data$raw_bead_1, n = 20)
+## pb1 <- RcppRoll::roll_meanl(trap_data$raw_bead_1, n = 400)
 
-head(trap_data)
+## head(trap_data)
 
-plot(trap_data$aod_position, type = "l")
+## plot(trap_data$aod_position, type = "l")
 
-max(trap_data$aod_position)
-min(trap_data$aod_position)
+## max(trap_data$aod_position)
+## min(trap_data$aod_position)
 
-trap_data[, is_max_range := ifelse(aod_position == max(aod_position) | aod_position == min(aod_position), 1, 0) ]
+## trap_data[, is_max_range := ifelse(aod_position == max(aod_position) | aod_position == min(aod_position), 1, 0) ]
 
-events <- data.table::as.data.table(unclass(rle(trap_data$is_max_range)))
+## events <- data.table::as.data.table(unclass(rle(trap_data$is_max_range)))
 
-events[, end_event_dp := cumsum(lengths)]
-events[, begin_event_dp := end_event_dp - lengths + 1 ]
-events[, index := .I]
+## events[, end_event_dp := cumsum(lengths)]
+## events[, begin_event_dp := end_event_dp - lengths + 1 ]
+## events[, index := .I]
 
-hz <- 4000
-threshold_time_ms <- 200
+## hz <- 4000
+## threshold_time_ms <- 200
 
-threshold_time_dp <- 1000/1000*hz
+## threshold_time_dp <- 1000/1000*hz
 
-events_filtered <- events[lengths >= threshold_time_dp & values == 1]
-
-
-
-
-
-all_absolute_force <- vector()
-all_relative_force <- vector()
-all_absolute_position <- vector()
-all_relative_position <- vector()
-all_last_step_time_dp <- vector()
-all_last_step_time_s <- vector()
-molecules <- vector()
-changepoint_locations <- vector("list")
-for(i in 1:nrow(events_filtered)){
-  print(i)
-  start <- events_filtered$begin_event_dp[[i]]
-  stop <- events_filtered$end_event_dp[[i]]
-  data_subset <- trap_data[start:stop]
-  pb1_sub <- na.omit(pb1[start:stop])
-
-  cpt_obj <- changepoint::cpt.mean(data_subset$raw_bead_1, method = "PELT")
-  ## cpt_obj <- changepoint::cpt.mean(pb1_sub, method = "PELT")
-  ## cpt_obj <- changepoint::cpt.mean(data_subset$raw_bead_1, method = "BinSeg", Q = 2, minseglen = 2000)
-  ## cpt_obj <- changepoint::cpt.mean(pb1_sub, method = "BinSeg", Q = 2, minseglen = 200)
-
-  if(length(changepoint::cpts(cpt_obj)) == 1){
-    ##only one molecule in binding event
-    last_step_indices <- c(1, changepoint::cpts(cpt_obj))
-    n_mol <- 1
-  } else {
-    last_step_indices <- tail(changepoint::cpts(cpt_obj), 2)
-    n_mol  <- length(changepoint::cpts(cpt_obj))
-  }
-
-  last_step <- data_subset[last_step_indices[[1]]:last_step_indices[[2]]]
-
-  time_dp <- nrow(last_step)
-  time_s <- time_dp/hz
-
-  absolute_position_nm <- mean(last_step$processed_bead_1)
-  event_index <- events_filtered$index[[i]]
-
-  baseline_after_start <- events$begin_event_dp[[(event_index+1)]]
-  baseline_mean <- mean(trap_data$processed_bead_1[baseline_after_start:(baseline_after_start+hz)])
-
-  relative_position_nm <- absolute_position_nm - baseline_mean
-
-  absolute_force_pn <- absolute_position_nm * options$nm2pn
-  relative_force_pn <- relative_position_nm * options$nm2pn
-
-  all_absolute_force[[i]] <- absolute_force_pn
-  all_relative_force[[i]] <- relative_force_pn
-  all_absolute_position[[i]] <- absolute_position_nm
-  all_relative_position[[i]] <- relative_position_nm
-  all_last_step_time_dp[[i]] <- time_dp
-  all_last_step_time_s[[i]] <- time_s
-  molecules[[i]] <- n_mol
-  changepoint_locations[[i]] <- changepoint::cpts(cpt_obj)+start
-
-}
-
-
-events_filtered[, `:=`(absolute_force_pn = all_absolute_force,
-                       relative_force_pn = all_relative_force,
-                       absolute_position_nm = all_absolute_position,
-                       relative_position_nm = all_relative_position,
-                       last_step_time_dp = all_last_step_time_dp,
-                       last_step_time_s = all_last_step_time_s,
-                       n_molecules = molecules)]
+## events_filtered <- events[lengths >= threshold_time_dp & values == 1]
 
 
 
 
-library(dygraphs)
 
-add_shades <- function(x, periods, ...){
-  for(p in 1:nrow(periods)){
-    x <- dygraphs::dyShading(x, from = periods$start[[p]], to = periods$stop[[p]], color = periods$color[[p]], ...)
-  }
-  x
-}
+## all_absolute_force <- vector()
+## all_relative_force <- vector()
+## all_absolute_position <- vector()
+## all_relative_position <- vector()
+## all_last_step_time_dp <- vector()
+## all_last_step_time_s <- vector()
+## molecules <- vector()
+## changepoint_locations <- vector("list")
+## for(i in 1:nrow(events_filtered)){
+##   print(i)
+##   start <- events_filtered$begin_event_dp[[i]]
+##   stop <- events_filtered$end_event_dp[[i]]
+##   data_subset <- trap_data[start:stop]
+##   pb1_sub <- na.omit(pb1[start:stop])
 
-add_labels_last_mol <- function(x, events, ...){
-  for(event in 1:length(events)){
-    x <- dygraphs::dyEvent(x, events$location[[event]], paste0("F", event), ...)
-  }
-  x
-}
+##   cpt_obj <- changepoint::cpt.mean(data_subset$raw_bead_1,
+##                                    method = "PELT",
+##                                    ## Q = 6,
+##                                    ## penalty = "Manual",
+##                                    ## pen.value = 400,
+##                                    ## minseglen = 4000
+##                                    )
+##   ## cpt_obj <- changepoint::cpt.mean(pb1_sub, method = "PELT")
+##   ## cpt_obj <- changepoint::cpt.mean(data_subset$raw_bead_1, method = "BinSeg", Q = 2, minseglen = 2000)
+##   ## cpt_obj <- changepoint::cpt.mean(pb1_sub, method = "BinSeg", Q = 2, minseglen = 200)
+##   ## plot(cpt_obj)
+##   ## cpt_obj
+
+##   if(length(changepoint::cpts(cpt_obj)) == 1){
+##     ##only one molecule in binding event
+##     last_step_indices <- c(1, changepoint::cpts(cpt_obj))
+##     n_mol <- 1
+##   } else {
+##     last_step_indices <- tail(changepoint::cpts(cpt_obj), 2)
+##     n_mol  <- length(changepoint::cpts(cpt_obj))
+##   }
+
+##   last_step <- data_subset[last_step_indices[[1]]:last_step_indices[[2]]]
+
+##   time_dp <- nrow(last_step)
+##   time_s <- time_dp/hz
+
+##   absolute_position_nm <- mean(last_step$processed_bead_1)
+##   event_index <- events_filtered$index[[i]]
+
+##   baseline_after_start <- events$begin_event_dp[[(event_index+1)]]
+##   baseline_mean <- mean(trap_data$processed_bead_1[baseline_after_start:(baseline_after_start+hz)])
+
+##   relative_position_nm <- absolute_position_nm - baseline_mean
+
+##   absolute_force_pn <- absolute_position_nm * options$nm2pn
+##   relative_force_pn <- relative_position_nm * options$nm2pn
+
+##   all_absolute_force[[i]] <- absolute_force_pn
+##   all_relative_force[[i]] <- relative_force_pn
+##   all_absolute_position[[i]] <- absolute_position_nm
+##   all_relative_position[[i]] <- relative_position_nm
+##   all_last_step_time_dp[[i]] <- time_dp
+##   all_last_step_time_s[[i]] <- time_s
+##   molecules[[i]] <- n_mol
+##   changepoint_locations[[i]] <- changepoint::cpts(cpt_obj)+start
+
+## }
 
 
-add_labels_cpt <- function(x, events, ...){
-  for(event in 1:length(events)){
-    x <- dygraphs::dyEvent(x, events$location[[event]], paste0("F", event), ...)
-  }
-  x
-}
+## events_filtered[, `:=`(absolute_force_pn = all_absolute_force,
+##                        relative_force_pn = all_relative_force,
+##                        absolute_position_nm = all_absolute_position,
+##                        relative_position_nm = all_relative_position,
+##                        last_step_time_dp = all_last_step_time_dp,
+##                        last_step_time_s = all_last_step_time_s,
+##                        n_molecules = molecules)]
 
-periods_df <- data.frame(start = events_filtered$begin_event_dp, stop = events_filtered$end_event_dp, color = "#ffe599")
 
-dygraph(data.frame(x = 1:nrow(trap_data),
-                   y = trap_data$raw_bead_1,
-                   aod = (trap_data$aod_position)/100-15))|>
-  add_shades(periods_df)|>
-  add_labels(unlist(changepoint_locations))|>
-  dyRangeSelector()
+
+
+## library(dygraphs)
+
+## add_shades <- function(x, periods, ...){
+##   for(p in 1:nrow(periods)){
+##     x <- dygraphs::dyShading(x, from = periods$start[[p]], to = periods$stop[[p]], color = periods$color[[p]], ...)
+##   }
+##   x
+## }
+
+## add_labels_last_mol <- function(x, events, ...){
+##   for(event in 1:length(events)){
+##     x <- dygraphs::dyEvent(x, events$location[[event]], paste0("F", event), ...)
+##   }
+##   x
+## }
+
+
+## add_labels_cpt <- function(x, events, ...){
+##   for(event in 1:length(events)){
+##     x <- dygraphs::dyEvent(x, events[[event]], paste0("Change ", event), ...)
+##   }
+##   x
+## }
+
+## periods_df <- data.frame(start = events_filtered$begin_event_dp, stop = events_filtered$end_event_dp, color = "#ffe599")
+
+## dygraph(data.frame(x = 1:nrow(trap_data),
+##                    y = trap_data$raw_bead_1,
+##                    aod = (trap_data$aod_position)/100-15))|>
+##   add_shades(periods_df)|>
+##   add_labels_cpt(unlist(changepoint_locations))|>
+##   dyRangeSelector()
