@@ -981,43 +981,44 @@ mod_split_obs_server <- function(input, output, session, f){
                 processed_bead = data)
                 
      options_to_save <- data.frame(
-                project = f$project_input,
-                conditions = f$conditions_input,
-                date = f$date_input,
-                obs = obs_name, 
-                mv2nm = 1,
-                nm2pn = 1,
-                include = TRUE, 
-                processor = "sim",
-                report = "not run",
-                analyzer = NA,
-                review = NA,
-                hz = input$sim_hz, 
-                sim_baseline_mean = sim$baseline_mean,
-                sim_baseline_sd =  sim$baseline_sd,
-                
-                sim_step = sim$step,
-                sim_step_sd = sim$step_sd,
-                
-                sim_pi_release = sim$pi_release,
-                sim_pi_release_rate = sim$pi_release_rate ,
-                sim_pi_release_lower =  sim$pi_release_lower,
-                sim_pi_release_upper = sim$pi_release_upper,
-                
-                sim_adp_release = sim$adp_release,
-                sim_adp_release_rate =  sim$adp_release_rate,
-                sim_adp_release_lower = sim$adp_release_lower,
-                sim_adp_release_upper = sim$adp_release_upper,
-                sim_hitch_size =  sim$hitch_size,
-                
-                
-                sim_atp_binding_rate = sim$atp_binding_rate,
-                sim_atp_binding_upper =   sim$atp_binding_upper,
-                sim_atp_binding_lower =  sim$atp_binding_lower,
-                
-                sim_time_off_rate =  sim$time_off_rate,
-                sim_time_off_upper = sim$time_off_upper,
-                sim_time_off_lower = sim$time_off_lower)
+       project = f$project_input,
+       conditions = f$conditions_input,
+       date = f$date_input,
+       obs = obs_name,
+       mv2nm = 1,
+       nm2pn = 1,
+       include = TRUE,
+       processor = "sim",
+       report = "not run",
+       analyzer = NA,
+       review = NA,
+       channels = 1,
+       hz = input$sim_hz,
+       sim_baseline_mean = sim$baseline_mean,
+       sim_baseline_sd =  sim$baseline_sd,
+
+       sim_step = sim$step,
+       sim_step_sd = sim$step_sd,
+
+       sim_pi_release = sim$pi_release,
+       sim_pi_release_rate = sim$pi_release_rate ,
+       sim_pi_release_lower =  sim$pi_release_lower,
+       sim_pi_release_upper = sim$pi_release_upper,
+
+       sim_adp_release = sim$adp_release,
+       sim_adp_release_rate =  sim$adp_release_rate,
+       sim_adp_release_lower = sim$adp_release_lower,
+       sim_adp_release_upper = sim$adp_release_upper,
+       sim_hitch_size =  sim$hitch_size,
+
+
+       sim_atp_binding_rate = sim$atp_binding_rate,
+       sim_atp_binding_upper =   sim$atp_binding_upper,
+       sim_atp_binding_lower =  sim$atp_binding_lower,
+
+       sim_time_off_rate =  sim$time_off_rate,
+       sim_time_off_upper = sim$time_off_upper,
+       sim_time_off_lower = sim$time_off_lower)
      
      sim_save_folder <- file.path(f$date$path, obs_name)
      setProgress(0.9, detail = "Writing")

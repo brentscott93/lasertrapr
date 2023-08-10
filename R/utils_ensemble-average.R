@@ -32,10 +32,49 @@ fit_forward_ee_1exp <- function(ee_data, start){
 }
 
 #' @noRd
-fit_forward_ee_2exp <- function(ee_data, start){
-  minpack.lm::nlsLM(avg ~ (d1*(1 - exp(-k0 * time))) + (d2*(1 - exp(-k1 * time))),
-                    data = ee_data,
-                    start = start)
+fit_forward_ee_2exp <- function(ee_data){
+  ## browser()
+  start_list <- list(d1 = 5, d2 = 2, k0 = 1000, k1 = 100)
+  fit <- try(minpack.lm::nlsLM(avg ~ (d1*(1 - exp(-k0 * time))) + (d2*(1 - exp(-k1 * time))),
+                               data = ee_data,
+                               start = start_list,
+                               control = minpack.lm::nls.lm.control(maxiter = 1000)
+                               ),
+             silent = TRUE)
+
+  if(class(fit)=="try-error"){
+    start_list <- list(d1 = 5, d2 = 2, k0 = 1000, k1 = 1)
+    fit <- try(minpack.lm::nlsLM(avg ~ (d1*(1 - exp(-k0 * time))) + (d2*(1 - exp(-k1 * time))),
+                                 data = ee_data,
+                                 start = start_list,
+                                 control = minpack.lm::nls.lm.control(maxiter = 1000)
+                                 ),
+               silent = TRUE)
+  }
+
+  if(class(fit)=="try-error"){
+    counter <- 1
+    grid_search <- expand.grid(c(5, 10, 15), c(1, 5, 10), c(1000, 100, 5000, 1), c(100, 1, 50, 1000))
+    while(counter <= 100){
+      samp_row <- sample(1:nrow(grid_search), 1)
+      start_list <- grid_search[samp_row,]
+      starter <- list(d1 = start_list[, 1], d2 = start_list[, 2], k0 = start_list[, 3], k1 = start_list[, 4])
+
+      fit <- try(minpack.lm::nlsLM(avg ~ (d1*(1 - exp(-k0 * time))) + (d2*(1 - exp(-k1 * time))),
+                                   data = ee_data,
+                                   start = starter,
+                                   control = minpack.lm::nls.lm.control(maxiter = 1000)
+                                   ),
+                 silent = TRUE)
+      if(class(fit)=="try-error"){
+        counter <- counter + 1
+      } else {
+        counter <- 101
+      }
+    }
+  }
+
+  return(fit)
 }
 
 #' @noRd
