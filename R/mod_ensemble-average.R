@@ -52,7 +52,7 @@ mod_ensemble_average_ui <- function(id){
               
                sliderInput(ns("backwards_shift"), 
                            "Backwards Shift (seconds)",
-                           min = 0, 
+                           min = -1,
                            max = 1,
                            step = 0.05,
                            value = 0),
@@ -244,12 +244,20 @@ str(input$sidemenu)
   output$average_tab <- renderUI({
     if(is.null(ee$analyzer) || ee$analyzer == "hm/cp"){
       tagList(
-        sliderInput(ns("length_of_ensembles"),
-                    "Ensemble Length (seconds)",
+       fluidRow(column(6,
+        numericInput(ns("length_of_ensembles_forward"),
+                    "Forward Length (s)",
                     min = 0.1,
-                    max = 2,
-                    step = 0.05,
-                    value = 1),
+                    value = 1)
+        ),
+        column(6,
+
+        numericInput(ns("length_of_ensembles_backwards"),
+                    "Backwards Length (seconds)",
+                    min = 0.1,
+                    value = 1)
+        )
+        ),
 
         shinyWidgets::radioGroupButtons(
                         inputId = ns('fit'),
@@ -306,7 +314,7 @@ str(input$sidemenu)
               ui = "Data has different sampling frequencies. Ensmeble averaging not currently supported.", 
               type = "error")
 
-    analyzer <- unique(options_data$hz)
+    analyzer <- unique(options_data$analyzer)
     defend_if(length(analyzer) != 1,
               ui = "Multiple analyzers detected for trap data. Unable to ensemble average.",
               type = "error")
@@ -351,7 +359,7 @@ str(input$sidemenu)
                ui = "Data has different sampling frequencies. Ensmeble averaging not currently supported.", 
                type = "error")
 
-    analyzer <- unique(options_data$hz)
+    analyzer <- unique(options_data$analyzer)
     defend_if(length(analyzer) != 1,
               ui = "Multiple analyzers detected for trap data. Unable to ensemble average.",
               type = "error")
@@ -369,7 +377,8 @@ str(input$sidemenu)
          ee$fits <- fit_ensembles(data = ee$data,
                                   fit = input$fit, 
                                   hz = ee$hz,
-                                  max_l = input$length_of_ensembles)
+                                  max_l_forward = input$length_of_ensembles_forward,
+                                  max_l_backwards = input$length_of_ensembles_backwards)
          
          summary_folder <- file.path(f$project$path, "summary")
          if(!file.exists(summary_folder)){
@@ -456,13 +465,16 @@ str(input$sidemenu)
                       recursive = TRUE,
                       full.names = TRUE)
 
-         ee$substeps_data <-
+         substeps_data <-
            rbindlist(
              lapply(
                substeps_path,
                fread
              )
            )
+
+          ee$substeps_data <- substeps_data
+          data.table::fwrite(substeps_data, file = file.path(summary_folder, paste0(Sys.Date(), "_ensemble-average-substeps.csv")))
 
          showNotification("Ensembles Averaged & Fit", type = "message")
        }
@@ -628,6 +640,10 @@ str(input$sidemenu)
        }
       }
      } else {
+
+      if(length(input$factor_order) == length(conditions())){
+       if(nchar(input$factor_order[length(input$factor_order)]) > 0){
+
        ee_data$conditions <- factor(ee_data$conditions,
                                     levels = input$factor_order)
        
@@ -644,10 +660,12 @@ str(input$sidemenu)
        ee_forward_fitted_raw_df$conditions <- factor(ee_forward_fitted_raw_df$conditions,
                                                   levels = input$factor_order)
 
-       ee_backwards_fitted_raw_df$conditions <- factor(ee_forward_fitted_raw_df$conditions,
+       ee_backwards_fitted_raw_df$conditions <- factor(ee_backwards_fitted_raw_df$conditions,
                                                   levels = input$factor_order)
 
      }
+       }
+       }
    }
 
    length_of_full_ensemble <- nrow(ee_data[direction=="forward" & ensemble_index >= 0])

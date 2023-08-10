@@ -268,12 +268,15 @@ avg_ensembles <- function(project, is_shiny = TRUE){
 #' @return nothing. Saves ensemble-data.csv in each obs-## folder.
 #' @import data.table
 #' @noRd
-fit_ensembles <- function(data, fit, hz, max_l, is_shiny = TRUE){
+fit_ensembles <- function(data, fit, hz, max_l_forward, max_l_backwards, is_shiny = TRUE){
   print("starting fits")
 
 
   if(is_shiny) incProgress(0.25, detail = "Fitting Forwards...")
-  max_l <- max_l*hz
+
+  max_l_forward <- max_l_forward*hz
+  max_l_backwards <- max_l_backwards*hz
+
   forward_avg <- data[direction == "forward", 
                       .(conditions,
                         ensemble_index, 
@@ -284,18 +287,16 @@ fit_ensembles <- function(data, fit, hz, max_l, is_shiny = TRUE){
   
   forward_nest <- forward_avg[, .(ensemble_data = list(.SD)), by = conditions]
   
-  forward_nest[, `:=`(ensemble_k1_prep = lapply(ensemble_data, prep_forward_ensemble_exp, hz = hz, max_l = max_l),
+  forward_nest[, `:=`(ensemble_k1_prep = lapply(ensemble_data, prep_forward_ensemble_exp, hz = hz, max_l = max_l_forward),
                       avg_tail = vapply(ensemble_data, function(x) mean(tail(x$avg, -100)), FUN.VALUE = numeric(1)),
                       n = vapply(ensemble_data, function(x) unique(x$n),  FUN.VALUE = numeric(1)))]
   
-  
   if(fit == "2exp"){
-    
-    forward_nest[, forward_fit := lapply(ensemble_k1_prep, 
-                                         fit_forward_ee_2exp, 
-                                         start = list(d1 = 5, d2 = 2, k0 = 1000, k1 = 100))
+
+    forward_nest[, forward_fit := lapply(ensemble_k1_prep,
+                                         fit_forward_ee_2exp)
                  ]
-    
+
   } else if(fit == "1exp"){
     
     forward_nest[, forward_fit := lapply(ensemble_k1_prep, 
@@ -329,7 +330,7 @@ fit_ensembles <- function(data, fit, hz, max_l, is_shiny = TRUE){
   
   backwards_nest <- backwards_avg[, .(ensemble_data = list(.SD)), by = conditions]
   
-  backwards_nest[, `:=`(ensemble_k2_prep = lapply(ensemble_data, prep_backwards_ensemble_exp, hz = hz, max_l = max_l),
+  backwards_nest[, `:=`(ensemble_k2_prep = lapply(ensemble_data, prep_backwards_ensemble_exp, hz = hz, max_l = max_l_backwards),
                         backwards_baseline_shifted = lapply(ensemble_data, prep_backwards_baseline_shift, hz = hz),
                         avg_head = vapply(ensemble_data, function(x) mean(head(x$avg, 100)), FUN.VALUE = numeric(1)),
                         n = vapply(ensemble_data, function(x) unique(x$n),  FUN.VALUE = numeric(1)))]
