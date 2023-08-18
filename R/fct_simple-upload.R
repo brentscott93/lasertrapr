@@ -86,7 +86,7 @@ upload_data_cal_in_header <- function(input_data,
                                       date,
                                       number_of_channels){
     withProgress(message = 'Initializing Data', value = 0, {
-        
+       ## browser()
         for(r in seq_along(input_data$datapath)){
             
             shiny::incProgress(1/nrow(input_data))
@@ -125,14 +125,18 @@ upload_data_cal_in_header <- function(input_data,
                   o$mv2nm2 <- header_data[h$nm_v2]$V2
                   o$nm2pn2 <- header_data[h$pn_nm2]$V2
                   o$channels <- 2
+                  o$feedback_motor_bead <- header_data[h$feedback_motor_bead]$V2
               }
 
+
+          if(nrow(header_data)>=30){
             if(header_data$V1[30] == "FB-Mbead Trap"){
                 o$lab <- "greenberg"
                 o$feedback_motor_bead <- header_data$V2[30]
                 t$aod_position = trap_data$AODpos
                 t$feedback_filter_error = trap_data$`FB-FiltErr`
                 }
+            }
          
             if(r < 10){
                obs <- paste0("obs-0", r)
