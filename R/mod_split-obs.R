@@ -137,9 +137,18 @@ mod_split_obs_ui <- function(id){
                                              step = 1,
                                              width = "100%")
                                 )
+                       ),
+                       fluidRow(
+                         column(6,
+                           numericInput(
+                           inputId = ns("feedback_motor_bead"),
+                           label = "Feedback Motor Bead",
+                           value = 30
+                         )
+                         )
                        )
-                     )
-                   ),
+                     ) # conditional panel input.channels ==2
+                   ), # conditional panel header
                    
                    conditionalPanel(
                      condition = "input.in_header == false", ns = ns,
@@ -335,7 +344,8 @@ mod_split_obs_server <- function(input, output, session, f){
                         pn_nm1 = 0,
                         pn_nm2 = 0,
                         trap1_col = 0,
-                        trap2_col = 0)
+                        trap2_col = 0,
+                        feedback_motor_bead = 0)
     observe({
           h$header_size <- input$header_size
           h$hz <- input$header_hz
@@ -345,6 +355,7 @@ mod_split_obs_server <- function(input, output, session, f){
           h$pn_nm2 <- input$header_pn_nm2
           h$trap1_col <- input$trap1_col
           h$trap2_col <- input$trap2_col
+          h$feedback_motor_bead <- input$feedback_motor_bead
        })
 
       
