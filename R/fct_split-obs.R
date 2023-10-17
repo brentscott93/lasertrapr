@@ -33,18 +33,18 @@ split_obs <- function(input_data, project, conditions, date, threshold, hz = 500
     
     diff_vector[[length(datetime)]] <- "end_observation"
     
-    diff_tibble2 <- tibble(index = 1:length(diff_vector),
+    diff_tibble2 <- tibble::tibble(index = 1:length(diff_vector),
                            observation = diff_vector)
     
-    incomplete_obs <- filter(diff_tibble2, observation == "end_observation" & lag(observation) == "end_observation") %>%
-      pull(index)
+    incomplete_obs <- dplyr::filter(diff_tibble2, observation == "end_observation" & dplyr::lag(observation) == "end_observation") %>%
+      dplyr::pull(index)
     
     if(identical(incomplete_obs, integer(0)) == F){
-      diff_tibble2 <- slice(diff_tibble2, -incomplete_obs)
+      diff_tibble2 <- dplyr::slice(diff_tibble2, -incomplete_obs)
     }
     
     if(diff_tibble2$observation[[1]] != "end_observation"){
-      diff_tibble2 <- slice(diff_tibble2, -1)
+      diff_tibble2 <- dplyr::slice(diff_tibble2, -1)
     }
   
     diff_tibble2$observation[[1]] <- "begin_observation"
@@ -55,7 +55,7 @@ split_obs <- function(input_data, project, conditions, date, threshold, hz = 500
     }
     
     diff_tibble2 <- diff_tibble2  %>%
-      filter(observation != "observing") %>% 
+      dplyr::filter(observation != "observing") %>%
       split(.$observation) %>% 
       do.call('cbind', .)
     
@@ -90,7 +90,8 @@ split_obs <- function(input_data, project, conditions, date, threshold, hz = 500
                     nm2pn = NA,
                     analyzer = NA,
                     report = 'not run',
-                    review = NA)
+                    review = NA,
+                    channels = 1)
     
     setProgress(0.9, detail = "Saving Data")
     for(c in seq_along(create_obs)){

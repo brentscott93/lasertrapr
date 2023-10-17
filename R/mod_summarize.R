@@ -274,7 +274,7 @@ mod_summarize_server <- function(input, output, session, f){
                               textsize = 18,
                               is_shiny = TRUE)
 
-        rv$clamp_fit
+        rv$clamp_fit <- clamp_fit
         ## summary_data <- summarize_trap(all_measured_events, by = c("conditions", var_names))
 
         sc <- split_conditions_column(data.frame(conditions=summary_data$conditions), var_names = var_names, sep = "_")
@@ -311,6 +311,13 @@ mod_summarize_server <- function(input, output, session, f){
       }
 ## browser()
   rv$summary_plots <- clamp_fit$plot
+  ## saveRDS(clamp_fit, file.path(summary_folder,
+  ##                              paste(Sys.Date(),
+  ##                              f$project_input,
+  ##                             "clamp-fit.rds",
+  ##                                     sep = "_")
+  ##                                    )
+  ##         )
   ## rv$summary_data <- clamp_fit$data
 
 }
