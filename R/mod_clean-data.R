@@ -495,32 +495,26 @@ column(3,
  # read the data to mak the dygraph
   dg_data <- reactiveValues(make_graph = 0)
   observeEvent(input$graph,  {
-     print("graph1")
      defend_if_empty(f$obs_input,
                      ui = 'No observation folder selected.', 
                      type = 'error')
 
-     print("graph2")
-     defend_if_not_equal(substring(f$obs_input, 1, 3), 'obs', 
+     defend_if_not_equal(substring(f$obs_input, 1, 3), 'obs',
                          ui = 'No observation folder selected.', type = 'error')
 
-     print("reading data")
       trap_data <- fread(file.path(f$obs$path, "trap-data.csv"), sep = ",")
       has_header <- file.exists(file.path(f$obs$path, "header.csv"))
 
-     print("here1")
     if(is.null(o$data$channels)){
       o$data$channels <- 1
       }
 
-     print("here2")
       if(o$data$channels == 1){
       ## data <- data.table::fread(trap_data, sep = ",") %>%
       ##   dplyr::mutate(bead = raw_bead*as.numeric(input$mv2nm),
       ##                 time_sec = 1:nrow(.)/hz()) %>%
       ##   dplyr::select(time_sec, bead)
 
-     print("here3")
         if(has_header){
          mv2nm <- o$data$mv2nm
         } else {
@@ -531,7 +525,6 @@ column(3,
                          bead = raw_bead*as.numeric(mv2nm))
                      ]
 
-     print("here4")
         if(!is.null(input$flip_trace)){
           if(input$flip_trace == "y"){
           trap_data$bead <- trap_data$bead*-1
@@ -775,8 +768,8 @@ output$move_files <- renderText({
    
    defend_if_empty(dg_data$data, ui = 'Graph obs before continuing', type = 'error')
   
-  base$mv_df <- tibble(mean = RcppRoll::roll_mean(dg_data$data$bead, n = 30, align = 'left', fill = NULL),
-                        var = RcppRoll::roll_var(dg_data$data$bead, n = 30, align = 'left', fill = NULL))
+  base$mv_df <- data.frame(mean = RcppRoll::roll_mean(dg_data$data$bead, n = 30, align = 'left', fill = NULL),
+                           var = RcppRoll::roll_var(dg_data$data$bead, n = 30, align = 'left', fill = NULL))
     
     if(input$mv2nm == 1)  showNotification('Current mV-to-nm is 1. Do you need to enter a conversion value?', type = 'warning')
     #req(input$mv2nm > 1)
@@ -958,20 +951,12 @@ output$move_files <- renderText({
        } else {
          input_include <- TRUE
        }
-    #test that mv to nm is a number
 
-    ## mv2nm_test <- attempt::attempt(as.numeric(input$mv2nm))
-    ## if(attempt::is_try_error(mv2nm_test)) showNotification('nm to pN converion not a number', type = 'error')
-    ## req(!attempt::is_try_error(mv2nm_test))
-    
-    #test that mv to nm is a number
-
-    ## nm2pn_test <- attempt::attempt(as.numeric(input$nm2pn))
-    ## if(attempt::is_try_error(nm2pn_test)) showNotification('nm to pN converion not a number', type = 'error')
-    ## req(!attempt::is_try_error(nm2pn_test))
-    
     withProgress(message = 'Saving Data', {
 
+    if(is.null(o$data$channels)){
+      o$data$channels <- 1
+      }
 ## browser()
       if(o$data$channels == 1){
       defend_if_blank(input$mv2nm, ui = 'Enter step cal', type = 'error')
@@ -980,10 +965,8 @@ output$move_files <- renderText({
 
       current_obs <- f$obs$path
       
-      trap_data <- list_files(current_obs) |>
-        dplyr::filter(stringr::str_detect(name, "trap-data.csv")) |>
-        dplyr::pull(path)
-      
+      trap_data <- file.path(f$obs$path, "trap-data.csv")
+
       data <- data.table::fread(trap_data, sep = ",")
 
       setProgress(0.3)
@@ -992,8 +975,10 @@ output$move_files <- renderText({
 
         data[, processed_bead := raw_bead*as.numeric(input$mv2nm) ]
 
+        if(!is.null(input$flip_trace)){
         if(input$flip_trace == "y"){
           data$processed_bead <- data$processed_bead*-1
+        }
         }
 
         if(input$how_to_process == 'detrend'){
@@ -1033,9 +1018,12 @@ output$move_files <- renderText({
 ## browser()
             pb1 <- data$raw_bead_1
             pb2 <- data$raw_bead_2
-        if(input$flip_trace == "y"){
-             pb1 <- pb1*-1
-             pb2 <- pb2*-1
+
+        if(!is.null(input$flip_trace)){
+          if(input$flip_trace == "y"){
+            pb1 <- pb1*-1
+            pb2 <- pb2*-1
+          }
         }
 
         if(input$how_to_process == 'detrend'){

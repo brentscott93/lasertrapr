@@ -118,8 +118,8 @@ mini_ensemble_analyzer <- function(opt, w_width_ms = 10, displacement_threshold 
       rescaled_raw_data <- c(rescaled_raw_data, processed_data[p1:p2])
     }
     
-    rescaled_raw_data <- tibble::tibble(data = rescaled_raw_data,
-                                        index = 1:length(data))
+    rescaled_raw_data <- data.frame(data = rescaled_raw_data,
+                                    index = 1:length(rescaled_raw_data))
     
     setProgress(0.65, detail = 'Calculate Rescaled Running Mean')
     run_mean_rescaled <- na.omit(RcppRoll::roll_meanl(rescaled_raw_data$data, n =  w_width))
@@ -149,7 +149,7 @@ mini_ensemble_analyzer <- function(opt, w_width_ms = 10, displacement_threshold 
     for(i in 1:nrow(rescaled_events)){
       temp_vector <- rescaled_raw_data[(rescaled_events$state_1_end[i] + 1) : (rescaled_events$state_2_end[i]),]
       run_mean_event <- tibble::tibble(data = na.omit(RcppRoll::roll_meanl(temp_vector$data, n = 10)),
-                               index = min(temp_vector$index):(min(temp_vector$index) + (length(data)-1)))
+                                       index = min(temp_vector$index):(min(temp_vector$index) + (length(data)-1)))
       peak_window <- max(run_mean_event$data)
       peak_displacement[i] <- peak_window
       get_index_in_chunk <- which(run_mean_event$data==max(run_mean_event$data))[[1]]
@@ -273,7 +273,7 @@ id_mini_events <- function(run_mean, displacement_threshold, time_threshold){
       #Determine if run_mean is in an event or baseline noise by using >10 as event
       on_off <- ifelse(run_mean > displacement_threshold, 2, 1)
       
-      rle_object<- as_tibble(do.call("cbind", rle(on_off)))
+      rle_object<- tibble::as_tibble(do.call("cbind", rle(on_off)))
       
       if(length(unique(rle_object$values)) == 1){
         stop('No events in trace. There is either one events or the thresholds are too stringent.')
@@ -291,7 +291,7 @@ id_mini_events <- function(run_mean, displacement_threshold, time_threshold){
       #If the rle_object's last row is in state 1, get rid of that last row. This needs to end in state 2 to capture the end of the last event
       mini_rle_object <- 
         if(tail(rle_object, 1)$values == 1){
-        slice(rle_object, -length(rle_object$values))
+        dplyr::slice(rle_object, -length(rle_object$values))
          } else {
         rle_object
       }
@@ -311,7 +311,7 @@ id_mini_events <- function(run_mean, displacement_threshold, time_threshold){
       #filter out state 2s that are less than threshold
       events <- 
         regroup_data %>% 
-        filter(event_duration_dp > time_threshold)
+        dplyr::filter(event_duration_dp > time_threshold)
       
       return(list(events = events, 
              rle_object = rle_object,
