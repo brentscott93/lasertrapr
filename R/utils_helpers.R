@@ -161,6 +161,7 @@ plot_overlay <- function(obs_path, time_period_dp, color, bead_offset = 0){
    # obs_path <- "~/lasertrapr/project_myoV-phosphate/myoV-WT_pH-7.0_0mM-Pi/2020-06-25/obs-14"
    # time_period_dp <- c(500/5000, 25000/5000)
    # color = "red"
+  ## browser()
   options_path <-  measured_events <-  list.files(obs_path,
                                                   pattern = "options.csv",
                                                   full.names = TRUE)
@@ -299,9 +300,63 @@ ggplot(all_data, aes(new_time_index/hz, processed_bead, color = population))+
 
 }
 }
-    
-    
-    
+
+
+#' Plot trap data with ID'd events
+#'
+#' @noRd
+#' @return a ggplot object
+#' @import data.table ggplot2 cowplot
+ggplot_mini_events <- function(trap_data,
+                               measured_events,
+                               seconds = c(1, 10),
+                               color = "red",
+                               hz = 5000,
+                               nm_scale = 100){
+
+  x_axis_seconds <- seq(seconds[1], seconds[2], by = 1/hz) * hz
+
+  trap_data <- fread(trap_data)
+  measured_events <- fread(measured_events)
+
+  trap_data_subset <- trap_data[x_axis_seconds,]
+
+  measured_events <- measured_events[event_start >= seconds[1]*hz & event_start <= seconds[2]*hz,]
+
+
+  p <-
+    ggplot()+
+    geom_line(data = trap_data_subset,
+              aes(x = 1:nrow(trap_data_subset),
+                  y = rescaled_mini_data),
+              linewidth = 0.1)
+
+  for(i in 1:nrow(measured_events)){
+    print(i)
+    start <- measured_events$event_start[i] - (seconds[1]*hz)
+    stop <- measured_events$event_stop[i] - (seconds[1] * hz)
+    event <- trap_data_subset[start:stop,]
+    df <- data.frame(x = start:stop,
+                     y = event$rescaled_mini_data)
+    p <- p+geom_line(data = df,
+                     aes(x = x,
+                         y = y),
+                     color = color,
+                     linewidth = 0.1)
+  }
+  p+
+    draw_line(x = rep(-500, 2),
+              y = c(0, nm_scale),
+              linewidth = 1)+
+    draw_line(x = c(0, hz),
+              y = rep(min(trap_data_subset$rescaled_mini_data), 2),
+              linewidth = 1)+
+    annotate("text", label = paste0(nm_scale, " nm"), x = -1200, y = nm_scale / 2, angle = 90)+
+    annotate("text", label = paste0("1 s"), x = hz/2, vjust = 1.25, y = min(trap_data_subset$rescaled_mini_data))+
+    coord_cartesian(ylim = c(min(trap_data_subset$rescaled_mini_data)-15, NA))+
+    theme_void()
+}
+  
     
     
 

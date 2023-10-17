@@ -54,7 +54,12 @@ rbind_measured_events <- function(project, save_to_summary = FALSE){
   }
 
   measured_events <- data.table::rbindlist(lapply(filtered_options$measured_events_path, data.table::fread), fill = TRUE)
+
+  if(analyzer != "mini"){
   measured_events_filtered  <- measured_events[keep == TRUE & event_user_excluded == FALSE]
+  } else {
+    measured_events_filtered <- measured_events
+  }
 
   summary_folder <- file.path(project_path, "summary")
 
@@ -94,8 +99,8 @@ all_measured_events[,
                       force_avg = mean(force, na.rm = TRUE),
                       force_se = sd(force, na.rm = TRUE)/sqrt(.N),
                       force_sd = sd(force, na.rm = TRUE),
-                      trap_stiffness = mean(trap_stiffness, na.rm = T),
-                      myo_stiffness = mean(myo_stiffness, na.rm = T),
+                      ## trap_stiffness = mean(trap_stiffness, na.rm = T),
+                      ## myo_stiffness = mean(myo_stiffness, na.rm = T),
                       num_events = .N),
                     by = by]
 }

@@ -437,12 +437,14 @@ mod_mini_ensemble_server <- function(input, output, session, f){
     )
   })
   
-  observe({
+  ## observe({
     output$export_ggplot <- renderPlot(height = 175, {
-      plot_overlay(obs_path = f$obs$path,
-                   time_period_dp = input$overlay_dygraph_date_window,
-                   color = input$export_plot_event_color)
-    })
+      ggplot_mini_events(trap_data = file.path(f$obs$path,"trap-data.csv"),
+                         measured_events = file.path(f$obs$path, "mini-measured-events.csv"),
+                         seconds = input$mini_dygraph_date_window,
+                         color = input$export_plot_event_color,
+                         hz = unique(trap_data()$options$hz),
+                         nm_scale = 100)
     
   })
   
@@ -462,15 +464,18 @@ mod_mini_ensemble_server <- function(input, output, session, f){
                              "_",
                              f$obs$name,
                              "_",
-                             round(input$overlay_dygraph_date_window[[1]], 4),
+                             round(input$mini_dygraph_date_window[[1]], 4),
                              "-",
-                             round(input$overlay_dygraph_date_window[[2]], 4)
+                             round(input$mini_dygraph_date_window[[2]], 4)
                            )
     )
-    
-    gg <- plot_overlay(obs_path = f$obs$path,
-                       time_period_dp = input$overlay_dygraph_date_window,
-                       color = input$export_plot_event_color)
+
+      gg <- ggplot_mini_events(trap_data = file.path(f$obs$path,"trap-data.csv"),
+                         measured_events = file.path(f$obs$path, "mini-measured-events.csv"),
+                         seconds = input$mini_dygraph_date_window,
+                         color = input$export_plot_event_color,
+                         hz = unique(trap_data()$options$hz),
+                         nm_scale = 100)
     
     if(input$save_as_gg){
       saveRDS(gg, file = paste0(file_name, ".rds"))
