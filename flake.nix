@@ -47,7 +47,9 @@
                                     minpack_lm
                                     reactlog
                                     testthat
-                                    devtools];
+                                    devtools
+                                    lubridate
+                                    tibble];
     in {
       devShells.default = pkgs.mkShell {
         packages = [ pkgs.bashInteractive 

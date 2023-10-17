@@ -495,10 +495,12 @@ column(3,
  # read the data to mak the dygraph
   dg_data <- reactiveValues(make_graph = 0)
   observeEvent(input$graph,  {
+     print("graph1")
      defend_if_empty(f$obs_input,
                      ui = 'No observation folder selected.', 
                      type = 'error')
-    
+
+     print("graph2")
      defend_if_not_equal(substring(f$obs_input, 1, 3), 'obs', 
                          ui = 'No observation folder selected.', type = 'error')
 
@@ -506,16 +508,19 @@ column(3,
       trap_data <- fread(file.path(f$obs$path, "trap-data.csv"), sep = ",")
       has_header <- file.exists(file.path(f$obs$path, "header.csv"))
 
+     print("here1")
     if(is.null(o$data$channels)){
       o$data$channels <- 1
       }
 
+     print("here2")
       if(o$data$channels == 1){
       ## data <- data.table::fread(trap_data, sep = ",") %>%
       ##   dplyr::mutate(bead = raw_bead*as.numeric(input$mv2nm),
       ##                 time_sec = 1:nrow(.)/hz()) %>%
       ##   dplyr::select(time_sec, bead)
 
+     print("here3")
         if(has_header){
          mv2nm <- o$data$mv2nm
         } else {
@@ -526,8 +531,11 @@ column(3,
                          bead = raw_bead*as.numeric(mv2nm))
                      ]
 
-        if(input$flip_trace == "y"){
+     print("here4")
+        if(!is.null(input$flip_trace)){
+          if(input$flip_trace == "y"){
           trap_data$bead <- trap_data$bead*-1
+        }
         }
 
         } else if(o$data$channels == 2){
