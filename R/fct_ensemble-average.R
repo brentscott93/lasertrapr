@@ -402,7 +402,7 @@ align_mini_events <- function(project, is_shiny = FALSE){
                                                        "mini-measured-events.csv")]
 
   all_measured_events <- data.table::rbindlist(lapply(filtered_options$measured_events_path, data.table::fread), fill = TRUE)
-  measured_events_filtered  <- all_measured_events[keep == TRUE & event_user_excluded == FALSE]
+  measured_events_filtered  <- all_measured_events
 
   ## calculate the length of each event
   all_lengths <- vector("list")
@@ -430,7 +430,7 @@ align_mini_events <- function(project, is_shiny = FALSE){
     obs_path <- filtered_options$obs_to_avg[o]
 ## read the measured event for the observation
     measured_events <- fread(file.path(obs_path, "mini-measured-events.csv"))
-    measured_events  <- measured_events[keep == TRUE & event_user_excluded == FALSE]
+    ## measured_events  <- measured_events[keep == TRUE & event_user_excluded == FALSE]
 ## read the trap data for the observation
     trap_data <- fread(file.path(obs_path, "trap-data.csv"))
 ## extend each event padding with NA
@@ -486,7 +486,7 @@ align_mini_events <- function(project, is_shiny = FALSE){
 ##' @import data.table ggplot2
 ##' @noRd
 avg_aligned_mini_events <- function(project, is_shiny = FALSE){
-
+browser()
  project_path <- file.path(path.expand("~"), "lasertrapr", project)
 
  options_paths <-
@@ -526,7 +526,7 @@ avg_aligned_mini_events <- function(project, is_shiny = FALSE){
     ## mod <- lm(avg_nm~index, data=mini_avg, weights = n)
 
 
-  nls_mod <- minpack.lm::nlsLM(avg_nm ~ d1 + (1 - exp(-k1 * time)),
+  nls_mod <- minpack.lm::nlsLM(avg_nm ~ d1 + (1 - exp(-k1 * time_s)),
                     data = mini_avg,
                     start = list(d1 = 7, k1 = 100))
 
@@ -541,7 +541,7 @@ avg_aligned_mini_events <- function(project, is_shiny = FALSE){
     all_nls_mod[[i]] <- nls_mod
   }
 
-  if(is_shiny) setProgres(0.95)
+  if(is_shiny) setProgress(0.95)
 
   names(all_nls_mod) <- all_conditions
 
@@ -554,15 +554,18 @@ avg_aligned_mini_events <- function(project, is_shiny = FALSE){
                        y = avg_nm,
                        color = conditions),
                    alpha = 0.5)+
+    ylab("Displacement (nm)")+
+    xlab("Time (ms)")
+
+gg_with_fit <- gg +
          geom_line(data = all_predict_df,
                    aes(x = time_s, y = fitted_y,
                        color = conditions),
-                   linetype = "dashed")+
-    ylab("Displacement (nm)")+
-    xlab("Time (ms)")
+                   linetype = "dashed")
 
   return(list(avg_data = all_mini_avg,
               predict_df = all_predict_df,
               nls_models = all_nls_mod,
-              gg = gg))
+              gg = gg,
+              gg_with_fit = gg_with_fit))
 }

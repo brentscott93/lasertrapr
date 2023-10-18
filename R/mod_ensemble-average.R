@@ -128,14 +128,15 @@ mod_ensemble_average_ui <- function(id){
 #'
 #' @noRd
 #' @import data.table ggplot2 cowplot
-mod_ensemble_average_server <- function(input, output, session, f){
+mod_ensemble_average_server <- function(input, output, session, f, input_sidemenu){
   ns <- session$ns
   ee <- reactiveValues()
   
-  observe({
-    req(input$sidemenu)
-str(input$sidemenu)
-    if(input$sidemenu == "ensemble_average"){
+  observeEvent(f$project_input, {
+    req(input_sidemenu)
+    print("sidemenu-test")
+str(input_sidemenu())
+    if(input_sidemenu() == "ensemble_average"){
      req(f$project_input)
      req(f$project$path)
 
@@ -151,15 +152,23 @@ str(input$sidemenu)
         )
 
      req(options_data)
-     options_data[include == TRUE & review == TRUE & report == "success"]
+     options_data <- options_data[include == TRUE & review == TRUE & report == "success"]
 
      ee$analyzer <- unique(options_data$analyzer)
+     if(length(ee$analyzer)>1){
+     ee$analyzer <- NULL
+     showNotification("Multiple analyzer detected. Unable to process")
+     }
+     print(ee$analyzer)
+     str(options_data)
     }
   })
 
   output$main_box <- renderUI({
     ## req(ee$analyzer)
-    if(is.null(ee$analyzer) || ee$analyzer == "hm/cp"){
+    if(is.null(ee$analyzer)) {
+     tagList(h4("Data needs to be analyzed before ensemble averaging."))
+    } else if(ee$analyzer == "hm/cp"){
 
       tagList(
         tabBox(side = "right",
@@ -202,13 +211,17 @@ str(input$sidemenu)
                )
 
       )
+    } else {
+     tagList(h4("Data needs to be analyzed before ensemble averaging."))
     }
 
   })
 
 
   output$prep_tab <- renderUI({
-    if(is.null(ee$analyzer) || ee$analyzer == "hm/cp"){
+    if(is.null(ee$analyzer)){
+   tagList(h4("Data not analyzed"))
+    } else if(ee$analyzer == "hm/cp"){
       tagList(
         sliderInput(ns("ms_extend_s2"),
                     "Avg of ms to extend forward",
@@ -307,7 +320,7 @@ str(input$sidemenu)
              fill = TRUE
           )
 
-    options_data[include == TRUE & review == TRUE & report == "success"]
+    options_data <- options_data[include == TRUE & review == TRUE & report == "success"]
     ee$hz <- unique(options_data$hz)
     
     defend_if(length(ee$hz) != 1, 
@@ -352,7 +365,7 @@ str(input$sidemenu)
          fill = TRUE
        )
      
-     options_data[include == TRUE & review == TRUE & report == "success"]
+     options_data <- options_data[include == TRUE & review == TRUE & report == "success"]
      ee$hz <- unique(options_data$hz)
      
      defend_if(length(ee$hz) != 1, 
