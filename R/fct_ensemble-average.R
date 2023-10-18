@@ -486,7 +486,7 @@ align_mini_events <- function(project, is_shiny = FALSE){
 ##' @import data.table ggplot2
 ##' @noRd
 avg_aligned_mini_events <- function(project, is_shiny = FALSE){
-browser()
+## browser()
  project_path <- file.path(path.expand("~"), "lasertrapr", project)
 
  options_paths <-
