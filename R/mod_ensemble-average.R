@@ -155,6 +155,7 @@ str(input_sidemenu())
      options_data <- options_data[include == TRUE & review == TRUE & report == "success"]
 
      ee$analyzer <- unique(options_data$analyzer)
+     print(paste("ee$analyzer = ", ee$analyzer))
      if(length(ee$analyzer)>1){
      ee$analyzer <- NULL
      showNotification("Multiple analyzer detected. Unable to process")
