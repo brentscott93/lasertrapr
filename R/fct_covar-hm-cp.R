@@ -1,4 +1,3 @@
-
 #' Hidden markov analysis
 #' @noRd
 #' @param trap_data A dataframe of all 'trap-data' files.
@@ -39,7 +38,9 @@ covariance_hidden_markov_changepoint_analysis <- function(trap_data,
   mv2nm <-  o$mv2nm
   nm2pn <- o$nm2pn
   hz <- o$hz
-
+  if(is.null(o$channels)) channels <- 1
+  if(is.na(o$channels)) channels <- 1
+  channels <- o$channels
 
   path <- file.path(path.expand("~"),
                     "lasertrapr",
@@ -75,7 +76,11 @@ covariance_hidden_markov_changepoint_analysis <- function(trap_data,
           stop("User Excluded")
         }
 
-        not_ready <- rlang::is_empty(trap_data$processed_bead)
+        if(channels == 1){
+        stop("Only 2 channels data can be used with covariance option")
+        } else {
+        not_ready <- rlang::is_empty(trap_data$processed_bead_1)
+        }
         if(not_ready){
           if(is_shiny) showNotification(paste0(trap_data$obs, ' not processed. Skipping...'), type = 'warning')
           stop('Data not processed')
@@ -83,11 +88,8 @@ covariance_hidden_markov_changepoint_analysis <- function(trap_data,
 
         if(is_shiny){
           setProgress(0.05, paste("Analyzing", conditions, obs))
-          defend_if_empty(trap_data$processed_bead, ui = paste0(obs, ' data not processed.'), type = 'error')
+          defend_if_empty(trap_data$processed_bead_1, ui = paste0(obs, ' data not processed.'), type = 'error')
         }
-
-        bead_1 <- trap_data$processed_bead_1
-        bead_2 <- trap_data$processed_bead_2
 
 
         #### RUNNING MEAN & VAR ####
@@ -105,12 +107,15 @@ covariance_hidden_markov_changepoint_analysis <- function(trap_data,
 
         if(is_shiny) setProgress(0.1, detail = "Calculating Running Windows")
 
-        covar <- zoo::rollapply(data.frame(bead_1, bead_2),
+        pb1 <- trap_data$processed_bead_1
+        pb2 <- trap_data$processed_bead_2
+
+        covar <- zoo::rollapply(data.frame(pb1, pb2),
                                 width = w_width,
                                 by = ws,
                                 FUN = \(x) cov(x[,1], x[,2]),
                                 by.column = FALSE)
-
+      
         #### HMM ####
         if(is_shiny) setProgress(0.25, detail = "HM-Model")
 
@@ -301,3 +306,9 @@ covariance_hidden_markov_changepoint_analysis <- function(trap_data,
 
     return(invisible())
 }
+
+
+
+
+
+

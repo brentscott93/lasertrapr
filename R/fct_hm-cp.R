@@ -39,7 +39,10 @@ hidden_markov_changepoint_analysis <- function(trap_data,
   mv2nm <-  o$mv2nm
   nm2pn <- o$nm2pn
   hz <- o$hz
-  
+  if(is.null(o$channels)) channels <- 1
+  if(is.na(o$channels)) channels <- 1
+  channels <- o$channels
+
   path <- file.path(path.expand("~"),
                     "lasertrapr", 
                     project,
@@ -73,8 +76,12 @@ hidden_markov_changepoint_analysis <- function(trap_data,
                               sep = ",")
           stop("User Excluded")
         }
-      
+
+        if(channels == 1){
         not_ready <- rlang::is_empty(trap_data$processed_bead)
+        } else {
+        not_ready <- rlang::is_empty(trap_data$processed_bead_1)
+        }
         if(not_ready){
           if(is_shiny) showNotification(paste0(trap_data$obs, ' not processed. Skipping...'), type = 'warning')
           stop('Data not processed')
@@ -84,8 +91,10 @@ hidden_markov_changepoint_analysis <- function(trap_data,
           setProgress(0.05, paste("Analyzing", conditions, obs))
           defend_if_empty(trap_data$processed_bead, ui = paste0(obs, ' data not processed.'), type = 'error')
         }
-  
+
+        if(channels == 1){
         processed_data <- trap_data$processed_bead
+        }
 
         #### RUNNING MEAN & VAR ####
         if(w_slide == "1-Pt"){
