@@ -6,7 +6,8 @@
 #' @param displacement_threshold minimum displacement threshold
 #' @param time_threshold_ms minimum time on threshold
 #' @param f f reactive from shiny app
-mini_ensemble_analyzer <- function(opt, w_width_ms = 10, displacement_threshold = 8, time_threshold_ms = 10, f){
+#' @param is_shiny boolean
+mini_ensemble_analyzer <- function(opt, w_width_ms = 10, displacement_threshold = 8, time_threshold_ms = 10, f, is_shiny = TRUE){
   #for dev
   # opt <- data.table::fread("/home/brent/lasertrapr/project_tm-mutants/eWT_pH-7.4_pCa-6.5/2021-09-20/obs-01/options.csv")
   # w_width_ms = 10
@@ -56,7 +57,12 @@ mini_ensemble_analyzer <- function(opt, w_width_ms = 10, displacement_threshold 
                                obs, 
                                'trap-data.csv')
     trap_data <- data.table::fread(trap_data_path)
+
+
     not_ready <- rlang::is_empty(trap_data$processed_bead)
+    if(opt$channels == 2){
+    not_ready <- rlang::is_empty(trap_data$processed_bead_1)
+    }
     if(not_ready){
       if(is_shiny) showNotification(paste0(trap_data$obs, ' not processed. Skipping...'), type = 'warning')
       stop('Data not processed')
@@ -65,7 +71,18 @@ mini_ensemble_analyzer <- function(opt, w_width_ms = 10, displacement_threshold 
      report_data <- 'error'
      w_width <- ms_to_dp(w_width_ms, hz = hz)
      time_threshold <- ms_to_dp(time_threshold_ms, hz = hz)
-     processed_data <- trap_data$processed_bead
+
+     if(opt$channels == 1 || is.null(opt$channels)){
+       processed_data <- trap_data$processed_bead
+     } else if(opt$channels == 2){
+       if(opt$preferred_channel == 1){
+         processed_data <- trap_data$processed_bead_1
+       } else if(opt$preferred_channel == 2){
+         processed_data <- trap_data$processed_bead_2
+         nm2pn <- opt$nm2pn2
+       }
+     }
+
    
     #calculate running mean
     setProgress(0.25, detail = 'Calculating Running Mean')

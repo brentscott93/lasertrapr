@@ -9,7 +9,8 @@ mini_ensemble_analyzer(
   w_width_ms = 10,
   displacement_threshold = 8,
   time_threshold_ms = 10,
-  f
+  f,
+  is_shiny = TRUE
 )
 }
 \arguments{
@@ -22,6 +23,8 @@ mini_ensemble_analyzer(
 \item{time_threshold_ms}{minimum time on threshold}
 
 \item{f}{f reactive from shiny app}
+
+\item{is_shiny}{boolean}
 }
 \description{
 Mini Ensemble Analyzer

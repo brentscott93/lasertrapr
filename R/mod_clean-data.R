@@ -186,6 +186,23 @@ mod_clean_data_server <- function(input, output, session, f){
                verbatimTextOutput(ns('current_mv2nm'))
             )
             }
+        if(o$data$channels ==2){
+tagList(
+               shinyWidgets::radioGroupButtons(
+                 inputId = ns("preferred_channel"),
+                 label = "What is the preferred channel?",
+                 choices = c("1" = 1,
+                             "2" = 2),
+                 selected = "none",
+                 justified = T,
+                 checkIcon = list(
+                   yes = tags$i(class = "fa fa-check-square",
+                                style = "color: black"),
+                   no = tags$i(class = "fa fa-square-o",
+                               style = "color: black"))
+               ),
+
+)}
         })
 
   # decide which nm conversion input to draw
@@ -254,6 +271,7 @@ mod_clean_data_server <- function(input, output, session, f){
             paste0("pN/nm2: ", round(as.numeric(o$data$nm2pn2), 3))
         })
 
+
   output$baseline_range_box <- renderUI({
      if(o$data$channels == 1 || is.null(o$data$channels)){
        tagList(
@@ -295,12 +313,20 @@ mod_clean_data_server <- function(input, output, session, f){
 
   } else {
 
-    tagList(
-          box(id = ns('baseline_tab_box'), width = 8,
-            title = "Unsupported",
-            h5("Currently 2 channel is unsupported for baseline transformations.", style = "color: grey;")
-    )
-   )
+       tagList(
+          tabBox(id = ns('baseline_tab_box'), width = 8,
+                 side = 'right',
+            title = "Remove Baseline",
+            # The id lets us use input$tabset1 on the server to find the current tab
+            tabPanel("Range",
+                     fluidRow(column(3, actionButton(ns('baseline_graph_range'), 'Baseline Range', width = '100%'))),
+                     fluidRow(column(12,
+                                     plotOutput(ns('range'))  %>%
+                                       shinycssloaders::withSpinner(type = 8, color = "#373B38"),
+                                     verbatimTextOutput(ns('range_mean'))
+                     ))),#tabPanel close
+          ) #tabBox close
+         )
   }
   })
 
@@ -628,18 +654,17 @@ column(3,
     } else if(isolate(input$mode) == 'detrend'){
 
       break_pts <- seq(hz()*5, nrow(dg_data$data), by = hz()*5)
-      data <- dg_data$data |>
-        dplyr::mutate(bead_1 = as.vector(pracma::detrend(bead_1, tt = "linear", bp = break_pts)),
-               bead_2 = as.vector(pracma::detrend(bead_2, tt = "linear", bp = break_pts)))
+      data <- dg_data$data[, `:=`(bead_1 = as.vector(pracma::detrend(bead_1, tt = "linear", bp = break_pts)),
+                                  bead_2 = as.vector(pracma::detrend(bead_2, tt = "linear", bp = break_pts)))]
 
-    }
+    ## }
 
-    ## else if(isolate(input$mode) == 'range'){
+   } else if(isolate(input$mode) == 'range'){
 
-    ##   data <- dg_data$data %>%
-    ##     mutate(bead_1 = bead_1 - base$range,
-    ##            bead_2 = bead_2 - base$range)
+     data <- dg_data$data[, `:=`(bead_1 = bead_1 - base$range_1,
+                                 bead_2 = bead_2 - base$range_2)]
 
+      }
     ## } else if(isolate(input$mode) == 'mv'){
     ##   data <- dg_data$data %>%
     ##     mutate(bead_1 = bead_1 - base$baseline_fit$estimate[1],
@@ -807,8 +832,11 @@ output$move_files <- renderText({
     req(length(input$dygraph_clean_date_window[[1]]:input$dygraph_clean_date_window[[2]]) <= 10)
     #browser()
    
-     if(var(dg_data$data$bead) == 1) showNotification('Current mV-to-nm is 1. Do you need to enter a conversion value?', type = 'warning')
-    # req(var(dg_data$data$bead) > 5)
+     ## if(var(dg_data$data$bead) == 1) showNotification('Current mV-to-nm is 1. Do you need to enter a conversion value?', type = 'warning')
+
+     if(o$data$channels == 1){
+
+                                        # req(var(dg_data$data$bead) > 5)
     base$range_df <- dg_data$data |>
       dplyr::filter(dplyr::between(time_sec, as.numeric(trim_from()), as.numeric(trim_to())))
     
@@ -842,7 +870,48 @@ output$move_files <- renderText({
         no = tags$i(class = "fa fa-square-o",
                     style = "color: black"))
     )
-    
+    } else if(o$data$channels == 2){
+
+
+    base$range_df <- dg_data$data |>
+      dplyr::filter(dplyr::between(time_sec, as.numeric(trim_from()), as.numeric(trim_to())))|>
+      dplyr::mutate(bead = bead_1)
+
+    base$range <- mean(base$range_df$bead_1)
+    base$range_1 <- mean(base$range_df$bead_1)
+    base$range_2 <- mean(base$range_df$bead_2)
+
+    base$range_update_graph <-  base$range_update_graph + 1
+    base$show_range <- 'yes'
+
+    shinyWidgets::updateRadioGroupButtons(
+      session = session,
+      inputId = "mode",
+      choices = c("Nanometers" = "nm",
+                  "Detrend" = "detrend",
+                  "Remove base" = "range"),
+      checkIcon = list(
+        yes = tags$i(class = "fa fa-check-square",
+                     style = "color: black"),
+        no = tags$i(class = "fa fa-square-o",
+                    style = "color: black"))
+    )
+
+    #update saving options
+    shinyWidgets::updateRadioGroupButtons(
+      session = session,
+      inputId = "how_to_process",
+      choices = c("None" = "none",
+                  "Detrend" = "detrend",
+                  "Remove base" = "remove_base"),
+      checkIcon = list(
+        yes = tags$i(class = "fa fa-check-square",
+                     style = "color: black"),
+        no = tags$i(class = "fa fa-square-o",
+                    style = "color: black"))
+    )
+
+    }
     
   })
    
@@ -910,7 +979,7 @@ output$move_files <- renderText({
     #req(!is.na(base$show_mv))
     req(input$mv_brush)
     #baseline_pop <- input$mv_brush
-    mv_df  <- base$mv_df 
+    mv_df  <- base$mv_df
     #baseline data and fit to density fit
     baseline <- dplyr::filter(mv_df, dplyr::between(mean, input$mv_brush$xmin, input$mv_brush$xmax) & dplyr::between(var, input$mv_brush$ymin, input$mv_brush$ymax))
     req(!rlang::is_empty(baseline$mean))
@@ -1016,8 +1085,8 @@ output$move_files <- renderText({
 
       }  else if(o$data$channels == 2){
 ## browser()
-            pb1 <- data$raw_bead_1
-            pb2 <- data$raw_bead_2
+            pb1 <- data$raw_bead_1*o$data$mv2nm[1]
+            pb2 <- data$raw_bead_2*o$data$mv2nm2[1]
 
         if(!is.null(input$flip_trace)){
           if(input$flip_trace == "y"){
@@ -1037,6 +1106,9 @@ output$move_files <- renderText({
 
             ## data <- dplyr::mutate(data, processed_bead = processed_bead - base$range)
 
+            pb1 <- pb1-base$range_1
+            pb2 <- pb2-base$range_2
+
           } else if(input$how_to_process == 'remove_mv'){
 
             ## data <- dplyr::mutate(data, processed_bead = processed_bead - base$baseline_fit$estimate[1])
@@ -1045,8 +1117,8 @@ output$move_files <- renderText({
 
           setProgress(0.5)
 
-          data[, `:=`(processed_bead_1 = pb1*o$data$mv2nm[1],
-                        processed_bead_2 = pb2*o$data$mv2nm2[1]) ]
+          data[, `:=`(processed_bead_1 = pb1,
+                        processed_bead_2 = pb2) ]
 
         opt <- list.files(path = f$obs$path,
                           pattern = "options.csv",
@@ -1054,7 +1126,8 @@ output$move_files <- renderText({
         opt <- fread(opt)
 
           opt[, `:=`(processor = input$how_to_process,
-                     include = input_include)
+                     include = input_include,
+                   preferred_channel = as.numeric(input$preferred_channel))
               ]
 
 
