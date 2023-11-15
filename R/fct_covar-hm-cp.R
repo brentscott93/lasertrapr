@@ -107,6 +107,13 @@ covariance_hidden_markov_changepoint_analysis <- function(trap_data,
 
         if(is_shiny) setProgress(0.1, detail = "Calculating Running Windows")
 
+
+        ##  dat <- fread("/home/brent/sync/dani-trap/10uM-ATP/10uM-dani/2023-11-06/obs-12/231106_f2_s1_m2_dani 12.txt", skip = 68)
+        ## pb1 <- dat$Trap1X*52
+        ## pb2 <- dat$Trap2X*58
+        ##    w_width <- 200
+           ## ws <- 100
+
         pb1 <- trap_data$processed_bead_1
         pb2 <- trap_data$processed_bead_2
 
@@ -115,29 +122,56 @@ covariance_hidden_markov_changepoint_analysis <- function(trap_data,
                                 by = ws,
                                 FUN = \(x) cov(x[,1], x[,2]),
                                 by.column = FALSE)
-      
+
+           covar_smooth <- na.omit(RcppRoll::roll_medianl(covar, n = 20, by = 1))
+
+         ## dygraphs::dygraph(data.frame(seq_along(covar_smooth), covar_smooth))|>dygraphs::dyRangeSelector()
         #### HMM ####
         if(is_shiny) setProgress(0.25, detail = "HM-Model")
 
-        hm_model_results <- fit_hm_model(trap_data = trap_data,
-                                         run_mean = run_mean,
-                                         run_var = run_var,
-                                         use_channels = use_channels,
-                                         em_random_start = em_random_start,
-                                         is_shiny = F,
-                                         project = project,
-                                         conditions = conditions,
-                                         date = date,
-                                         obs = obs)
+        hm_model_results <- fit_hm_model_to_covar_smooth(covar_smooth = covar_smooth,
+                                                         em_random_start = em_random_start,
+                                                         is_shiny = TRUE,
+                                                         project = project,
+                                                         conditions = conditions,
+                                                         date = date,
+                                                         obs = obs)
+
 
         #### MEASURE EVENTS ####
         conversion <- ws
         if(is_shiny) setProgress(0.5, detail = "Measuring")
-        measured_hm_events <- measure_hm_events(processed_data = processed_data,
-                                                hm_model_results = hm_model_results,
-                                                conversion = conversion,
-                                                hz = hz,
-                                                nm2pn = nm2pn)
+        ## measured_hm_events <- measure_hm_events(processed_data = processed_data,
+        ##                                         hm_model_results = hm_model_results,
+        ##                                         conversion = conversion,
+        ##                                         hz = hz,
+        ##                                         nm2pn = nm2pn)
+
+
+                                        #finds lengths of events in number of running windows
+        run_length_encoding <- rle(hm_model_results$state)
+
+                                        #converting to a tibble
+        viterbi_rle <- data.table::as.data.table(do.call("cbind", run_length_encoding))
+
+                                        #If the rle_object's last row is in state 1, get rid of that last row.
+                                        #This needs to end in state 2 to capture the end of the last event
+        if(tail(viterbi_rle, 1)$values == 1){
+          viterbi_rle <- head(viterbi_rle, -1)
+        }
+                                        #Calculate the cumulative sum of the run length encoder
+                                        #And splits the tibble into two seperate tables to isolate state 1 info from state 2
+        viterbi_rle[, cumsum := cumsum(lengths)]
+
+        value1 <- viterbi_rle[values == 1]
+        value2 <- viterbi_rle[values == 2]
+
+                                        #data is recmombined in a state_1 column and a state_2
+                                        #the values in these columns represent the last window in either state 1 or state 2
+                                        #So the range of values between the end of state 1 (or start of state 2) and the end of state 2 is the estimate event duration
+        hm_event_transitions <- data.table::data.table(state_1_end = value1$cumsum, state_2_end = value2$cumsum)
+
+
         #### CHANGEPOINT ####
         if(is_shiny) setProgress(0.75, detail = "Changepoint")
 
@@ -306,9 +340,3 @@ covariance_hidden_markov_changepoint_analysis <- function(trap_data,
 
     return(invisible())
 }
-
-
-
-
-
-
