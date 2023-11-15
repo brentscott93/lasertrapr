@@ -127,114 +127,114 @@ fit_hm_model_to_covar_smooth <- function(covar_smooth,
 ##     print(i)
 
 ##     #estimated window index that the event starts and ends at from window time
-    estimated_start <- (hm_event_transitions$state_1_end[[i]] + 1 )
-    estimated_stop <-  hm_event_transitions$state_2_end[[i]]
+   ##  estimated_start <- (hm_event_transitions$state_1_end[[i]] + 1 )
+   ##  estimated_stop <-  hm_event_transitions$state_2_end[[i]]
 
-      forward_cp_window_stop <- estimated_start + 200
+   ##    forward_cp_window_stop <- estimated_start + 200
 
-      backwards_cp_window_start <- estimated_stop - 10
-
-
-    length_of_prior_baseline <- value1$lengths[[i]] #* conversion
-    length_of_after_baseline <- try(value1$lengths[[(i+1)]]) #* conversion)
-
-    ## if(length_of_prior_baseline <= 100) {
-      ## forward_cp_window_start <- estimated_start - 50
-   ## } else {
-      forward_cp_window_start <- estimated_start  - 10
-   ## }
-
-    if(length_of_after_baseline <= 300 || class(length_of_after_baseline) == 'try-error'){
-       backwards_cp_window_stop <- estimated_stop + 90
-    } else {
-       backwards_cp_window_stop <- estimated_stop + 200
-    }
+   ##    backwards_cp_window_start <- estimated_stop - 10
 
 
-     trap_data <- data.table(processed_bead_1 = pb1, processed_bead_2 = pb2, index = seq_along(pb1), data = pb1)
+   ##  length_of_prior_baseline <- value1$lengths[[i]] #* conversion
+   ##  length_of_after_baseline <- try(value1$lengths[[(i+1)]]) #* conversion)
 
-    forward_event_chunk <- trap_data[forward_cp_window_start:forward_cp_window_stop,]
+   ##  ## if(length_of_prior_baseline <= 100) {
+   ##    ## forward_cp_window_start <- estimated_start - 50
+   ## ## } else {
+   ##    forward_cp_window_start <- estimated_start  - 10
+   ## ## }
 
-    ## ggplot(forward_event_chunk, aes(x = index))+
-      ## geom_line(aes(y = processed_bead_1), color = "red")+
-      ## geom_line(aes(y = processed_bead_2))
-
-
-    if(backwards_cp_window_stop >= nrow(trap_data)) backwards_cp_window_stop <- nrow(trap_data)
-
-    backwards_event_chunk <- trap_data[backwards_cp_window_start:backwards_cp_window_stop,]
-
-    ## ggplot(backwards_event_chunk, aes(x = index))+
-      ## geom_line(aes(y = processed_bead_1), color = "red")+
-      ## geom_line(aes(y = processed_bead_2))
-
-    #if data has NA skip - helped reduce errors
-    has_na <- table(is.na(forward_event_chunk$data))
-    has_na2 <- table(is.na(backwards_event_chunk$data))
-    if(length(has_na) > 1){
-      # better_time_on_starts[[i]] <- NA
-      # cp_found_start[[i]] <- FALSE
-      # better_displacements[[i]] <- NA
-      # absolute_better_displacements[[i]] <- NA
-      keep_event[[i]] <- FALSE
-      next
-    } else {
-      if(front_cp_method == "Variance"){
-        forward_cpt_object <- changepoint::cpt.mean(na.omit(forward_event_chunk$run_var),
-                                                    penalty = "MBIC",
-                                                    method = 'AMOC')
-      } else {
-        forward_cpt_object <- changepoint::cpt.meanvar(na.omit(forward_event_chunk$data),
-                                                    penalty = "MBIC",
-                                                    method = 'AMOC')
-      }
-    }
-
-    if(length(has_na2) > 1){
-      # better_time_on_stops[[i]] <- NA
-      # cp_found_stop[[i]] <- FALSE
-      keep_event[[i]] <- FALSE
-    } else {
-      if(back_cp_method == "Variance"){
-        backwards_cpt_object <- changepoint::cpt.mean(na.omit(backwards_event_chunk$run_var),
-                                                       penalty = "MBIC",
-                                                       method = 'AMOC')
-      } else {
-        backwards_cpt_object <- changepoint::cpt.meanvar(na.omit(backwards_event_chunk$data),
-                                                         penalty = "MBIC",
-                                                         method = 'AMOC')
-      }
-    }
+   ##  if(length_of_after_baseline <= 300 || class(length_of_after_baseline) == 'try-error'){
+   ##     backwards_cp_window_stop <- estimated_stop + 90
+   ##  } else {
+   ##     backwards_cp_window_stop <- estimated_stop + 200
+   ##  }
 
 
-    ## plot(forward_cpt_object)
-    ## plot(backwards_cpt_object)
+   ##   trap_data <- data.table(processed_bead_1 = pb1, processed_bead_2 = pb2, index = seq_along(pb1), data = pb1)
 
-    event_on <- try(changepoint::cpts(forward_cpt_object))
-    event_off <- try(changepoint::cpts(backwards_cpt_object))
+   ##  forward_event_chunk <- trap_data[forward_cp_window_start:forward_cp_window_stop,]
 
-    #if no changepoint id'd skip
-    if(identical(event_on, numeric(0))  || class(event_on) == 'try-error'){
-      better_time_on_starts[[i]] <- NA
-      cp_found_start[[i]] <- FALSE
-    } else {
-      #or record change point index
-      cp_start <- forward_event_chunk$index[event_on]
-      better_time_on_starts[[i]] <- cp_start
-      cp_found_start[[i]] <- TRUE
+   ##  ## ggplot(forward_event_chunk, aes(x = index))+
+   ##    ## geom_line(aes(y = processed_bead_1), color = "red")+
+   ##    ## geom_line(aes(y = processed_bead_2))
 
-    }
 
-    #do same for backwards
-    if(identical(event_off, numeric(0))  || class(event_off) == 'try-error'){
-      better_time_on_stops[[i]] <- NA
-      cp_found_stop[[i]] <- FALSE
-    } else {
-      #or record the index where this occurred in the previous attempt
-      cp_off <- backwards_event_chunk$index[event_off]
-      better_time_on_stops[[i]] <- cp_off-1
-      cp_found_stop[[i]] <- TRUE
-    }
+   ##  if(backwards_cp_window_stop >= nrow(trap_data)) backwards_cp_window_stop <- nrow(trap_data)
+
+   ##  backwards_event_chunk <- trap_data[backwards_cp_window_start:backwards_cp_window_stop,]
+
+   ##  ## ggplot(backwards_event_chunk, aes(x = index))+
+   ##    ## geom_line(aes(y = processed_bead_1), color = "red")+
+   ##    ## geom_line(aes(y = processed_bead_2))
+
+   ##  #if data has NA skip - helped reduce errors
+   ##  has_na <- table(is.na(forward_event_chunk$data))
+   ##  has_na2 <- table(is.na(backwards_event_chunk$data))
+   ##  if(length(has_na) > 1){
+   ##    # better_time_on_starts[[i]] <- NA
+   ##    # cp_found_start[[i]] <- FALSE
+   ##    # better_displacements[[i]] <- NA
+   ##    # absolute_better_displacements[[i]] <- NA
+   ##    keep_event[[i]] <- FALSE
+   ##    next
+   ##  } else {
+   ##    if(front_cp_method == "Variance"){
+   ##      forward_cpt_object <- changepoint::cpt.mean(na.omit(forward_event_chunk$run_var),
+   ##                                                  penalty = "MBIC",
+   ##                                                  method = 'AMOC')
+   ##    } else {
+   ##      forward_cpt_object <- changepoint::cpt.meanvar(na.omit(forward_event_chunk$data),
+   ##                                                  penalty = "MBIC",
+   ##                                                  method = 'AMOC')
+   ##    }
+   ##  }
+
+   ##  if(length(has_na2) > 1){
+   ##    # better_time_on_stops[[i]] <- NA
+   ##    # cp_found_stop[[i]] <- FALSE
+   ##    keep_event[[i]] <- FALSE
+   ##  } else {
+   ##    if(back_cp_method == "Variance"){
+   ##      backwards_cpt_object <- changepoint::cpt.mean(na.omit(backwards_event_chunk$run_var),
+   ##                                                     penalty = "MBIC",
+   ##                                                     method = 'AMOC')
+   ##    } else {
+   ##      backwards_cpt_object <- changepoint::cpt.meanvar(na.omit(backwards_event_chunk$data),
+   ##                                                       penalty = "MBIC",
+   ##                                                       method = 'AMOC')
+   ##    }
+   ##  }
+
+
+   ##  ## plot(forward_cpt_object)
+   ##  ## plot(backwards_cpt_object)
+
+   ##  event_on <- try(changepoint::cpts(forward_cpt_object))
+   ##  event_off <- try(changepoint::cpts(backwards_cpt_object))
+
+   ##  #if no changepoint id'd skip
+   ##  if(identical(event_on, numeric(0))  || class(event_on) == 'try-error'){
+   ##    better_time_on_starts[[i]] <- NA
+   ##    cp_found_start[[i]] <- FALSE
+   ##  } else {
+   ##    #or record change point index
+   ##    cp_start <- forward_event_chunk$index[event_on]
+   ##    better_time_on_starts[[i]] <- cp_start
+   ##    cp_found_start[[i]] <- TRUE
+
+   ##  }
+
+   ##  #do same for backwards
+   ##  if(identical(event_off, numeric(0))  || class(event_off) == 'try-error'){
+   ##    better_time_on_stops[[i]] <- NA
+   ##    cp_found_stop[[i]] <- FALSE
+   ##  } else {
+   ##    #or record the index where this occurred in the previous attempt
+   ##    cp_off <- backwards_event_chunk$index[event_off]
+   ##    better_time_on_stops[[i]] <- cp_off-1
+   ##    cp_found_stop[[i]] <- TRUE
+   ##  }
 
 ##   ##   if(identical(event_on, numeric(0)) ||
 ##   ##      identical(event_off, numeric(0)) ||
