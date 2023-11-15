@@ -109,23 +109,47 @@ covariance_hidden_markov_changepoint_analysis <- function(trap_data,
 
 
         ##  dat <- fread("/home/brent/sync/dani-trap/10uM-ATP/10uM-dani/2023-11-06/obs-12/231106_f2_s1_m2_dani 12.txt", skip = 68)
-        ## pb1 <- dat$Trap1X*52
-        ## pb2 <- dat$Trap2X*58
-        ##    w_width <- 200
-           ## ws <- 100
+        pb1 <- dat$Trap1X[1:500000]*52
+        pb2 <- dat$Trap2X[1:500000]*58
+           w_width <- 20
+           ws <- 1
 
         pb1 <- trap_data$processed_bead_1
         pb2 <- trap_data$processed_bead_2
 
-        covar <- zoo::rollapply(data.frame(pb1, pb2),
-                                width = w_width,
-                                by = ws,
-                                FUN = \(x) cov(x[,1], x[,2]),
-                                by.column = FALSE)
+##         covar <- zoo::rollapply(data.frame(pb1, pb2),
+##                                 width = w_width,
+##                                 by = ws,
+##                                 FUN = \(x) cov(x[,1], x[,2]),
+##                                 by.column = FALSE)
+## ## covar_smooth <- covar
+##            covar_smooth <- na.omit(RcppRoll::roll_medianl(covar, n = 100, by = 1))
+           ## covar_smooth <- pracma::savgol(covar, 101)
+ ## % Calculate the covariance.
+ ##            A_filt = movmean(A, averagingWindow);
+ ##            B_filt = movmean(B, averagingWindow);
+ ##            AB_filt = movmean(A.*B, averagingWindow);
+ ##            cov = AB_filt - A_filt.*B_filt;
 
-           covar_smooth <- na.omit(RcppRoll::roll_medianl(covar, n = 20, by = 1))
 
-         ## dygraphs::dygraph(data.frame(seq_along(covar_smooth), covar_smooth))|>dygraphs::dyRangeSelector()
+        #FROM SPASM
+
+           pb1_smooth <- na.omit(RcppRoll::roll_meanl(pb1, n = w_width, by = 1))
+           pb2_smooth <- na.omit(RcppRoll::roll_meanl(pb2, n = w_width, by = 1))
+           pb12_smooth <- na.omit(RcppRoll::roll_meanl(pb1*pb2, n = w_width, by = 1))
+           covar <- pb12_smooth - (pb1_smooth*pb2_smooth)
+
+
+covar_smooth <- covar
+
+           covar_smooth <- na.omit(RcppRoll::roll_medianl(covar, n = 200, by = 1))
+
+           ## covar_smooth <- pracma::savgol(covar, 101)
+
+
+
+         dygraphs::dygraph(data.frame(seq_along(covar_smooth), covar_smooth))|>dygraphs::dyRangeSelector()
+         dygraphs::dygraph(data.frame(seq_along(pb1), pb1, pb2))|>dygraphs::dyRangeSelector()
         #### HMM ####
         if(is_shiny) setProgress(0.25, detail = "HM-Model")
 
@@ -136,7 +160,8 @@ covariance_hidden_markov_changepoint_analysis <- function(trap_data,
                                                          conditions = conditions,
                                                          date = date,
                                                          obs = obs)
-
+## ggplot(hm_model_results[1:50000])+
+##   geom_point(aes(index, covar_smooth, color = state))
 
         #### MEASURE EVENTS ####
         conversion <- ws
