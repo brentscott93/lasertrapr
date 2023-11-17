@@ -108,11 +108,11 @@ covariance_hidden_markov_changepoint_analysis <- function(trap_data,
         if(is_shiny) setProgress(0.1, detail = "Calculating Running Windows")
 
 
-        ##  dat <- fread("/home/brent/sync/dani-trap/10uM-ATP/10uM-dani/2023-11-06/obs-12/231106_f2_s1_m2_dani 12.txt", skip = 68)
-        pb1 <- dat$Trap1X[1:500000]*52
-        pb2 <- dat$Trap2X[1:500000]*58
-           w_width <- 20
-           ws <- 1
+         ## dat <- fread("/home/brent/sync/dani-trap/10uM-ATP/10uM-dani/2023-11-06/obs-12/231106_f2_s1_m2_dani 12.txt", skip = 68)
+        ## pb1 <- dat$Trap1X[1:500000]*52
+        ## pb2 <- dat$Trap2X[1:500000]*58
+           ## w_width <- 20
+           ## ws <- 1
 
         pb1 <- trap_data$processed_bead_1
         pb2 <- trap_data$processed_bead_2
@@ -140,7 +140,7 @@ covariance_hidden_markov_changepoint_analysis <- function(trap_data,
            covar <- pb12_smooth - (pb1_smooth*pb2_smooth)
 
 
-covar_smooth <- covar
+## covar_smooth <- covar
 
            covar_smooth <- na.omit(RcppRoll::roll_medianl(covar, n = 200, by = 1))
 
@@ -160,8 +160,8 @@ covar_smooth <- covar
                                                          conditions = conditions,
                                                          date = date,
                                                          obs = obs)
-## ggplot(hm_model_results[1:50000])+
-##   geom_point(aes(index, covar_smooth, color = state))
+ggplot(hm_model_results[1:50000])+
+  geom_point(aes(index, covar_smooth, color = state))
 
         #### MEASURE EVENTS ####
         conversion <- ws
