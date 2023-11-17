@@ -32,7 +32,7 @@ fit_hm_model_to_covar_smooth <- function(covar_smooth,
     hmm_fit <- depmixS4::fit(hmm, emcontrol = depmixS4::em.control(random.start = TRUE))
   } else {
     estimate_hmm_gaussians <- c(mean_covar_smooth, sd_covar_smooth,
-                                mean_covar_smooth/2, sd_covar_smooth/5)
+                                mean_covar_smooth/4, sd_covar_smooth/4)
     hmm <- depmixS4::setpars(hmm, c(hmm_initial_parameters, estimate_hmm_gaussians))
     set.seed(seed)
     hmm_fit <- depmixS4::fit(hmm, emcontrol = depmixS4::em.control(random.start = FALSE))
@@ -91,243 +91,378 @@ fit_hm_model_to_covar_smooth <- function(covar_smooth,
   return(data)
 }
 
-## #' Runs changepoint analysis, estimates more accurate event measurements, and saves data for ensemble averaging.
-## #'
-## #' @param measured_hm_events the results from measure_hm_events()
-## #' @param hz sampling frequency in Hz
-## #' @param conversion
-## #' @param value1 viterbi_rle data.table with only state 1
-## #' @noRd
-## changepoint_analysis_covar <- function(
-##                                        trap_data,
-##                                        hm_event_transitions,
-##                                        hz,
-##                                        value1,
-##                                        conditions,
-##                                        ws){
+#' Runs changepoint analysis, estimates more accurate event measurements, and saves data for ensemble averaging.
+#'
+#' @param pb_data data frame containing the processed beads
+#' @param hz sampling frequency in Hz
+#' @param nm2pn calibration
+#' @param nm2pn2 calibration
+#' @noRd
+covar_changepoint <- function(project,
+                              conditions,
+                              date,
+                              obs,
+                              pb_data,
+                              hm_event_transitions,
+                              hz,
+                              nm2pn,
+                              nm2pn2,
+                              look_for_cp_in_between){
 
-##   event_starts <- vector()
-##   #forward_ensemble_average_data <- vector("list")
-##   cp_found_start <- vector()
-##   #forward_plots <- list()
+## pb_data <- data.table::data.table(pb1, pb2)
+cp_results <- vector("list")
 
-##   event_stops <- vector()
-##   #backwards_ensemble_average_data <- vector("list")
-##   cp_found_stop <- vector()
-##   #backwards_plots <- list()
-##   keep_event <- vector()
+for(b in seq_len(2)){
+ current_pb <- pb_data[[b]]
+ trap_data <- data.table::data.table(index = seq_along(current_pb), data = current_pb)
 
-##   displacements_relative <- vector()
-##   displacements_absolute <- vector()
-##   displacement_marker <- vector()
+  event_starts <- vector()
+  cp_found_start <- vector()
+  event_stops <- vector()
+  cp_found_stop <- vector()
+  keep_event <- vector()
+  displacements_relative <- vector()
+  displacements_absolute <- vector()
+  displacements_marker <- vector()
+  attachment_durations_dp <- vector()
+  attachment_durations_s <- vector()
+  attachment_durations_ms <- vector()
+  forces_absolute <- vector()
+  forces_relative <- vector()
+  baseline_position_before <- vector()
 
 ##   ms1_dp <- hz/1000
 
-##   for(i in 1:nrow(hm_event_transitions)){
-##     print(i)
-
+  for(i in 1:nrow(hm_event_transitions)){
+    print(i)
 ##     #estimated window index that the event starts and ends at from window time
-   ##  estimated_start <- (hm_event_transitions$state_1_end[[i]] + 1 )
-   ##  estimated_stop <-  hm_event_transitions$state_2_end[[i]]
+    estimated_start <- (hm_event_transitions$state_1_end[[i]] + 1 )
+    estimated_stop <-  hm_event_transitions$state_2_end[[i]]
 
-   ##    forward_cp_window_stop <- estimated_start + 200
+      forward_cp_window_stop <- estimated_start + 200 #rolling median smoother window width
 
-   ##    backwards_cp_window_start <- estimated_stop - 10
-
-
-   ##  length_of_prior_baseline <- value1$lengths[[i]] #* conversion
-   ##  length_of_after_baseline <- try(value1$lengths[[(i+1)]]) #* conversion)
-
-   ##  ## if(length_of_prior_baseline <= 100) {
-   ##    ## forward_cp_window_start <- estimated_start - 50
-   ## ## } else {
-   ##    forward_cp_window_start <- estimated_start  - 10
-   ## ## }
-
-   ##  if(length_of_after_baseline <= 300 || class(length_of_after_baseline) == 'try-error'){
-   ##     backwards_cp_window_stop <- estimated_stop + 90
-   ##  } else {
-   ##     backwards_cp_window_stop <- estimated_stop + 200
-   ##  }
+      backwards_cp_window_start <- estimated_stop - 20 #rolling covariance window
 
 
-   ##   trap_data <- data.table(processed_bead_1 = pb1, processed_bead_2 = pb2, index = seq_along(pb1), data = pb1)
+    length_of_prior_baseline <- value1$lengths[[i]] #* conversion
+    length_of_after_baseline <- try(value1$lengths[[(i+1)]]) #* conversion)
 
-   ##  forward_event_chunk <- trap_data[forward_cp_window_start:forward_cp_window_stop,]
+    ## if(length_of_prior_baseline <= 100) {
+      ## forward_cp_window_start <- estimated_start - 50
+   ## } else {
+      forward_cp_window_start <- estimated_start  - 10
+   ## }
 
-   ##  ## ggplot(forward_event_chunk, aes(x = index))+
-   ##    ## geom_line(aes(y = processed_bead_1), color = "red")+
-   ##    ## geom_line(aes(y = processed_bead_2))
+    if(length_of_after_baseline <= 200 || class(length_of_after_baseline) == 'try-error'){
+       backwards_cp_window_stop <- estimated_stop + 180
+    } else {
+       backwards_cp_window_stop <- estimated_stop + 200
+    }
 
 
-   ##  if(backwards_cp_window_stop >= nrow(trap_data)) backwards_cp_window_stop <- nrow(trap_data)
 
-   ##  backwards_event_chunk <- trap_data[backwards_cp_window_start:backwards_cp_window_stop,]
+    forward_event_chunk <- trap_data[forward_cp_window_start:forward_cp_window_stop,]
+
+    ## ggplot(forward_event_chunk, aes(x = index))+
+    ##   geom_line(aes(y = processed_bead_1), color = "red")+
+    ##   geom_line(aes(y = processed_bead_2))
+
+
+    if(backwards_cp_window_stop >= nrow(trap_data)) backwards_cp_window_stop <- nrow(trap_data)
+
+    backwards_event_chunk <- trap_data[backwards_cp_window_start:backwards_cp_window_stop,]
 
    ##  ## ggplot(backwards_event_chunk, aes(x = index))+
    ##    ## geom_line(aes(y = processed_bead_1), color = "red")+
    ##    ## geom_line(aes(y = processed_bead_2))
 
-   ##  #if data has NA skip - helped reduce errors
-   ##  has_na <- table(is.na(forward_event_chunk$data))
-   ##  has_na2 <- table(is.na(backwards_event_chunk$data))
-   ##  if(length(has_na) > 1){
-   ##    # better_time_on_starts[[i]] <- NA
-   ##    # cp_found_start[[i]] <- FALSE
-   ##    # better_displacements[[i]] <- NA
-   ##    # absolute_better_displacements[[i]] <- NA
-   ##    keep_event[[i]] <- FALSE
-   ##    next
-   ##  } else {
-   ##    if(front_cp_method == "Variance"){
-   ##      forward_cpt_object <- changepoint::cpt.mean(na.omit(forward_event_chunk$run_var),
-   ##                                                  penalty = "MBIC",
-   ##                                                  method = 'AMOC')
-   ##    } else {
-   ##      forward_cpt_object <- changepoint::cpt.meanvar(na.omit(forward_event_chunk$data),
-   ##                                                  penalty = "MBIC",
-   ##                                                  method = 'AMOC')
-   ##    }
-   ##  }
+    #if data has NA skip - helped reduce errors
+    has_na <- table(is.na(forward_event_chunk$data))
+    has_na2 <- table(is.na(backwards_event_chunk$data))
+    if(length(has_na) > 1){
+      # better_time_on_starts[[i]] <- NA
+      # cp_found_start[[i]] <- FALSE
+      # better_displacements[[i]] <- NA
+      # absolute_better_displacements[[i]] <- NA
+      keep_event[[i]] <- FALSE
+      next
+    } else {
+      if(front_cp_method == "Variance"){
+        forward_cpt_object <- changepoint::cpt.mean(na.omit(forward_event_chunk$run_var),
+                                                    penalty = "MBIC",
+                                                    method = 'AMOC')
+      } else {
+        forward_cpt_object <- changepoint::cpt.meanvar(na.omit(forward_event_chunk$data),
+                                                    penalty = "MBIC",
+                                                    method = 'AMOC')
+      }
+    }
 
-   ##  if(length(has_na2) > 1){
-   ##    # better_time_on_stops[[i]] <- NA
-   ##    # cp_found_stop[[i]] <- FALSE
-   ##    keep_event[[i]] <- FALSE
-   ##  } else {
-   ##    if(back_cp_method == "Variance"){
-   ##      backwards_cpt_object <- changepoint::cpt.mean(na.omit(backwards_event_chunk$run_var),
-   ##                                                     penalty = "MBIC",
-   ##                                                     method = 'AMOC')
-   ##    } else {
-   ##      backwards_cpt_object <- changepoint::cpt.meanvar(na.omit(backwards_event_chunk$data),
-   ##                                                       penalty = "MBIC",
-   ##                                                       method = 'AMOC')
-   ##    }
-   ##  }
+    if(length(has_na2) > 1){
+      # better_time_on_stops[[i]] <- NA
+      # cp_found_stop[[i]] <- FALSE
+      keep_event[[i]] <- FALSE
+    } else {
+      if(back_cp_method == "Variance"){
+        backwards_cpt_object <- changepoint::cpt.mean(na.omit(backwards_event_chunk$run_var),
+                                                       penalty = "MBIC",
+                                                       method = 'AMOC')
+      } else {
+        backwards_cpt_object <- changepoint::cpt.meanvar(na.omit(backwards_event_chunk$data),
+                                                         penalty = "MBIC",
+                                                         method = 'AMOC')
+      }
+    }
 
 
-   ##  ## plot(forward_cpt_object)
-   ##  ## plot(backwards_cpt_object)
+    ## plot(forward_cpt_object)
+    ## plot(backwards_cpt_object)
 
-   ##  event_on <- try(changepoint::cpts(forward_cpt_object))
-   ##  event_off <- try(changepoint::cpts(backwards_cpt_object))
+    event_on <- try(changepoint::cpts(forward_cpt_object))
+    event_off <- try(changepoint::cpts(backwards_cpt_object))
 
    ##  #if no changepoint id'd skip
-   ##  if(identical(event_on, numeric(0))  || class(event_on) == 'try-error'){
-   ##    better_time_on_starts[[i]] <- NA
-   ##    cp_found_start[[i]] <- FALSE
-   ##  } else {
-   ##    #or record change point index
-   ##    cp_start <- forward_event_chunk$index[event_on]
-   ##    better_time_on_starts[[i]] <- cp_start
-   ##    cp_found_start[[i]] <- TRUE
+    if(identical(event_on, numeric(0))  || class(event_on) == 'try-error'){
+      event_starts[[i]] <- NA
+      cp_found_start[[i]] <- FALSE
+    } else {
+      #or record change point index
+      cp_start <- forward_event_chunk$index[event_on]
+      event_starts[[i]] <- cp_start
+      cp_found_start[[i]] <- TRUE
 
-   ##  }
+    }
 
-   ##  #do same for backwards
-   ##  if(identical(event_off, numeric(0))  || class(event_off) == 'try-error'){
-   ##    better_time_on_stops[[i]] <- NA
-   ##    cp_found_stop[[i]] <- FALSE
-   ##  } else {
-   ##    #or record the index where this occurred in the previous attempt
-   ##    cp_off <- backwards_event_chunk$index[event_off]
-   ##    better_time_on_stops[[i]] <- cp_off-1
-   ##    cp_found_stop[[i]] <- TRUE
-   ##  }
+    #do same for backwards
+    if(identical(event_off, numeric(0))  || class(event_off) == 'try-error'){
+      event_stops[[i]] <- NA
+      cp_found_stop[[i]] <- FALSE
+    } else {
+      #or record the index where this occurred in the previous attempt
+      cp_off <- backwards_event_chunk$index[event_off]
+      event_stops[[i]] <- cp_off-1
+      cp_found_stop[[i]] <- TRUE
+    }
 
-##   ##   if(identical(event_on, numeric(0)) ||
-##   ##      identical(event_off, numeric(0)) ||
-##   ##      class(event_off) == 'try-error' ||
-##   ##      class(event_on) == 'try-error'){
-##   ##           better_displacements[[i]] <- NA
-##   ##           trap_stiffness[[i]] <- NA
-##   ##           myo_stiffness[[i]] <- NA
-##   ##           keep_event[[i]] <- FALSE
-##   ##           front_var_ratio[[i]] <- NA
-##   ##           back_var_ratio[[i]] <- NA
-##   ##           next
-##   ##   }
+    if(identical(event_on, numeric(0)) ||
+       identical(event_off, numeric(0)) ||
+       class(event_off) == 'try-error' ||
+       class(event_on) == 'try-error'){
+            displacements_relative[[i]] <- NA
+            displacements_absolute[[i]] <- NA
+            displacements_marker[[i]] <- NA
+            attachment_durations[[i]] <- NA
+            ## trap_stiffness[[i]] <- NA
+            ## myo_stiffness[[i]] <- NA
+            keep_event[[i]] <- FALSE
+            ## front_var_ratio[[i]] <- NA
+            ## back_var_ratio[[i]] <- NA
+            next
+    }
 
 
-##   ##   #find length of event
-##   ##   length_of_event <- nrow(trap_data[cp_start:(cp_off-1),])
-##   ##   golem::print_dev(paste0("length of data is: ",  nrow(trap_data[cp_start:(cp_off-1),]) ) )
-##   ##   #get a logical if event duration is less than 1 or if either of the changepoints were not found
-##   ##   #this indicates something unusual about the event and we probably do not want it in the analysis
-##   ##   if(length_of_event <= 0 ||  cp_found_start[[i]] == FALSE || cp_found_stop[[i]] == FALSE || cp_start >= cp_off){
-##   ##     keep <- FALSE
-##   ##     better_displacements[[i]] <- NA
-##   ##     trap_stiffness[[i]] <- NA
-##   ##     myo_stiffness[[i]] <- NA
-##   ##     keep_event[[i]] <- FALSE
-##   ##     next
-##   ##   } else {
-##   ##     keep <- TRUE
-##   ##     keep_event[[i]] <- TRUE
-##   ##   }
+    #find length of event
+    length_of_event <- nrow(trap_data[cp_start:(cp_off-1),])
+    golem::print_dev(paste0("length of data is: ",  nrow(trap_data[cp_start:(cp_off-1),]) ) )
+    #get a logical if event duration is less than 1 or if either of the changepoints were not found
+    #this indicates something unusual about the event and we probably do not want it in the analysis
+    if(length_of_event <= 0 ||  cp_found_start[[i]] == FALSE || cp_found_stop[[i]] == FALSE || cp_start >= cp_off){
+      keep <- FALSE
+      displacements_relative[[i]] <- NA
+      displacements_absolute[[i]] <- NA
+      displacements_marker[[i]] <- NA
+      attachment_durations[[i]] <- NA
+      ## trap_stiffness[[i]] <- NA
+      ## myo_stiffness[[i]] <- NA
+      keep_event[[i]] <- FALSE
+      next
+    } else {
+      keep <- TRUE
+      keep_event[[i]] <- TRUE
+    }
 
-##   ##   ms_5 <- 5*hz/1000
-##   ##   before_data <- trap_data$data[ (cp_start - ms_5) : (cp_start - 1) ]
-##   ##   before_var <- var(before_data)
-##   ##   first_25 <-  trap_data$data[ (cp_start + ms1_dp) : (cp_start + (ms_5 + ms1_dp)) ]
-##   ##   front_var <- var(first_25)
-##   ##   front_var_ratio[[i]] <- before_var/front_var
 
-##   ##   event_back_25 <- trap_data$data[ (cp_off - (ms_5 + (ms1_dp + 1 ))) : (cp_off - (ms1_dp + 1)) ]
-##   ##   event_back_var <- var(event_back_25)
-##   ##   after_25 <- trap_data$data[ cp_off : (cp_off + (ms_5-1)) ]
-##   ##   after_25_var <- var(after_25)
 
-##   ##   back_var_ratio[[i]] <- after_25_var/event_back_var
 
-##   ##   if(displacement_type == "avg"){
-##   ##     mean_event_step <-  mean(trap_data$data[(cp_start + ms_5):((cp_off-1) - ms_5)])
-##   ##     displacement_mark <- (measured_hm_events$peak_nm_index[[i]]*conversion)/hz
-##   ##   } else if(displacement_type == "peak"){
-##   ##      cp_event_subset <- trap_data[cp_start:(cp_off-1),]
-##   ##      cp_event_subset$roll_mean <- RcppRoll::roll_meanr(cp_event_subset$data, hz/1000*5)
-##   ##     if(is_positive[[i]]){
-##   ##      mean_event_step <- max(na.omit(cp_event_subset$roll_mean))
-##   ##      max_row <- cp_event_subset[which(cp_event_subset$roll_mean == mean_event_step),]
-##   ##      displacement_mark <- max_row$index[[1]]/hz
-##   ##     } else {
-##   ##       mean_event_step <- min(na.omit(cp_event_subset$roll_mean))
-##   ##       min_row <- cp_event_subset[which(cp_event_subset$roll_mean == mean_event_step),]
-##   ##       displacement_mark <- min_row$index[[1]]/hz
-##   ##     }
-##   ##   }
+## periods_df <- data.frame(start = event_starts, stop = event_stops)
 
-##   ##   #difference in step sizes nad baseline for tablems
-##   ##   better_displacements[[i]] <- mean_event_step - state_1_avg[[i]]
+##     dygraphs::dygraph(data.frame(seq_along(pb1), pb1, pb2)) |> #raw_data_dygraph
+##       ## dygraphs::dySeries('raw', color = 'black') |>
+##       ## dygraphs::dySeries('model', color = "#1B9E77",  strokeWidth = 2) |>
+##       dygraphs::dyRangeSelector(fillColor ='white', strokeColor = 'black') |>
+##       add_shades(periods_df) #raw_periods
+                                        #add_shades(excluded_events, color = "#BDBDBD") %>%
+      ## add_labels_hmm(labels, labelLoc = 'bottom') |> #results$events
+      ## dygraphs::dyAxis('x', label = 'seconds', drawGrid = FALSE) |>
+      ## dygraphs::dyAxis('y', label = 'nm', drawGrid = FALSE) |>
+      ## dygraphs::dyUnzoom()
+    if(i == 1) {
+      base_prior_stop <- cp_start - 1
+      base_prior <- trap_data$data[1 : base_prior_stop]
+    } else {
+      base_prior_start <- event_stops[[(i-1)]] + 1
+      base_prior_stop <- cp_start - 1
+      base_prior <- trap_data$data[base_prior_start : base_prior_stop]
+      }
 
-##   ##   #absolute postion for graph overlay
-##   ##   absolute_better_displacements[[i]] <- mean_event_step
+    if(b == 1){
+      trap_stiff <- nm2pn
+    } else {
+      trap_stiff <- nm2pn2
+    }
 
-##   ##   displacement_marker[[i]] <- displacement_mark
+    mean_event_step <-  mean(trap_data$data[cp_start:(cp_off-1)])
+    mean_base_prior <- mean(base_prior)
+    baseline_position_before[[i]] <- mean_base_prior
+    displacements_absolute[[i]] <- mean_event_step
+    displacements_relative[[i]] <- mean_event_step - mean_base_prior
+    displacements_marker[[i]]  <- mean(c(cp_start, cp_off))
+    attachment_durations_dp[[i]] <- length(cp_start:(cp_off-1))
+    attachment_durations_s[[i]] <- length(cp_start:(cp_off-1))/hz
+    attachment_durations_ms[[i]] <- length(cp_start:(cp_off-1))/hz*1000
+    forces_absolute[[i]] <- trap_stiff*(mean_event_step)
+    forces_relative[[i]] <- trap_stiff*(mean_event_step-mean_base_prior)
 
-##   ##   #estimate myosin and trap stiffness
-##   ##   quarter <- length_of_event/4
-##   ##   myo_event_chunk <- trap_data$data[(cp_start + quarter) : ( cp_off - quarter )]
-##   ##   if(i == 1) {
-##   ##     base_prior_stop <- better_time_on_starts[[i]] - 1
-##   ##     base_prior <- trap_data$data[1 : base_prior_stop]
-##   ##     trap_stiffness[[i]] <- equipartition(base_prior)
-##   ##     myo_stiffness[[i]] <- equipartition(myo_event_chunk)
-##   ##   } else {
-##   ##     base_prior_start <- better_time_on_stops[[(i-1)]] + 1
-##   ##     if(is.na(base_prior_start)){
-##   ##       trap_stiffness[[i]] <- NA
-##   ##       myo_stiffness[[i]] <- NA
-##   ##     } else {
-##   ##     base_prior_stop <- better_time_on_starts[[i]] - 1
-##   ##     base_prior <- trap_data$data[base_prior_start : base_prior_stop]
-##   ##     trap_stiffness[[i]] <- equipartition(base_prior)
-##   ##     myo_stiffness[[i]] <- equipartition(myo_event_chunk)
-##   ##     }
-##   ##   }
 
-##   ## } #loop close
+
+  } #loop close
+
+
+ greater_than_0 <- sum(na.omit(displacements_relative >= 0))
+ less_than_0 <- sum(na.omit(displacements_relative <= 0))
+
+ did_it_flip <- FALSE
+ if(greater_than_0 < less_than_0){
+   displacements_absolute <- displacements_absolute*-1
+   displacements_relative <- displacements_relative*-1
+   forces_absolute <- forces_absolute*-1
+   forces_relative <- forces_relative*-1
+   baseline_position_before <- baseline_position_before*-1
+   did_it_flip <- TRUE
+ }
+
+ df_names <- c(
+   paste0("displacement_bead_", b, "_nm") ,
+   paste0("absolute_displacement_bead_", b, "_nm"),
+   paste0("displacement_marker_", b) ,
+   paste0("attachment_durations_",b, "_dp") ,
+   paste0("attachment_durations_",b, "_s"),
+   paste0("attachment_durations_",b, "_ms"),
+   paste0("force_", b, "_pn"),
+   paste0("absolute_force_", b, "_pn"),
+   paste0("keep_", b),
+   paste0("cp_event_start_dp_", b),
+   paste0("cp_event_stop_dp_", b),
+   paste0("cp_found_start_", b),
+   paste0("cp_found_stop_", b),
+ )
+
+ measured_bead <- data.table::data.table(
+                                displacements_relative,
+                                displacements_absolute,
+                                displacements_marker,
+                                attachment_durations_dp,
+                                attachment_durations_s,
+                                attachment_durations_ms,
+                                forces_relative,
+                                forces_absolute,
+                                keep_event,
+                                event_starts,
+                                event_stops,
+                                cp_found_start,
+                                cp_found_stop)
+
+ names(measured_bead) <- df_names
+
+ cp_results[[b]] <- measured_bead
+
+
+if(!look_for_cp_in_between) next
+
+ ib_results <- vector("list")
+ in_between_cp_found <- vector()
+  for(j in seq_along(displacements_relative)){
+
+    if(!keep_event[[j]]) next
+
+    in_between_chunk <- trap_data[event_starts[[j]]:event_stops[[j]]]
+
+    ## chunk_roll <- na.omit(RcppRoll::roll_median(in_between_chunk$data, n = 10))
+
+    in_between_cp <- try(
+      changepoint::cpt.mean(as.vector(scale(na.omit(in_between_chunk$data))),
+                               penalty = "MBIC",
+                             ## pen.value = 1,
+                               method = 'AMOC',
+                             minseglen = 200
+                            )
+      )
+
+       try(plot(in_between_cp))
+
+    in_between_cp_location <- try(changepoint::cpts(in_between_cp))
+
+   ##  #if no changepoint id'd skip
+    if(identical(in_between_cp_location, numeric(0))  || class(in_between_cp_location) == 'try-error'){
+      in_between_cp_found[[j]] <- FALSE
+      next
+    }
+      #or record change point index
+      in_between_cp_found[[j]] <- TRUE
+    # Change Point In Between
+      cpib <- in_between_chunk$index[in_between_cp_location]
+
+    # In Between step 1
+      ib1 <- trap_data$data[event_starts[[j]]:cpib]
+    # In Between step 2
+      ib2 <- trap_data$data[cpib:event_stops[[j]]]
+
+ if(did_it_flip){
+   ib1 <- ib1*-1
+   ib2 <- ib2*-1
+ }
+
+    ib_between_table <-
+      data.table::data.table(
+                    event = j,
+                    bead = b,
+                    ib_start = event_starts[[j]],
+                    ib_mid = cpib,
+                    ib_stop = event_stops[[j]],
+                    ib1_absolute = mean(ib1),
+                    ib1_relative = mean(ib1)-baseline_position_before[[j]],
+                    ib2_absolute = mean(ib2),
+                    ib2_relative = mean(ib2)-mean(ib1),
+                    ib1_time_dp = length(ib1),
+                    ib1_time_s = length(ib1)/hz,
+                    ib1_time_ms = length(ib1)/hz*1000,
+                    ib2_time_dp = length(ib2),
+                    ib2_time_s = length(ib2)/hz,
+                    ib2_time_ms = length(ib2)/hz*1000
+                    )
+
+    ib_results[[j]] <- ib_between_table
+
+    } #in between close
+
+ ib_results_dt <- data.table::rbindlist(ib_results)
+
+     ib_filename <- file.path(path.expand("~"),
+                              "lasertrapr",
+                              project,
+                              conditions,
+                              date,
+                              obs,
+                              paste0("in-between-bead-", b, ".csv"))
+    data.table::fwrite(ib_results_dt, ib_filename, sep = ",")
+
+  } # bead loop close
+
+
+ }
+
+
+
 
 ##   ## cp_transitions <- tibble::tibble(start = better_time_on_starts,
 ##   ##                                  stop = better_time_on_stops,
@@ -348,4 +483,4 @@ fit_hm_model_to_covar_smooth <- function(covar_smooth,
 ##   ##             cp_displacements = better_displacements,
 ##   ##             absolute_displacements = absolute_better_displacements,
 ##   ##             displacement_mark = displacement_marker))
-## }
+ }
