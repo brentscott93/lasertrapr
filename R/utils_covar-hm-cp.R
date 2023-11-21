@@ -456,10 +456,9 @@ if(!look_for_cp_in_between) next
                               paste0("in-between-bead-", b, ".csv"))
     data.table::fwrite(ib_results_dt, ib_filename, sep = ",")
 
-  } # bead loop close
+  }
 
 
- }
 
 
 

@@ -25,6 +25,10 @@ fit_force_clamp <- function(measured_events, tmin = NULL, plot_colors = NULL, ba
                                force_avg = force_pn,
                                time_on_s = time_on_s) ]
 
+  if(tmin == 0) tmin <- NULL
+    if(!is.null(tmin)){
+      data <- data[which(data$time_on_s >= tmin),]
+    }
   ## if(!is.null(id)){
   ##   data$conditions <- id
   ## }
@@ -32,12 +36,9 @@ fit_force_clamp <- function(measured_events, tmin = NULL, plot_colors = NULL, ba
   if(is.null(plot_colors)){
     plot_colors <- unname(palette.colors())
   }
-
+  ## print(paste("tmin-in-fun="), tmin)
   fit_bell <- function(data, tmin){
 
-    if(!is.null(tmin)){
-      data <- data[which(data$time_on_s >= tmin),]
-    }
 
     fit_bell_pdf_mle <- function(F, t, pars, tmin){
       ## pass the pars through to the negative log likelihood function
@@ -50,7 +51,7 @@ fit_force_clamp <- function(measured_events, tmin = NULL, plot_colors = NULL, ba
           ## PDF function from MEMLET https://github.com/michaelswoody/MEMLET/blob/master/Matlab%20Code/MEMLET/PDFs/bellsEqn.m
           -sum(log(((k0*exp(-(F*d)/4.1))*exp(-(k0*exp(-(F*d)/4.1))*t))))
         } else {
-          -sum(
+           -sum(
              log(
              ((k0*exp(-(F*d)/4.1))*exp(-(k0*exp(-(F*d)/4.1))*t)) / (exp(-(k0*exp(-(F*d)/4.1))*tmin))
              )

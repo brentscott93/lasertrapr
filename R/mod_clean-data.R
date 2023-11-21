@@ -193,7 +193,7 @@ tagList(
                  label = "What is the preferred channel?",
                  choices = c("1" = 1,
                              "2" = 2),
-                 selected = "none",
+                 selected = "1",
                  justified = T,
                  checkIcon = list(
                    yes = tags$i(class = "fa fa-check-square",
