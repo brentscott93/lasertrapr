@@ -92,6 +92,21 @@ mod_summarize_server <- function(input, output, session, f){
       dplyr::filter(str_detect(name, "summary", negate = TRUE)) |>
       dplyr::pull(name)
   })
+
+ analyzer <- reactive({
+   req(f$project$path)
+
+   opt_path <- list.files(f$project$path,
+                          pattern = "options.csv",
+                          recursive = TRUE,
+                          full.names = TRUE)
+
+   opt <- data.table::rbindlist(lapply(opt_path, data.table::fread), fill = TRUE)
+   opt <- opt[include == TRUE & review == TRUE & report == "success"]
+
+   unique(opt$analyzer)
+
+ })
   
   colorz <- reactive({
     if(length(conditions()) == 1){
@@ -103,27 +118,55 @@ mod_summarize_server <- function(input, output, session, f){
       }
   })
   
-  output$user_defaults <- renderUI({
-    req(conditions())
-    if(length(conditions()) >= 2){
-    tagList(
-    
-      selectInput(ns('factor_order'),
-                  label = 'Factor Order',
-                  multiple = T,
-                  choices = conditions()),
-      purrr::map2(seq_along(conditions()),
-                  colorz(),
-                  ~div(style = 'display:inline-block', colourpicker::colourInput(ns(paste0('color', .x)),
-                                             label = paste('Color', .x),
-                                             value = .y)))
-          )
-    } else {
-      div(style = 'display:inline-block', colourpicker::colourInput(ns('color1'),
-                                                                    label = 'Color 1',
-                                                                    value = colorz()))
-    }
-  })
+ output$user_defaults <- renderUI({
+   req(conditions())
+   req(analyzer())
+   if(analyzer() == "ifc"){
+     if(length(conditions()) >= 2){
+       tagList(
+
+         selectInput(ns('factor_order'),
+                     label = 'Factor Order',
+                     multiple = T,
+                     choices = conditions()),
+         purrr::map2(seq_along(conditions()),
+                     colorz(),
+                     ~div(style = 'display:inline-block', colourpicker::colourInput(ns(paste0('color', .x)),
+                                                                                    label = paste('Color', .x),
+                                                                                    value = .y))),
+         numericInput(ns("ifc_tmin_ms"), label = "Tmin (ms)", value = 0)
+       )
+     } else {
+       tagList(
+         div(style = 'display:inline-block', colourpicker::colourInput(ns('color1'),
+                                                                       label = 'Color 1',
+                                                                       value = colorz())),
+
+         numericInput(ns("ifc_tmin_ms"), label = "Tmin (ms)", value = 0)
+       )
+     }
+
+   } else {
+     if(length(conditions()) >= 2){
+       tagList(
+
+         selectInput(ns('factor_order'),
+                     label = 'Factor Order',
+                     multiple = T,
+                     choices = conditions()),
+         purrr::map2(seq_along(conditions()),
+                     colorz(),
+                     ~div(style = 'display:inline-block', colourpicker::colourInput(ns(paste0('color', .x)),
+                                                                                    label = paste('Color', .x),
+                                                                                    value = .y)))
+       )
+     } else {
+       div(style = 'display:inline-block', colourpicker::colourInput(ns('color1'),
+                                                                     label = 'Color 1',
+                                                                     value = colorz()))
+     }
+   }
+ })
   
   output$split_conditions_options <- renderUI({
     req(conditions())
@@ -267,8 +310,9 @@ mod_summarize_server <- function(input, output, session, f){
           all_measured_events$conditions <- factor(all_measured_events$conditions, levels = input$factor_order)
         }
 
+        ## print(paste0("tmin = "), input$ifc_tmin_ms)
         clamp_fit <- fit_force_clamp(measured_events = all_measured_events,
-                              tmin = NULL,
+                              tmin = input$ifc_tmin_ms/1000,
                               plot_colors = plot_colors,
                               basesize = 20,
                               textsize = 18,
@@ -302,7 +346,7 @@ mod_summarize_server <- function(input, output, session, f){
         all_measured_events <- all_measured_events[force_pn >= -1]
 
         clamp_fit <- fit_force_clamp(measured_events = all_measured_events,
-                                     tmin = NULL,
+                                     tmin = input$ifc_tmin_ms/1000,
                                      plot_colors = plot_colors,
                                      basesize = 20,
                                      textsize = 18,
