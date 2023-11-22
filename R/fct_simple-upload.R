@@ -33,7 +33,8 @@ simple_upload <- function(input_data, project, conditions, date, ready_for_analy
                     conditions = conditions$name,
                     date = date$name, 
                     raw_bead =  data_traces[[r]][[1]],
-                    trap_position = 0)
+                    trap_position = 0,
+                    original_filename = input_data$datapath[[r]])
     #t %<>% dplyr::mutate(processed_bead = data_traces[[r]][[1]]) untested change
     if(ready_for_analysis){
       t[, processed_bead := data_traces[[r]][[1]] ]
@@ -108,7 +109,8 @@ upload_data_cal_in_header <- function(input_data,
                              report = 'not run',
                              review = NA,
                              channels = 1,
-                             lab = "unknown")
+                             lab = "unknown",
+                             original_filename = input_data$datapath[[r]])
 
             
              trap_data <- fread(input_data$datapath[[r]],

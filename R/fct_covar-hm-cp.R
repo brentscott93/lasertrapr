@@ -13,7 +13,6 @@ covariance_hidden_markov_changepoint_analysis <- function(trap_data,
                                                front_cp_method,
                                                back_cp_method,
                                                cp_running_var_window,
-                                               displacement_type = "avg",
                                                is_shiny = F,
                                                opt,
                                                ...){
@@ -33,14 +32,18 @@ covariance_hidden_markov_changepoint_analysis <- function(trap_data,
 
   o <- data.table::fread(o_path)
 
+  if(is.null(o$channels)) channels <- 1
+  if(is.na(o$channels)) channels <- 1
+  channels <- o$channels
+
+  ## if(channels != 2) stop("Covariance requires 2 channel data")
   include <- o$include
   if(is.na(include)) include <- FALSE
   mv2nm <-  o$mv2nm
   nm2pn <- o$nm2pn
+  mv2nm2 <-  o$mv2nm2
+  nm2pn2 <- o$nm2pn2
   hz <- o$hz
-  if(is.null(o$channels)) channels <- 1
-  if(is.na(o$channels)) channels <- 1
-  channels <- o$channels
 
   path <- file.path(path.expand("~"),
                     "lasertrapr",
@@ -108,11 +111,11 @@ covariance_hidden_markov_changepoint_analysis <- function(trap_data,
         if(is_shiny) setProgress(0.1, detail = "Calculating Running Windows")
 
 
-         ## dat <- fread("/home/brent/sync/dani-trap/10uM-ATP/10uM-dani/2023-11-06/obs-12/231106_f2_s1_m2_dani 12.txt", skip = 68)
+        ##  dat <- fread("/home/brent/sync/dani-trap/10uM-ATP/10uM-dani/2023-11-06/obs-12/231106_f2_s1_m2_dani 12.txt", skip = 68)
         ## pb1 <- dat$Trap1X[1:500000]*52
         ## pb2 <- dat$Trap2X[1:500000]*58
-           ## w_width <- 20
-           ## ws <- 1
+        ##    w_width <- 20
+        ##    ws <- 1
 
         pb1 <- trap_data$processed_bead_1
         pb2 <- trap_data$processed_bead_2
@@ -130,26 +133,16 @@ covariance_hidden_markov_changepoint_analysis <- function(trap_data,
  ##            B_filt = movmean(B, averagingWindow);
  ##            AB_filt = movmean(A.*B, averagingWindow);
  ##            cov = AB_filt - A_filt.*B_filt;
-
-
         #FROM SPASM
-
            pb1_smooth <- na.omit(RcppRoll::roll_meanl(pb1, n = w_width, by = 1))
            pb2_smooth <- na.omit(RcppRoll::roll_meanl(pb2, n = w_width, by = 1))
            pb12_smooth <- na.omit(RcppRoll::roll_meanl(pb1*pb2, n = w_width, by = 1))
            covar <- pb12_smooth - (pb1_smooth*pb2_smooth)
-
-
 ## covar_smooth <- covar
-
            covar_smooth <- na.omit(RcppRoll::roll_medianl(covar, n = 200, by = 1))
-
            ## covar_smooth <- pracma::savgol(covar, 101)
-
-
-
-         dygraphs::dygraph(data.frame(seq_along(covar_smooth), covar_smooth))|>dygraphs::dyRangeSelector()
-         dygraphs::dygraph(data.frame(seq_along(pb1), pb1, pb2))|>dygraphs::dyRangeSelector()
+         ## dygraphs::dygraph(data.frame(seq_along(covar_smooth), covar_smooth))|>dygraphs::dyRangeSelector()
+         ## dygraphs::dygraph(data.frame(seq_along(pb1), pb1, pb2))|>dygraphs::dyRangeSelector()
         #### HMM ####
         if(is_shiny) setProgress(0.25, detail = "HM-Model")
 
@@ -160,18 +153,12 @@ covariance_hidden_markov_changepoint_analysis <- function(trap_data,
                                                          conditions = conditions,
                                                          date = date,
                                                          obs = obs)
-ggplot(hm_model_results[1:50000])+
-  geom_point(aes(index, covar_smooth, color = state))
+## ggplot(hm_model_results[1:50000])+
+  ## geom_point(aes(index, covar_smooth, color = state))
 
         #### MEASURE EVENTS ####
-        conversion <- ws
+        ## conversion <- ws
         if(is_shiny) setProgress(0.5, detail = "Measuring")
-        ## measured_hm_events <- measure_hm_events(processed_data = processed_data,
-        ##                                         hm_model_results = hm_model_results,
-        ##                                         conversion = conversion,
-        ##                                         hz = hz,
-        ##                                         nm2pn = nm2pn)
-
 
                                         #finds lengths of events in number of running windows
         run_length_encoding <- rle(hm_model_results$state)
@@ -197,101 +184,61 @@ ggplot(hm_model_results[1:50000])+
         hm_event_transitions <- data.table::data.table(state_1_end = value1$cumsum, state_2_end = value2$cumsum)
 
 
+
         #### CHANGEPOINT ####
         if(is_shiny) setProgress(0.75, detail = "Changepoint")
 
-         cp_data <- changepoint_analysis(measured_hm_events = measured_hm_events,
-                                         hz = hz,
-                                         conversion = conversion,
-                                         mv2nm = mv2nm,
-                                         conditions = conditions,
-                                         front_cp_method = front_cp_method,
-                                         back_cp_method = back_cp_method,
-                                         cp_running_var_window = cp_running_var_window,
-                                         ws = ws,
-                                         displacement_type = displacement_type)
 
-        #add better on times & displacements to final table
-        single_molecule_results <- measured_hm_events$measured_events_hm_estimates %>%
-          dplyr::full_join(cp_data$cp_event_transitions) %>%
-          dplyr::mutate(final_time_ons_ms = ifelse(is.na(start) | is.na(stop)  | cp_time_on_dp <= 0,
-                                                   time_on_ms,
-                                                   cp_time_on_ms),
-                         final_displacements = ifelse(is.na(start)  | is.na(stop)  | cp_time_on_dp <= 0,
-                                                      displacement_nm,
-                                                      cp_displacements),
-                         analyzer = 'hm-model/cp',
-                         hm_event_start = measured_hm_events$hm_event_transitions$state_1_end + 1,
-                         hm_event_stop = measured_hm_events$hm_event_transitions$state_2_end,
-                         cp_event_start_dp = ifelse(is.na(start) == TRUE | is.na(stop) == TRUE,
-                                                (hm_event_start - 1)*conversion,
-                                                start),
-                         cp_event_stop_dp = ifelse(is.na(start) == TRUE | is.na(stop) == TRUE,
-                                               hm_event_stop*conversion,
-                                               stop),
-                         keep = ifelse(final_time_ons_ms <= 1, FALSE, keep),
-                         project = project,
-                         conditions = conditions,
-                         date = date,
-                         obs = obs,
-                         conversion = conversion,
-                         peak_nm_index = cp_data$displacement_mark,
-                         event_user_excluded = FALSE) %>%
-          dplyr::select(project,
-                        conditions,
-                        date,
-                        obs,
-                        time_off_ms,
-                        final_time_ons_ms,
-                        final_displacements,
-                        force,
-                        analyzer,
-                        everything()) %>%
-          dplyr::select(-c(time_on_ms, displacement_nm)) %>%
-          dplyr::rename("time_on_ms" = final_time_ons_ms,
-                 "displacement_nm" = final_displacements)
+        cp_results <- covar_changepoint(pb_data = data.frame(pb1, pb2),
+                                     hm_event_transitions = hm_event_transitions,
+                                     hz = hz,
+                                     value1 = value1,
+                                     nm2pn = nm2pn,
+                                     nm2pn2 = nm2pn2,
+                                     front_cp_method = "mean/var",
+                                     back_cp_method = "mean/var",
+                                     look_for_cp_in_between = FALSE)
 
+
+        cp_data <- cp_results$data
+
+
+        cp_data$event_user_excluded <- FALSE
+        cp_data$project <- project
+        cp_data$conditions <- conditions
+        cp_data$date <- date
+        cp_data$obs <- obs
+        cp_data$analyzer <- "covar"
 
        ####EVENT FREQ####
         if(is_shiny) setProgress(0.75, detail = "Event Frequency")
 
-        event_freq <- event_frequency(processed_data,
-                                      measured_hm_events$viterbi_rle,
-                                      conversion,
-                                      hz = hz,
-                                      ends_in_state_1 = measured_hm_events$ends_in_state_1,
-                                      project = project,
-                                      conditions = conditions,
-                                      date = date,
-                                      obs = obs)
+        ## event_freq <- event_frequency(processed_data,
+        ##                               measured_hm_events$viterbi_rle,
+        ##                               conversion,
+        ##                               hz = hz,
+        ##                               ends_in_state_1 = measured_hm_events$ends_in_state_1,
+        ##                               project = project,
+        ##                               conditions = conditions,
+        ##                               date = date,
+        ##                               obs = obs)
 
         #get some data for plotting later
-        s1_avg_4plot <- tibble::tibble(avg = measured_hm_events$state_1_avg,
-                                       state_order = seq(from = 1, length.out = length(avg), by = 2))
 
 
-        s2_avg_4plot <- tibble::tibble(avg = ifelse(is.na(cp_data$absolute_displacements),
-                                                    measured_hm_events$state_2_avg,
-                                                    cp_data$absolute_displacements),
-                                      state_order = seq(from = 2, length.out = length(avg), by = 2))
 
-        hmm_overlay <- dplyr::bind_rows(s1_avg_4plot, s2_avg_4plot) %>%
-          dplyr::arrange(state_order)
-
-        overlay <- unlist(purrr::map2(hmm_overlay$avg,
-                               measured_hm_events$viterbi_rle$lengths,
-                               ~rep(.x, times = conversion * .y)))
-
-        overlay <- c(overlay, rep(overlay[length(overlay)], length(processed_data) - length(overlay)))
-
-        if(measured_hm_events$did_it_flip) hm_model_results <- dplyr::mutate(hm_model_results, run_mean = run_mean * -1)
 
         report_data  <- "success"
+        str(cp_results$did_it_flip_vec)
 
-        trap_data <-
-          dplyr::mutate(trap_data,
-                        processed_bead =  measured_hm_events$flip_raw,
-                        hm_overlay = overlay)
+        if(cp_results$did_it_flip_vec[[1]]){
+          trap_data$processed_bead_1 <- trap_data$processed_bead_1*-1
+          hm_model_results$covar_smooth <- hm_model_results$covar_smooth*-1
+          }
+        if(cp_results$did_it_flip_vec[[2]]){
+          trap_data$processed_bead_2 <- trap_data$processed_bead_2*-1
+          }
+
 
         opt_df <- as.data.frame(opt)
 
@@ -300,7 +247,7 @@ ggplot(hm_model_results[1:50000])+
           o %>%
            dplyr::select(-c(names(opt_df))) %>%
             cbind(opt_df) %>%
-            dplyr::mutate( analyzer = 'hm/cp',
+            dplyr::mutate( analyzer = 'covar',
                            status = 'analyzed',
                            report = report_data,) %>%
           dplyr::select(project, conditions, date, obs, everything())
@@ -308,7 +255,7 @@ ggplot(hm_model_results[1:50000])+
           options_df <-
             o %>%
             cbind(opt_df) %>%
-            dplyr::mutate( analyzer = 'hm/cp',
+            dplyr::mutate( analyzer = 'covar',
                            status = 'analyzed',
                            report = report_data,) %>%
             dplyr::select(project, conditions, date, obs, everything())
@@ -320,16 +267,14 @@ ggplot(hm_model_results[1:50000])+
                          'measured-events.csv',
                          #'ensemble-data.csv',
                          'hm-model-data.csv',
-                         'event-frequency.csv',
+                         ## 'event-frequency.csv',
                          'options.csv')
 
         file_paths <-  file.path(path.expand("~"), "lasertrapr", project,  conditions, date, obs, file_names)
 
         data_to_save <- list(trap_data,
-                             single_molecule_results,
-                             #cp_data$ensemble_data,
+                             cp_data,
                              hm_model_results,
-                             event_freq,
                              options_df)
 
         purrr::walk2(data_to_save, file_paths, ~data.table::fwrite(x = .x, file = .y, sep = ","))

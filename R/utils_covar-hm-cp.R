@@ -98,20 +98,19 @@ fit_hm_model_to_covar_smooth <- function(covar_smooth,
 #' @param nm2pn calibration
 #' @param nm2pn2 calibration
 #' @noRd
-covar_changepoint <- function(project,
-                              conditions,
-                              date,
-                              obs,
-                              pb_data,
+covar_changepoint <- function(pb_data,
                               hm_event_transitions,
                               hz,
                               nm2pn,
                               nm2pn2,
+                              value1,
+                              front_cp_method,
+                              back_cp_method,
                               look_for_cp_in_between){
 
 ## pb_data <- data.table::data.table(pb1, pb2)
 cp_results <- vector("list")
-
+  did_it_flip_vec <- vector()
 for(b in seq_len(2)){
  current_pb <- pb_data[[b]]
  trap_data <- data.table::data.table(index = seq_along(current_pb), data = current_pb)
@@ -251,7 +250,9 @@ for(b in seq_len(2)){
             displacements_relative[[i]] <- NA
             displacements_absolute[[i]] <- NA
             displacements_marker[[i]] <- NA
-            attachment_durations[[i]] <- NA
+      attachment_durations_s[[i]] <- NA
+      attachment_durations_dp[[i]] <- NA
+      attachment_durations_ms[[i]] <- NA
             ## trap_stiffness[[i]] <- NA
             ## myo_stiffness[[i]] <- NA
             keep_event[[i]] <- FALSE
@@ -271,7 +272,9 @@ for(b in seq_len(2)){
       displacements_relative[[i]] <- NA
       displacements_absolute[[i]] <- NA
       displacements_marker[[i]] <- NA
-      attachment_durations[[i]] <- NA
+      attachment_durations_s[[i]] <- NA
+      attachment_durations_dp[[i]] <- NA
+      attachment_durations_ms[[i]] <- NA
       ## trap_stiffness[[i]] <- NA
       ## myo_stiffness[[i]] <- NA
       keep_event[[i]] <- FALSE
@@ -328,7 +331,7 @@ for(b in seq_len(2)){
   } #loop close
 
 
- greater_than_0 <- sum(na.omit(displacements_relative >= 0))
+ greater_than_0 <- sum(na.omit(displacements_relative > 0))
  less_than_0 <- sum(na.omit(displacements_relative <= 0))
 
  did_it_flip <- FALSE
@@ -340,21 +343,26 @@ for(b in seq_len(2)){
    baseline_position_before <- baseline_position_before*-1
    did_it_flip <- TRUE
  }
+print(paste0("b = ", b, " /did_it_flip = ", did_it_flip))
+print(paste0("greater_than_0 = ", greater_than_0, "less_than_0 = ", less_than_0))
+did_it_flip_vec[[b]] <- did_it_flip
+
+ print(did_it_flip_vec)
 
  df_names <- c(
    paste0("displacement_bead_", b, "_nm") ,
    paste0("absolute_displacement_bead_", b, "_nm"),
    paste0("displacement_marker_", b) ,
-   paste0("attachment_durations_",b, "_dp") ,
-   paste0("attachment_durations_",b, "_s"),
-   paste0("attachment_durations_",b, "_ms"),
+   paste0("attachment_duration_",b, "_dp") ,
+   paste0("attachment_duration_",b, "_s"),
+   paste0("attachment_duration_",b, "_ms"),
    paste0("force_", b, "_pn"),
    paste0("absolute_force_", b, "_pn"),
    paste0("keep_", b),
    paste0("cp_event_start_dp_", b),
    paste0("cp_event_stop_dp_", b),
    paste0("cp_found_start_", b),
-   paste0("cp_found_stop_", b),
+   paste0("cp_found_stop_", b)
  )
 
  measured_bead <- data.table::data.table(
@@ -456,9 +464,15 @@ if(!look_for_cp_in_between) next
                               paste0("in-between-bead-", b, ".csv"))
     data.table::fwrite(ib_results_dt, ib_filename, sep = ",")
 
-  }
+  } # beadclose
 
 
+
+
+  return(
+    list(data = cbind(cp_results[[1]], cp_results[[2]]),
+         did_it_flip_vec = did_it_flip_vec)
+    )
 
 
 
@@ -482,4 +496,4 @@ if(!look_for_cp_in_between) next
 ##   ##             cp_displacements = better_displacements,
 ##   ##             absolute_displacements = absolute_better_displacements,
 ##   ##             displacement_mark = displacement_marker))
- }
+ } #fun close
