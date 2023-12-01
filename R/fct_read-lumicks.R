@@ -1,0 +1,73 @@
+library(data.table)
+library(rhdf5)
+
+read_lumicks(input_data, project, conditions, date, downsample_by=5){
+
+
+    withProgress(message = 'Initializing Data', value = 0, {
+       ## browser()
+        for(r in seq_along(input_data$datapath)){
+
+            shiny::incProgress(1/nrow(input_data))
+
+             o <- data.frame(project = project$name,
+                             conditions = conditions$name,
+                             date = date$name,
+                             obs = NA,
+                             hz = new_hz,
+                             processor = NA,
+                             include = NA,
+                             mv2nm = ###,
+                             nm2pn = ###,
+                             mv2nm2 = ###,
+                             nm2pn2 = ###,
+                             analyzer = NA,
+                             report = 'not run',
+                             review = NA,
+                             channels = 2,
+                             lab = "lumicks",
+                             original_filename = input_data$datapath[[r]])
+
+
+          lumicks <- rhdf5::h5read(input_data$datapath[[r]], name = "Force HF")
+
+          cal <- rhdf5::h5read(input_data$datapath[[r]], name = "Calibration/1")
+
+          cal1 <- cal$`Force 1x`
+          cal2 <- cal$`Force 2x`
+
+          orig_hz <- 78125
+          new_hz <- hz/downsample_by
+          downsample_points <- seq(1, nrow(l_dt), by = downsample_by)
+          l_dt <- data.frame(t1 = lumicks$`Force 1x`,
+                             t2 = lumicks$`Force 2x`)
+          l_dt <- l_dt[downsample_points]
+
+          t <- data.table(project = project$name,
+                          conditions = conditions$name,
+                          date = date$name,
+                          obs = NA,
+                          raw_bead_1 = l_dt$t1,
+                          raw_bead_2 = l_dt$t2)
+
+          if(r < 10){
+            obs <- paste0("obs-0", r)
+          } else {
+            obs <- paste0("obs-", r)
+          }
+
+            dir.create(file.path(date$path, obs))
+
+            t$obs <- obs
+            data.table::fwrite(t, file = file.path(date$path, obs, "trap-data.csv"), sep = ",")
+
+            o$obs <- obs
+            data.table::fwrite(o, file = file.path(date$path, obs, "options.csv"), sep = ",")
+
+
+              }
+    }
+    )
+
+
+}
