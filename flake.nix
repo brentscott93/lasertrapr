@@ -5,7 +5,14 @@
 
   outputs = { self, nixpkgs, flake-utils }:
     flake-utils.lib.eachDefaultSystem (system: let
-      pkgs = nixpkgs.legacyPackages.${system};
+     pkgs =  (import nixpkgs {
+	        inherit system;
+		   config = {
+		     permittedInsecurePackages = [
+		       "hdf5-1.10.9"
+		       ];
+		    };
+	    });
       rPkgs = with pkgs.rPackages; [config
                                     golem
                                     shiny
@@ -49,7 +56,8 @@
                                     testthat
                                     devtools
                                     lubridate
-                                    tibble];
+                                    tibble
+                                    rhdf5];
     in {
       devShells.default = pkgs.mkShell {
         packages = [ pkgs.bashInteractive 
