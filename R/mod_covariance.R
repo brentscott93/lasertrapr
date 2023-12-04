@@ -185,10 +185,11 @@ mod_covariance_server <- function(input, output, session, f){
                                     hz = a$hz,
                                     w_width = a$w_width,
                                     w_slide = a$w_slide,
+                                    median_w_width = a$median_w_width,
                                     em_random_start = a$em_random_start,
                                     front_cp_method = a$front_cp_method,
                                     back_cp_method = a$back_cp_method,
-                                    cp_running_var_window = a$cp_running_var_window,
+                                    ## cp_running_var_window = a$cp_running_var_window,
                                     opt = opt,
                                     is_shiny = TRUE)
               )
@@ -387,19 +388,21 @@ mod_covariance_server <- function(input, output, session, f){
 
     a <- reactiveValues(w_width = 150,
                         w_slide = "1/2",
+                        median_w_width = 200,
                         em_random_start = FALSE,
                         front_cp_method = "Mean/Var",
-                        back_cp_method = "Mean/Var",
-                        cp_running_var_window = 5
+                        back_cp_method = "Mean/Var"
+                        ## cp_running_var_window = 5
                         )
 
     observeEvent(input$set_options, {
       a$w_width <- input$w_width
-      a$w_slide <- input$w_slide
+      ## a$w_slide <- input$w_slide
+      a$median_w_width <- input$median_w_width
       a$em_random_start <- input$em_random_start
       a$front_cp_method <-input$front_cp_method
       a$back_cp_method <-input$back_cp_method
-      a$cp_running_var_window <- input$cp_running_var_window
+      ## a$cp_running_var_window <- input$cp_running_var_window
       removeModal()
     })
 
@@ -413,14 +416,14 @@ mod_covariance_server <- function(input, output, session, f){
           tabPanel("HM-Model",
                        fluidRow(
                          column(6,
-                                sliderInput(ns("w_width"), "Window Width", min = 10, max = 300, value = a$w_width, width = "100%",step = 5)
+                                numericInput(ns("w_width"), "Covariance Window Width",
+                                             value = a$w_width,
+                                             width = "100%")
                          ),
                          column(6,
-                                shinyWidgets::sliderTextInput(ns("w_slide"),
-                                                              "Slide Window", c("1-Pt", "1/4", "1/2", "3/4", "No-overlap"),
-                                                              grid = TRUE,
-                                                              selected = a$w_slide,
-                                                              width = "100%")
+                                numericInput(ns("median_w_width"), "Running median window Width",
+                                             value = a$median_w_width,
+                                             width = "100%")
                          )
                        ) ,
                        fluidRow(
@@ -462,8 +465,8 @@ mod_covariance_server <- function(input, output, session, f){
                                    fill = TRUE
                                  )
                           )
-                   ),
-                    sliderInput(ns("cp_running_var_window"), "Running Variance Window Width", min = 5, max = 100, value = a$cp_running_var_window, width = "100%")
+                   )
+                    ## sliderInput(ns("cp_running_var_window"), "Running Variance Window Width", min = 5, max = 100, value = a$cp_running_var_window, width = "100%")
           ) #cp tab panel
         )
        )
@@ -645,7 +648,7 @@ mod_covariance_server <- function(input, output, session, f){
       req(trap_data())
       measured_events <- trap_data()$events
       measured_events[, displacement_nm := (displacement_bead_1_nm + displacement_bead_2_nm)/2 ]
-      measured_events[, time_on_s := (attachment_durations_1_s + attachment_durations_2_s)/2 ]
+      measured_events[, time_on_s := (attachment_duration_1_s + attachment_duration_2_s)/2 ]
       measured_events <- measured_events[keep_1 == TRUE & keep_2 == TRUE & event_user_excluded == TRUE]
       step <-
         ggplot()+

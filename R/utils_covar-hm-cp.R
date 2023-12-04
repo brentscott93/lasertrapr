@@ -104,10 +104,12 @@ covar_changepoint <- function(pb_data,
                               nm2pn,
                               nm2pn2,
                               value1,
+                              w_width,
+                              median_w_width,
                               front_cp_method,
                               back_cp_method,
                               look_for_cp_in_between){
-
+## browser()
 ## pb_data <- data.table::data.table(pb1, pb2)
 cp_results <- vector("list")
   did_it_flip_vec <- vector()
@@ -138,9 +140,9 @@ for(b in seq_len(2)){
     estimated_start <- (hm_event_transitions$state_1_end[[i]] + 1 )
     estimated_stop <-  hm_event_transitions$state_2_end[[i]]
 
-      forward_cp_window_stop <- estimated_start + 200 #rolling median smoother window width
+      forward_cp_window_stop <- estimated_start + median_w_width #rolling median smoother window width
 
-      backwards_cp_window_start <- estimated_stop - 20 #rolling covariance window
+      backwards_cp_window_start <- estimated_stop - w_width #rolling covariance window
 
 
     length_of_prior_baseline <- value1$lengths[[i]] #* conversion
@@ -149,13 +151,13 @@ for(b in seq_len(2)){
     ## if(length_of_prior_baseline <= 100) {
       ## forward_cp_window_start <- estimated_start - 50
    ## } else {
-      forward_cp_window_start <- estimated_start  - 10
+      forward_cp_window_start <- estimated_start  #- 10
    ## }
 
-    if(length_of_after_baseline <= 200 || class(length_of_after_baseline) == 'try-error'){
-       backwards_cp_window_stop <- estimated_stop + 180
+    if(length_of_after_baseline <= median_w_width || class(length_of_after_baseline) == 'try-error'){
+       backwards_cp_window_stop <- estimated_stop + (round(median_w_width*0.8, 0))
     } else {
-       backwards_cp_window_stop <- estimated_stop + 200
+       backwards_cp_window_stop <- estimated_stop + median_w_width
     }
 
 
