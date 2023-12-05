@@ -89,11 +89,23 @@ hidden_markov_changepoint_analysis <- function(trap_data,
                   
         if(is_shiny){
           setProgress(0.05, paste("Analyzing", conditions, obs))
+          if(channels == 1){
           defend_if_empty(trap_data$processed_bead, ui = paste0(obs, ' data not processed.'), type = 'error')
+          } else {
+          defend_if_empty(trap_data$processed_bead_1, ui = paste0(obs, ' data not processed.'), type = 'error')
+          }
         }
 
         if(channels == 1){
-        processed_data <- trap_data$processed_bead
+          processed_data <- trap_data$processed_bead
+        } else if(channels == 2){
+          if(o$preferred_channel == 1){
+            processed_data <- trap_data$processed_bead_1
+          } else if(o$preferred_channel == 2){
+            processed_data <- trap_data$processed_bead_2
+            mv2nm <- o$mv2nm2
+            nm2pn <- o$nm2pn2
+          }
         }
 
         #### RUNNING MEAN & VAR ####
@@ -231,27 +243,32 @@ hidden_markov_changepoint_analysis <- function(trap_data,
           dplyr::mutate(trap_data,
                         processed_bead =  measured_hm_events$flip_raw,
                         hm_overlay = overlay)
-        
+
+       ## browser()
         opt_df <- as.data.frame(opt)
-        
-        if(all(names(opt_df) %in% names(o))) {
+
+                                        # option cols to keep is a terrible name
+                                        # its the columns names to keep, SO they can be removed
+        options_cols_to_keep <- names(opt_df) %in% names(o)
+        options_cols_to_keep <- names(opt_df)[options_cols_to_keep]
+
         options_df <-
           o %>%
-           dplyr::select(-c(names(opt_df))) %>%
-            cbind(opt_df) %>%
-            dplyr::mutate( analyzer = 'hm/cp',
-                           status = 'analyzed',
-                           report = report_data,) %>%
+          dplyr::select(-c(options_cols_to_keep)) %>%
+          cbind(opt_df) %>%
+          dplyr::mutate( analyzer = 'hm/cp',
+                        status = 'analyzed',
+                        report = report_data,) %>%
           dplyr::select(project, conditions, date, obs, everything())
-        } else {
-          options_df <-
-            o %>%
-            cbind(opt_df) %>%
-            dplyr::mutate( analyzer = 'hm/cp',
-                           status = 'analyzed',
-                           report = report_data,) %>%
-            dplyr::select(project, conditions, date, obs, everything())
-        }
+        ## } else {
+        ##   options_df <-
+        ##     o %>%
+        ##     cbind(opt_df) %>%
+        ##     dplyr::mutate( analyzer = 'hm/cp',
+        ##                    status = 'analyzed',
+        ##                    report = report_data,) %>%
+        ##     dplyr::select(project, conditions, date, obs, everything())
+        ## }
 
         
         if(is_shiny == T) setProgress(0.95, detail = 'Saving Data')

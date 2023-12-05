@@ -235,8 +235,19 @@ mod_hm_model_server <- function(input, output, session, f){
   output$overlay_dygraph <- dygraphs::renderDygraph({
     req(trap_data())
     hz <- trap_data()$options$hz[[1]]
+    channels <- trap_data()$options$channels[[1]]
+    ## if(is.null(channels)) channels <- 1
+    ## if(channels == 1){
+      raw <- trap_data()$trap$processed_bead
+    ## } else if(channels == 2){
+      ## if(trap_data()$options$preferred_channel[[1]] == 1){
+        ## raw <- trap_data()$trap$processed_bead_1
+      ## } else {
+        ## raw <- trap_data()$trap$processed_bead_2
+      ## }
+    ## }
     d <- data.frame(index = (1:nrow(trap_data()$trap)/hz),
-                    raw = trap_data()$trap$processed_bead,
+                    raw = raw,
                     model = trap_data()$trap$hm_overlay)
 
     periods_df <- data.table::data.table(start = trap_data()$events$cp_event_start_dp/hz,
@@ -454,7 +465,7 @@ mod_hm_model_server <- function(input, output, session, f){
           tabPanel("HM-Model",
                        fluidRow(
                          column(6, 
-                                sliderInput(ns("w_width"), "Window Width", min = 10, max = 300, value = a$w_width, width = "100%",step = 5)
+                                numericInput(ns("w_width"), "Window Width", value = a$w_width, width = "100%")
                          ), 
                          column(6, 
                                 shinyWidgets::sliderTextInput(ns("w_slide"), 
@@ -728,9 +739,10 @@ mod_hm_model_server <- function(input, output, session, f){
       measured_events <- trap_data()$events
       step <- 
         ggplot()+
-        geom_dotplot(data = measured_events, aes(displacement_nm),
-                     fill = "grey40", 
-                     binwidth = 2)+
+        ## geom_dotplot(data = measured_events, aes(displacement_nm),
+        ##              fill = "grey40",
+        ##              binwidth = 2)+
+        stat_ecdf(data = measured_events, aes(x = displacement_nm), pad = FALSE)+
         geom_vline(aes(xintercept = mean(measured_events$displacement_nm)), linetype = "dashed")+
         geom_label(aes(mean(measured_events$displacement_nm), 
                        y = 1, 
@@ -739,7 +751,7 @@ mod_hm_model_server <- function(input, output, session, f){
                    size = 6)+
         ggtitle("Displacements")+
         xlab("nanometers")+
-        ylab('')+
+        ylab('ECDF')+
         # scale_x_continuous(breaks = sort(c(seq(-100, 100, by = 20), round(mean(measured_events$displacement_nm), 1))))+
         cowplot::theme_cowplot(18)+
         theme(
@@ -751,9 +763,8 @@ mod_hm_model_server <- function(input, output, session, f){
       
       time_on <- 
         ggplot()+
-        geom_dotplot(data = measured_events, aes(time_on_ms),
-                     fill = "grey40", 
-                     binwidth = 10)+
+        stat_ecdf(data = measured_events, aes(x = time_on_ms),
+                     pad = FALSE)+
         geom_vline(aes(xintercept = mean(measured_events$time_on_ms)), linetype = "dashed")+
         geom_label(aes(mean(measured_events$time_on_ms), y = 1, 
                        label = paste0("bar(x)==", round(mean((measured_events$time_on_ms), 0)))),
@@ -761,7 +772,7 @@ mod_hm_model_server <- function(input, output, session, f){
                    size = 6)+
         ggtitle("Time On")+
         xlab("milliseconds")+
-        ylab('')+
+        ylab('ECDF')+
         cowplot::theme_cowplot(18)+
         theme(
           axis.text.y = element_blank(),

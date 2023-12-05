@@ -457,7 +457,8 @@ changepoint_analysis <- function(measured_hm_events,
       cp_found_start[[i]] <- FALSE
     } else {
       #or record change point index
-      cp_start <- forward_event_chunk$index[event_on]
+      # a changepoint is denoted as the last observation of a regime
+      cp_start <- forward_event_chunk$index[(event_on+1)]
       better_time_on_starts[[i]] <- cp_start
       cp_found_start[[i]] <- TRUE
      
@@ -470,7 +471,8 @@ changepoint_analysis <- function(measured_hm_events,
     } else {
       #or record the index where this occurred in the previous attempt
       cp_off <- backwards_event_chunk$index[event_off]
-      better_time_on_stops[[i]] <- cp_off-1
+      # a changepoint is denoted as the last observation of the regime
+      better_time_on_stops[[i]] <- cp_off
       cp_found_stop[[i]] <- TRUE
     }
     
@@ -489,8 +491,8 @@ changepoint_analysis <- function(measured_hm_events,
    
 
     #find length of event
-    length_of_event <- nrow(trap_data[cp_start:(cp_off-1),])
-    golem::print_dev(paste0("length of data is: ",  nrow(trap_data[cp_start:(cp_off-1),]) ) )
+    length_of_event <- nrow(trap_data[cp_start:(cp_off),])
+    golem::print_dev(paste0("length of data is: ",  nrow(trap_data[cp_start:(cp_off),]) ) )
     #get a logical if event duration is less than 1 or if either of the changepoints were not found
     #this indicates something unusual about the event and we probably do not want it in the analysis
     if(length_of_event <= 0 ||  cp_found_start[[i]] == FALSE || cp_found_stop[[i]] == FALSE || cp_start >= cp_off){
@@ -520,10 +522,10 @@ changepoint_analysis <- function(measured_hm_events,
     back_var_ratio[[i]] <- after_25_var/event_back_var
 
     if(displacement_type == "avg"){
-      mean_event_step <-  mean(trap_data$data[(cp_start + ms_5):((cp_off-1) - ms_5)])
+      mean_event_step <-  mean(trap_data$data[(cp_start + ms_5):((cp_off) - ms_5)])
       displacement_mark <- (measured_hm_events$peak_nm_index[[i]]*conversion)/hz
     } else if(displacement_type == "peak"){
-       cp_event_subset <- trap_data[cp_start:(cp_off-1),] 
+       cp_event_subset <- trap_data[cp_start:(cp_off),]
        cp_event_subset$roll_mean <- RcppRoll::roll_meanr(cp_event_subset$data, hz/1000*5)
       if(is_positive[[i]]){
        mean_event_step <- max(na.omit(cp_event_subset$roll_mean))

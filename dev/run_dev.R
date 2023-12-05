@@ -12,7 +12,6 @@ golem::document_and_reload()
 # tell shiny to log all reactivity
 ## reactlog::reactlog_enable()
 # Run the application
-
 run_app()
 
 ## shiny::reactlogShow()
