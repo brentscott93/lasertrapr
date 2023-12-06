@@ -7,7 +7,14 @@
 #'
 #' @return nothing. saves data to lasertrapr folder
 #'
-simple_upload <- function(input_data, project, conditions, date, ready_for_analysis, nm2pn, hz){
+simple_upload <- function(input_data,
+                          project,
+                          conditions,
+                          date,
+                          ready_for_analysis,
+                          nm2pn,
+                          hz,
+                          downsample_by){
   withProgress(message = 'Initializing Data', value = 0, {
   #read in uploaded datq
    # browser()
@@ -35,6 +42,12 @@ simple_upload <- function(input_data, project, conditions, date, ready_for_analy
                     raw_bead =  data_traces[[r]][[1]],
                     trap_position = 0,
                     original_filename = input_data$datapath[[r]])
+
+
+          if(downsample_by != 1){
+            downsample_by_vec <- seq(1, nrow(t), by = downsample_by)
+             t <- t[downsample_by_vec,]
+          }
     #t %<>% dplyr::mutate(processed_bead = data_traces[[r]][[1]]) untested change
     if(ready_for_analysis){
       t[, processed_bead := data_traces[[r]][[1]] ]
@@ -85,7 +98,8 @@ upload_data_cal_in_header <- function(input_data,
                                       project,
                                       conditions,
                                       date,
-                                      number_of_channels){
+                                      number_of_channels,
+                                      downsample_by){
     withProgress(message = 'Initializing Data', value = 0, {
        ## browser()
         for(r in seq_along(input_data$datapath)){
@@ -149,6 +163,11 @@ upload_data_cal_in_header <- function(input_data,
             dir.create(file.path(date$path, obs))
             
             t$obs <- obs
+          if(downsample_by != 1){
+            downsample_by_vec <- seq(1, nrow(t), by = downsample_by)
+             t <- t[downsample_by_vec,]
+          }
+
             data.table::fwrite(t, file = file.path(date$path, obs, "trap-data.csv"), sep = ",")
 
             o$obs <- obs

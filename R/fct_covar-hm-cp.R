@@ -243,13 +243,18 @@ covariance_hidden_markov_changepoint_analysis <- function(trap_data,
 
         opt_df <- as.data.frame(opt)
 
+                                        # option cols to keep is a terrible name
+                                        # its the columns names to keep, SO they can be removed
+        options_cols_to_keep <- names(opt_df) %in% names(o)
+        options_cols_to_keep <- names(opt_df)[options_cols_to_keep]
+
         options_df <-
-          o |>
-           dplyr::select(-c(names(opt_df))) |>
-            cbind(opt_df) |>
-            dplyr::mutate( analyzer = 'covar',
-                           status = 'analyzed',
-                           report = report_data) |>
+          o %>%
+          dplyr::select(-c(options_cols_to_keep)) %>%
+          cbind(opt_df) %>%
+          dplyr::mutate( analyzer = 'hm/cp',
+                        status = 'analyzed',
+                        report = report_data,) %>%
           dplyr::select(project, conditions, date, obs, everything())
 
         if(is_shiny == T) setProgress(0.95, detail = 'Saving Data')
