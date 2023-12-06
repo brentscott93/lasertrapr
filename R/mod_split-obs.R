@@ -174,7 +174,7 @@ mod_split_obs_ui <- function(id){
                      )
                    ),
 
-                   
+                   numericInput(ns("downsample"), "Downsample By (factor)", value = 1),
                    actionButton(ns("simple_upload_button"),
                                 "Initialize Data",
                                 width = "100%",
@@ -198,21 +198,7 @@ mod_split_obs_ui <- function(id){
                                            value = 20,
                                            min = 10,
                                            max = 30),
-                                        # inputColor = '#ff41c8',
-                                        # fgColor = '#ff41c8'),
 
-
-                                        # h5("3) Trap Calibration Files?"),
-                                        # switchInput(inputId = "trap_cal_files",
-                                        #             label = NULL,
-                                        #             value = FALSE,
-                                        #             onLabel = "Yes",
-                                        #             offLabel =  "No",
-                                        #             onStatus = "success",
-                                        #             offStatus = "danger"),
-
-
-                                        # strong( h5("3) Click button to make observations")),
                    actionButton(inputId = ns("split_obs_button"),
                                 label = "Make Observations",
                                 icon = icon("eye"),
@@ -377,7 +363,8 @@ mod_split_obs_server <- function(input, output, session, f){
                                       project = f$project,
                                       conditions = f$conditions,
                                       date = f$date,
-                                      number_of_channels = input$channels)
+                                      number_of_channels = input$channels,
+                                      downsample_by = input$downsample_by)
 
         } else {
 
@@ -388,7 +375,8 @@ mod_split_obs_server <- function(input, output, session, f){
                           date = f$date,
                           nm2pn = input$nm_to_pn, 
                           ready_for_analysis = input$ready_for_analysis,
-                          hz = input$hz)
+                          hz = input$hz,
+                          downsample_by = input$downsample_by)
         }
         
         f$new_obs_from_split <- f$new_obs_from_split + 1
