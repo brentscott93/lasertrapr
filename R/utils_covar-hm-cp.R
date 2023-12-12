@@ -228,7 +228,7 @@ for(b in seq_len(2)){
       cp_found_start[[i]] <- FALSE
     } else {
       #or record change point index
-      cp_start <- forward_event_chunk$index[event_on]
+      cp_start <- forward_event_chunk$index[(event_on+1)]
       event_starts[[i]] <- cp_start
       cp_found_start[[i]] <- TRUE
 
@@ -241,7 +241,7 @@ for(b in seq_len(2)){
     } else {
       #or record the index where this occurred in the previous attempt
       cp_off <- backwards_event_chunk$index[event_off]
-      event_stops[[i]] <- cp_off-1
+      event_stops[[i]] <- cp_off
       cp_found_stop[[i]] <- TRUE
     }
 
@@ -265,8 +265,8 @@ for(b in seq_len(2)){
 
 
     #find length of event
-    length_of_event <- nrow(trap_data[cp_start:(cp_off-1),])
-    golem::print_dev(paste0("length of data is: ",  nrow(trap_data[cp_start:(cp_off-1),]) ) )
+    length_of_event <- nrow(trap_data[cp_start:(cp_off),])
+    golem::print_dev(paste0("length of data is: ",  nrow(trap_data[cp_start:(cp_off),]) ) )
     #get a logical if event duration is less than 1 or if either of the changepoints were not found
     #this indicates something unusual about the event and we probably do not want it in the analysis
     if(length_of_event <= 0 ||  cp_found_start[[i]] == FALSE || cp_found_stop[[i]] == FALSE || cp_start >= cp_off){
@@ -316,15 +316,15 @@ for(b in seq_len(2)){
       trap_stiff <- nm2pn2
     }
 
-    mean_event_step <-  mean(trap_data$data[cp_start:(cp_off-1)])
+    mean_event_step <-  mean(trap_data$data[cp_start:(cp_off)])
     mean_base_prior <- mean(base_prior)
     baseline_position_before[[i]] <- mean_base_prior
     displacements_absolute[[i]] <- mean_event_step
     displacements_relative[[i]] <- mean_event_step - mean_base_prior
     displacements_marker[[i]]  <- mean(c(cp_start, cp_off))
-    attachment_durations_dp[[i]] <- length(cp_start:(cp_off-1))
-    attachment_durations_s[[i]] <- length(cp_start:(cp_off-1))/hz
-    attachment_durations_ms[[i]] <- length(cp_start:(cp_off-1))/hz*1000
+    attachment_durations_dp[[i]] <- length(cp_start:(cp_off))
+    attachment_durations_s[[i]] <- length(cp_start:(cp_off))/hz
+    attachment_durations_ms[[i]] <- length(cp_start:(cp_off))/hz*1000
     forces_absolute[[i]] <- trap_stiff*(mean_event_step)
     forces_relative[[i]] <- trap_stiff*(mean_event_step-mean_base_prior)
 
@@ -333,7 +333,7 @@ for(b in seq_len(2)){
   } #loop close
 
 
- greater_than_0 <- sum(na.omit(displacements_relative > 0))
+ greater_than_0 <- sum(na.omit(displacements_relative >= 0))
  less_than_0 <- sum(na.omit(displacements_relative <= 0))
 
  did_it_flip <- FALSE

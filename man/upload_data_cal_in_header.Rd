@@ -10,7 +10,8 @@ upload_data_cal_in_header(
   project,
   conditions,
   date,
-  number_of_channels
+  number_of_channels,
+  downsample_by
 )
 }
 \arguments{
