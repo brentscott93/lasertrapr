@@ -133,12 +133,11 @@ mod_covariance_ui <- function(id){
 }
     
 #' covariance Server Functions
-#'
 #' @noRd
+#'
 mod_covariance_server <- function(input, output, session, f){
+
  ns <- session$ns
-
-
  observeEvent(f$obs$path, {
    req(f$obs$path)
     o <- fread(file.path(f$obs$path, "options.csv"))
@@ -218,10 +217,21 @@ mod_covariance_server <- function(input, output, session, f){
   output$overlay_dygraph <- dygraphs::renderDygraph({
     req(trap_data())
     hz <- trap_data()$options$hz[[1]]
-    d <- data.frame(index = (1:nrow(trap_data()$trap)/hz),
+    d <- data.table(index = (1:nrow(trap_data()$trap)/hz),
                     bead_1 = trap_data()$trap$processed_bead_1,
                     bead_2 = trap_data()$trap$processed_bead_2
                     )
+
+    if(nrow(d) >= 1000000 & nrow(d) <= 2000000){
+     ds <- seq(1, nrow(d), by = 2)
+     d <- d[ds]
+    } else if(nrow(d) >= 2000000 & nrow(d) <= 3000000){
+     ds <- seq(1, nrow(d), by = 3)
+     d <- d[ds]
+    } else if(nrow(d) >= 4000000){
+     ds <- seq(1, nrow(d), by = 4)
+     d <- d[ds]
+    }
 
     me_data <- trap_data()$events
     periods_df <- data.table::data.table(

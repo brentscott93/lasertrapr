@@ -11,7 +11,8 @@ simple_upload(
   date,
   ready_for_analysis,
   nm2pn,
-  hz
+  hz,
+  downsample_by
 )
 }
 \arguments{
