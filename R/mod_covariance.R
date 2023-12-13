@@ -4,9 +4,9 @@
 #'
 #' @param id,input,output,session Internal parameters for {shiny}.
 #'
-#' @noRd 
 #'
-#' @importFrom shiny NS tagList 
+#' @importFrom shiny NS tagList
+#' @noRd
 mod_covariance_ui <- function(id){
   ns <- NS(id)
   tagList(
@@ -131,10 +131,10 @@ mod_covariance_ui <- function(id){
   )#taglist clost
  
 }
-    
-#' covariance Server Functions
+
+#' covar hm_model Server Function
 #' @noRd
-#'
+#' @param input,output,session,f module parameters
 mod_covariance_server <- function(input, output, session, f){
 
  ns <- session$ns
@@ -252,7 +252,7 @@ mod_covariance_server <- function(input, output, session, f){
    events <- trap_data()$events
    events$id <- 1:nrow(trap_data()$events)
    events$displacement_nm <- round((me_data$displacement_bead_1_nm + me_data$displacement_bead_2_nm)/2, 1)
-   events$time_on_ms <- round((me_data$attachment_duration_1_ms + me_data$attachment_duration_2_ms)/2, 1)
+   events$time_on_ms <- round((me_data$attachment_duration_bead_1_ms + me_data$attachment_duration_bead_2_ms)/2, 1)
     events$peak_nm_index <- round((events$displacement_marker_1 + events$displacement_marker_2) / 2, 0)/hz
    labels <- events[keep_1 == T & keep_2 == T & event_user_excluded == F]
 
@@ -658,53 +658,97 @@ mod_covariance_server <- function(input, output, session, f){
       req(trap_data())
       measured_events <- trap_data()$events
       measured_events[, displacement_nm := (displacement_bead_1_nm + displacement_bead_2_nm)/2 ]
-      measured_events[, time_on_s := (attachment_duration_1_s + attachment_duration_2_s)/2 ]
-      measured_events <- measured_events[keep_1 == TRUE & keep_2 == TRUE & event_user_excluded == TRUE]
+      measured_events[, time_on_s := (attachment_duration_bead_1_s + attachment_duration_bead_2_s)/2 ]
+      measured_events[, step1 := (substep_1_bead_1_nm + substep_1_bead_2_nm)/2 ]
+      measured_events[, step2 := (substep_2_bead_1_nm + substep_2_bead_2_nm)/2 ]
+      measured_events <- measured_events[keep_1 == TRUE & keep_2 == TRUE & event_user_excluded == FALSE]
       step <-
         ggplot()+
-        geom_dotplot(data = measured_events, aes(displacement_nm),
-                     fill = "grey40",
-                     binwidth = 2)+
+        stat_ecdf(data = measured_events, aes(displacement_nm), color = "red", pad = F)+
+        stat_ecdf(aes(rnorm(1000,
+                            mean = mean(measured_events$displacement_nm),
+                            sd(measured_events$displacement_nm))),
+                  linetype = "dashed")+
         geom_vline(aes(xintercept = mean(measured_events$displacement_nm)), linetype = "dashed")+
         geom_label(aes(mean(measured_events$displacement_nm),
-                       y = 1,
+                       y = 0.9,
                        label = paste0("bar(x)==", round(mean(measured_events$displacement_nm), 1))),
                    parse = TRUE,
                    size = 6)+
-        ggtitle("Displacements")+
-        xlab("nanometers")+
-        ylab('')+
+        ggtitle("Total Displacements")+
+        xlab("nm")+
+        ylab('ECDF')+
         # scale_x_continuous(breaks = sort(c(seq(-100, 100, by = 20), round(mean(measured_events$displacement_nm), 1))))+
-        cowplot::theme_cowplot(18)+
-        theme(
-          axis.text.y = element_blank(),
-          axis.line.y = element_blank(),
-          axis.ticks.y = element_blank()
-        )
+        cowplot::theme_cowplot(14)
+        ## theme(
+        ##   axis.text.y = element_blank(),
+        ##   axis.line.y = element_blank(),
+        ##   axis.ticks.y = element_blank()
+        ## )
 
+      step1 <-
+        ggplot()+
+        stat_ecdf(data = measured_events, aes(step1), color = "red", pad = F)+
+        stat_ecdf(aes(rnorm(1000,
+                            mean = mean(measured_events$step1),
+                            sd(measured_events$step1))),
+                  linetype = "dashed")+
+        geom_vline(aes(xintercept = mean(measured_events$step1, na.rm = TRUE)), linetype = "dashed")+
+        geom_label(aes(mean(measured_events$step1, na.rm = TRUE),
+                       y = 0.9,
+                       label = paste0("bar(x)==", round(mean(measured_events$step1, na.rm = TRUE), 1))),
+                   parse = TRUE,
+                   size = 6)+
+        ggtitle("Substep 1")+
+        xlab("nm")+
+        ylab('ECDF')+
+        # scale_x_continuous(breaks = sort(c(seq(-100, 100, by = 20), round(mean(measured_events$displacement_nm), 1))))+
+        cowplot::theme_cowplot(14)
+        ## theme(
+        ##   axis.text.y = element_blank(),
+        ##   axis.line.y = element_blank(),
+        ##   axis.ticks.y = element_blank()
+        ## )
+
+      step2 <-
+        ggplot()+
+        stat_ecdf(data = measured_events, aes(step2), color = "red", pad = F)+
+        stat_ecdf(aes(rnorm(1000,
+                            mean = mean(measured_events$step2),
+                            sd(measured_events$step2))),
+                  linetype = "dashed")+
+        geom_vline(aes(xintercept = mean(measured_events$step2, na.rm = TRUE)), linetype = "dashed")+
+        geom_label(aes(mean(measured_events$step2, na.rm = TRUE),
+                       y = 0.4,
+                       label = paste0("bar(x)==", round(mean(measured_events$step2, na.rm = TRUE), 1))),
+                   parse = TRUE,
+                   size = 6)+
+        ggtitle("Substep 2")+
+        xlab("nm")+
+        ylab('ECDF')+
+        # scale_x_continuous(breaks = sort(c(seq(-100, 100, by = 20), round(mean(measured_events$displacement_nm), 1))))+
+        cowplot::theme_cowplot(14)
+        ## theme(
+        ##   axis.text.y = element_blank(),
+        ##   axis.line.y = element_blank(),
+        ##   axis.ticks.y = element_blank()
+        ## )
 
       time_on <-
         ggplot()+
-        geom_dotplot(data = measured_events, aes(time_on_s),
-                     fill = "grey40",
-                     binwidth = 10)+
-        geom_vline(aes(xintercept = mean(measured_events$time_on_s)), linetype = "dashed")+
-        geom_label(aes(mean(measured_events$time_on_ms), y = 1,
-                       label = paste0("bar(x)==", round(mean((measured_events$time_on_s), 0)))),
-                   parse = TRUE,
+        stat_ecdf(data = measured_events, aes(time_on_s), color = "red", pad = F)+
+        geom_vline(aes(xintercept = median(measured_events$time_on_s)), linetype = "dashed")+
+        geom_label(aes(x = median(measured_events$time_on_s),
+                       y = 0.9,
+                       label = paste0("Med. = ", round(median(measured_events$time_on_s*1000), 0))),
                    size = 6)+
         ggtitle("Time On")+
-        xlab("milliseconds")+
-        ylab('')+
-        cowplot::theme_cowplot(18)+
-        theme(
-          axis.text.y = element_blank(),
-          axis.line.y = element_blank(),
-          axis.ticks.y = element_blank()
-        )
+        xlab("ms")+
+        ylab('ECDF')+
+        cowplot::theme_cowplot(14)
 
 
-      cowplot::plot_grid(step, time_on)
+      cowplot::plot_grid(step, step1, step2, time_on, nrow = 1)
     })
 
 }

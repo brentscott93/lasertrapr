@@ -174,7 +174,7 @@ mod_split_obs_ui <- function(id){
                      )
                    ),
 
-                   numericInput(ns("downsample"), "Downsample By (factor)", value = 1),
+                   numericInput(ns("downsample_by"), "Downsample By (factor)", value = 1),
                    actionButton(ns("simple_upload_button"),
                                 "Initialize Data",
                                 width = "100%",

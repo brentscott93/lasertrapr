@@ -230,15 +230,15 @@ covariance_hidden_markov_changepoint_analysis <- function(trap_data,
 
 
         report_data  <- "success"
-        str(cp_results$did_it_flip_vec)
+        ## str(cp_results$did_it_flip_vec)
 
-        if(cp_results$did_it_flip_vec[[1]]){
-          trap_data$processed_bead_1 <- trap_data$processed_bead_1*-1
-          hm_model_results$covar_smooth <- hm_model_results$covar_smooth*-1
-          }
-        if(cp_results$did_it_flip_vec[[2]]){
-          trap_data$processed_bead_2 <- trap_data$processed_bead_2*-1
-          }
+        ## if(cp_results$did_it_flip_vec[[1]]){
+        ##   trap_data$processed_bead_1 <- trap_data$processed_bead_1*-1
+        ##   hm_model_results$covar_smooth <- hm_model_results$covar_smooth*-1
+        ##   }
+        ## if(cp_results$did_it_flip_vec[[2]]){
+        ##   trap_data$processed_bead_2 <- trap_data$processed_bead_2*-1
+        ##   }
 
 
         opt_df <- as.data.frame(opt)
@@ -249,12 +249,12 @@ covariance_hidden_markov_changepoint_analysis <- function(trap_data,
         options_cols_to_keep <- names(opt_df)[options_cols_to_keep]
 
         options_df <-
-          o %>%
-          dplyr::select(-c(options_cols_to_keep)) %>%
-          cbind(opt_df) %>%
-          dplyr::mutate( analyzer = 'hm/cp',
+          o |>
+          dplyr::select(-c(options_cols_to_keep)) |>
+          cbind(opt_df) |>
+          dplyr::mutate( analyzer = 'covar',
                         status = 'analyzed',
-                        report = report_data,) %>%
+                        report = report_data,) |>
           dplyr::select(project, conditions, date, obs, everything())
 
         if(is_shiny == T) setProgress(0.95, detail = 'Saving Data')

@@ -57,6 +57,8 @@ prep_ensemble <- function(trap_selected_project,
   
   options_data <- options_data[report == "success" & review == TRUE & include == TRUE]
 
+  n_channels <- unique(options_data$channels)
+
   event_file_paths <- file.path(path.expand("~"),
                                 "lasertrapr",
                                 options_data$project,
@@ -72,7 +74,13 @@ prep_ensemble <- function(trap_selected_project,
         data.table::fread
         )
     )
- 
+
+  if(is.null(n_channels)) n_channels <- 1
+    if(n_channels == 2){
+      measured_events[, keep_add := keep_1+keep_2]
+      measured_events[, keep := ifelse(keep_add == 2, TRUE, FALSE)]
+    }
+
   longest_event_df <- 
     event_files_filtered[keep == TRUE & event_user_excluded == FALSE,
                          .(longest_event = max(cp_time_on_dp)),
@@ -91,20 +99,45 @@ prep_ensemble <- function(trap_selected_project,
                       options_data$date[[i]],
                       options_data$obs[[i]])
     trap_data_path <- file.path(path, "trap-data.csv")
-    trap_trace <- data.table::fread(trap_data_path, select = "processed_bead")$processed_bead
-    measured_events_path <- file.path(path, "measured-events.csv")
-    measured_events <-  data.table::fread(measured_events_path, 
-                                          select = c("conditions",
-                                                     "cp_event_start_dp",
-                                                     "cp_event_stop_dp",
-                                                     "keep",
-                                                     "front_signal_ratio",
-                                                     "back_signal_ratio",
-                                                     "is_positive",
-                                                     "event_user_excluded"))
+    for(b in seq_length(n_channels)){
+      if(n_channels == 1){
+        trap_trace <- data.table::fread(trap_data_path, select = "processed_bead")$processed_bead
+        measured_events_path <- file.path(path, "measured-events.csv")
+        measured_events <-  data.table::fread(measured_events_path,
+                                              select = c("conditions",
+                                                         "cp_event_start_dp",
+                                                         "cp_event_stop_dp",
+                                                         "keep",
+                                                         "front_signal_ratio",
+                                                         "back_signal_ratio",
+                                                         "is_positive",
+                                                         "event_user_excluded"))
 
-    measured_events$id <- 1:nrow(measured_events)
-    measured_events <- measured_events[keep == TRUE & event_user_excluded == FALSE]
+        measured_events$id <- 1:nrow(measured_events)
+        measured_events <- measured_events[keep == TRUE & event_user_excluded == FALSE]
+      } else {
+        trap_trace <- data.table::fread(trap_data_path, select = paste0("processed_bead_", b))[[1]]
+
+        measured_events_path <- file.path(path, "measured-events.csv")
+
+        measured_events <-  data.table::fread(measured_events_path,
+                                              select = c("conditions",
+                                                         paste0("cp_event_start_dp_", b),
+                                                         paste0("cp_event_stop_dp_", b),
+                                                         paste0("keep_", b),
+                                                         "event_user_excluded"))
+
+        measured_events$id <- 1:nrow(measured_events)
+        if(b == 1){
+          measured_events <- measured_events[keep_1 == TRUE & event_user_excluded == FALSE]
+          measured_events$cp_event_start_dp <- measured_events$cp_event_start_dp_1
+          measured_events$cp_event_stop_dp <- measured_events$cp_event_stop_dp_1
+        } else {
+          measured_events <- measured_events[keep_2 == TRUE & event_user_excluded == FALSE]
+          measured_events$cp_event_stop_dp <- measured_events$cp_event_stop_dp_2
+        }
+
+      }
 
     substeps <- list()
     event_ensembles <- list()
@@ -170,16 +203,18 @@ prep_ensemble <- function(trap_selected_project,
                `:=`(project = options_data$project[[i]],
                     conditions = options_data$conditions[[i]],
                     date = options_data$date[[i]],
-                    obs = options_data$obs[[i]])
+                    obs = options_data$obs[[i]],
+                    bead = b)
                ]
       setorder(ensemble, cols = "forward_backward_index")
-      event_ensembles[[event]] <- ensemble
+      event_ensembles[[b]][[event]] <- ensemble
 
-      substeps[[event]] <- data.table(
+      substeps[[b]][[event]] <- data.table(
         project = options_data$project[[i]],
         conditions = options_data$conditions[[i]],
         date = options_data$date[[i]],
         obs = options_data$obs[[i]],
+        bead = b,
         event_id = measured_events$id[[event]],
         prior_2ms_unbound_position_nm = mean_baseline_prior,
         bead_position_substep_1_nm = s1_avg,
@@ -188,16 +223,17 @@ prep_ensemble <- function(trap_selected_project,
         substep_2_nm = s2_avg-s1_avg
       )
 
-      print(paste0("id: ", measured_events$id[[event]], "; substep1: ", s1_avg, "; substep2: ", s2_avg))
+      print(paste0("b = ", b, "id: ", measured_events$id[[event]], "; substep1: ", s1_avg, "; substep2: ", s2_avg))
     }
-    ensemble_data <- data.table::rbindlist(event_ensembles)
+      }
+    ensemble_data <- data.table::rbindlist(lapply(event_ensembles, data.table::rbindlist))
     ensemble_data$ms_extend_s2 <- ms_extend_s2
     ensemble_data$ms_extend_s1 <- ms_extend_s1
     ensemble_data$ms_stroke_to_skip <- ms_2_skip
     ensemble_path <- file.path(path, "ensemble-data.csv")
     data.table::fwrite(ensemble_data, file = ensemble_path, sep = ",")
 
-    substeps_data <- data.table::rbindlist(substeps)
+    substeps_data <- data.table::rbindlist(lapply(substeps, data.table::rbindlist))
     substeps_path <- file.path(path, "substeps.csv")
     data.table::fwrite(substeps_data, file = substeps_path, sep = ",")
   }

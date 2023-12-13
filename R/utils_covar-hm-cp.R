@@ -114,8 +114,8 @@ covar_changepoint <- function(pb_data,
 cp_results <- vector("list")
   did_it_flip_vec <- vector()
 for(b in seq_len(2)){
- current_pb <- pb_data[[b]]
- trap_data <- data.table::data.table(index = seq_along(current_pb), data = current_pb)
+  current_pb <- pb_data[[b]]
+  trap_data <- data.table::data.table(index = seq_along(current_pb), data = current_pb)
 
   event_starts <- vector()
   cp_found_start <- vector()
@@ -131,6 +131,12 @@ for(b in seq_len(2)){
   forces_absolute <- vector()
   forces_relative <- vector()
   baseline_position_before <- vector()
+  v_mean_base_prior_1ms <- vector()
+  v_absolute_substep1 <- vector()
+  v_relative_substep1 <- vector()
+  v_mean_base_after_1ms <- vector()
+  v_absolute_substep2 <- vector()
+  v_relative_substep2 <- vector()
 
 ##   ms1_dp <- hz/1000
 
@@ -159,7 +165,6 @@ for(b in seq_len(2)){
     } else {
        backwards_cp_window_stop <- estimated_stop + median_w_width
     }
-
 
 
     forward_event_chunk <- trap_data[forward_cp_window_start:forward_cp_window_stop,]
@@ -215,7 +220,6 @@ for(b in seq_len(2)){
       }
     }
 
-
     ## plot(forward_cpt_object)
     ## plot(backwards_cpt_object)
 
@@ -255,6 +259,14 @@ for(b in seq_len(2)){
       attachment_durations_s[[i]] <- NA
       attachment_durations_dp[[i]] <- NA
       attachment_durations_ms[[i]] <- NA
+    v_mean_base_prior_1ms[[i]] <- NA
+    v_absolute_substep1[[i]] <- NA
+    v_relative_substep1[[i]] <- NA
+    v_mean_base_after_1ms[[i]] <- NA
+    v_absolute_substep2[[i]] <- NA
+    v_relative_substep2[[i]] <- NA
+      forces_absolute[[i]] <- NA
+      forces_relative[[i]] <- NA
             ## trap_stiffness[[i]] <- NA
             ## myo_stiffness[[i]] <- NA
             keep_event[[i]] <- FALSE
@@ -263,12 +275,11 @@ for(b in seq_len(2)){
             next
     }
 
-
-    #find length of event
+                                        #find length of event
     length_of_event <- nrow(trap_data[cp_start:(cp_off),])
     golem::print_dev(paste0("length of data is: ",  nrow(trap_data[cp_start:(cp_off),]) ) )
-    #get a logical if event duration is less than 1 or if either of the changepoints were not found
-    #this indicates something unusual about the event and we probably do not want it in the analysis
+                                        #get a logical if event duration is less than 1 or if either of the changepoints were not found
+                                        #this indicates something unusual about the event and we probably do not want it in the analysis
     if(length_of_event <= 0 ||  cp_found_start[[i]] == FALSE || cp_found_stop[[i]] == FALSE || cp_start >= cp_off){
       keep <- FALSE
       displacements_relative[[i]] <- NA
@@ -277,6 +288,14 @@ for(b in seq_len(2)){
       attachment_durations_s[[i]] <- NA
       attachment_durations_dp[[i]] <- NA
       attachment_durations_ms[[i]] <- NA
+      v_mean_base_prior_1ms[[i]] <- NA
+      v_absolute_substep1[[i]] <- NA
+      v_relative_substep1[[i]] <- NA
+      v_mean_base_after_1ms[[i]] <- NA
+      v_absolute_substep2[[i]] <- NA
+      v_relative_substep2[[i]] <- NA
+      forces_absolute[[i]] <- NA
+      forces_relative[[i]] <- NA
       ## trap_stiffness[[i]] <- NA
       ## myo_stiffness[[i]] <- NA
       keep_event[[i]] <- FALSE
@@ -285,9 +304,6 @@ for(b in seq_len(2)){
       keep <- TRUE
       keep_event[[i]] <- TRUE
     }
-
-
-
 
 ## periods_df <- data.frame(start = event_starts, stop = event_stops)
 
@@ -305,19 +321,43 @@ for(b in seq_len(2)){
       base_prior_stop <- cp_start - 1
       base_prior <- trap_data$data[1 : base_prior_stop]
     } else {
-      base_prior_start <- event_stops[[(i-1)]] + 1
-      base_prior_stop <- cp_start - 1
-      base_prior <- trap_data$data[base_prior_start : base_prior_stop]
+      if(!is.na(event_stops[i-1])){
+        base_prior_start <- event_stops[[(i-1)]] + 1
+        base_prior_stop <- cp_start - 1
+        base_prior <- trap_data$data[base_prior_start:base_prior_stop]
+      } else {
+        base_prior_start <- cp_start - hz/1000
+        base_prior_stop <- cp_start - 1
+        base_prior <- trap_data$data[base_prior_start:base_prior_stop]
       }
+    }
 
     if(b == 1){
       trap_stiff <- nm2pn
     } else {
       trap_stiff <- nm2pn2
     }
-
+## browser()
+    ms1 <- (hz/1000)*2
     mean_event_step <-  mean(trap_data$data[cp_start:(cp_off)])
     mean_base_prior <- mean(base_prior)
+
+    mean_base_prior_1ms <- mean(trap_data$data[(cp_start-1):((cp_start-ms1)-1)])
+    absolute_substep1 <- mean(trap_data$data[cp_start:(cp_start+ms1)])
+    relative_substep1 <- mean(trap_data$data[cp_start:(cp_start+ms1)]) - mean_base_prior_1ms
+
+    mean_base_after_1ms <- mean(trap_data$data[(cp_off+1):((cp_off+ms1)+1)])
+    absolute_substep2 <- mean(trap_data$data[cp_off:(cp_off-ms1)])
+    relative_substep2 <- mean(trap_data$data[cp_off:(cp_off-ms1)]) - absolute_substep1
+
+    v_mean_base_prior_1ms[[i]] <- mean_base_prior_1ms
+    v_absolute_substep1[[i]] <- absolute_substep1
+    v_relative_substep1[[i]] <- relative_substep1
+
+    v_mean_base_after_1ms[[i]] <- mean_base_after_1ms
+    v_absolute_substep2[[i]] <- absolute_substep2
+    v_relative_substep2[[i]] <- relative_substep2
+
     baseline_position_before[[i]] <- mean_base_prior
     displacements_absolute[[i]] <- mean_event_step
     displacements_relative[[i]] <- mean_event_step - mean_base_prior
@@ -327,39 +367,42 @@ for(b in seq_len(2)){
     attachment_durations_ms[[i]] <- length(cp_start:(cp_off))/hz*1000
     forces_absolute[[i]] <- trap_stiff*(mean_event_step)
     forces_relative[[i]] <- trap_stiff*(mean_event_step-mean_base_prior)
-
-
-
   } #loop close
 
 
  greater_than_0 <- sum(na.omit(displacements_relative >= 0))
  less_than_0 <- sum(na.omit(displacements_relative <= 0))
 
- did_it_flip <- FALSE
- if(greater_than_0 < less_than_0){
-   displacements_absolute <- displacements_absolute*-1
-   displacements_relative <- displacements_relative*-1
-   forces_absolute <- forces_absolute*-1
-   forces_relative <- forces_relative*-1
-   baseline_position_before <- baseline_position_before*-1
-   did_it_flip <- TRUE
- }
-print(paste0("b = ", b, " /did_it_flip = ", did_it_flip))
-print(paste0("greater_than_0 = ", greater_than_0, "less_than_0 = ", less_than_0))
-did_it_flip_vec[[b]] <- did_it_flip
+##  did_it_flip <- FALSE
+##  if(greater_than_0 < less_than_0){
+##    displacements_absolute <- displacements_absolute*-1
+##    displacements_relative <- displacements_relative*-1
+##    forces_absolute <- forces_absolute*-1
+##    forces_relative <- forces_relative*-1
+##    baseline_position_before <- baseline_position_before*-1
+##    did_it_flip <- TRUE
+##  }
+## print(paste0("b = ", b, " /did_it_flip = ", did_it_flip))
+## print(paste0("greater_than_0 = ", greater_than_0, "less_than_0 = ", less_than_0))
+## did_it_flip_vec[[b]] <- did_it_flip
 
- print(did_it_flip_vec)
+ ## print(did_it_flip_vec)
 
  df_names <- c(
+   paste0("substep_1_bead_", b, "_nm") ,
+   paste0("absolute_substep_1_bead_", b, "_nm") ,
+   paste0("baseline_prior_1ms_bead_", b, "_nm") ,
+   paste0("substep_2_bead_", b, "_nm") ,
+   paste0("absolute_substep_2_bead_", b, "_nm") ,
+   paste0("baseline_after_1ms_bead_", b, "_nm") ,
    paste0("displacement_bead_", b, "_nm") ,
    paste0("absolute_displacement_bead_", b, "_nm"),
    paste0("displacement_marker_", b) ,
-   paste0("attachment_duration_",b, "_dp") ,
-   paste0("attachment_duration_",b, "_s"),
-   paste0("attachment_duration_",b, "_ms"),
-   paste0("force_", b, "_pn"),
-   paste0("absolute_force_", b, "_pn"),
+   paste0("attachment_duration_bead_",b, "_dp") ,
+   paste0("attachment_duration_bead_",b, "_s"),
+   paste0("attachment_duration_bead_",b, "_ms"),
+   paste0("force_baed_", b, "_pn"),
+   paste0("absolute_force_bead_", b, "_pn"),
    paste0("keep_", b),
    paste0("cp_event_start_dp_", b),
    paste0("cp_event_stop_dp_", b),
@@ -368,6 +411,12 @@ did_it_flip_vec[[b]] <- did_it_flip
  )
 
  measured_bead <- data.table::data.table(
+                                v_relative_substep1,
+                                v_absolute_substep1,
+                                v_mean_base_prior_1ms,
+                                v_relative_substep2,
+                                v_absolute_substep2,
+                                v_mean_base_after_1ms,
                                 displacements_relative,
                                 displacements_absolute,
                                 displacements_marker,

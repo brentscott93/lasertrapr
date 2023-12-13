@@ -670,6 +670,17 @@ column(3,
     ##     mutate(bead_1 = bead_1 - base$baseline_fit$estimate[1],
     ##            bead_2 = bead_2 - base$baseline_fit$estimate[1])
     ## }
+      #auatomatic downsample to avoid laggy
+    if(nrow(data) >= 1000000 & nrow(data) <= 2000000){
+     ds <- seq(1, nrow(data), by = 2)
+     data <- data[ds]
+    } else if(nrow(data) >= 2000000 & nrow(data) <= 3000000){
+     ds <- seq(1, nrow(data), by = 3)
+     data <- data[ds]
+    } else if(nrow(data) >= 4000000){
+     ds <- seq(1, nrow(data), by = 4)
+     data <- data[ds]
+    }
 
       dg <- dygraphs::dygraph(data,  ylab = "nm", xlab = "Seconds",  main = dg_data$title) |>
         dygraphs::dySeries("bead_1", color = "black") |>

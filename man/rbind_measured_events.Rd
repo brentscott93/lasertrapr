@@ -4,7 +4,7 @@
 \alias{rbind_measured_events}
 \title{Combine and save all "measured-events.csv" files}
 \usage{
-rbind_measured_events(project, save_to_summary = FALSE)
+rbind_measured_events(project, save_to_summary = FALSE, n_channels = 1)
 }
 \arguments{
 \item{project}{a lasertrapr project folder}

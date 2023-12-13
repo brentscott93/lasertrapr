@@ -4,7 +4,7 @@
 \alias{summarize_trap}
 \title{Quick Summary}
 \usage{
-summarize_trap(all_measured_events, by)
+summarize_trap(all_measured_events, by, n_channels = 1)
 }
 \arguments{
 \item{all_measured_events}{a df made from rbind_measured_events}

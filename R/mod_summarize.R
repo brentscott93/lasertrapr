@@ -185,7 +185,7 @@ mod_summarize_server <- function(input, output, session, f){
                                save = 0)
 
   observeEvent(input$go, {
-   # browser()
+   ## browser()
     defend_if_null(f$project_input, ui = 'Please Select a Project', type = 'error')
     defend_if_blank(f$project_input, ui = "Please Select a Project", type = "error")
     withProgress(message = 'Summarizing Project', {
@@ -212,6 +212,7 @@ mod_summarize_server <- function(input, output, session, f){
 
       plot_colors <- purrr::map_chr(paste0('color', seq_along(conditions())), ~input[[.x]])
       analyzer <- unique(opt$analyzer)
+      rv$analyzer <- analyzer
       if(analyzer %in% c("hm/cp", "mini")){
       if(input$split_conditions){
         variables <- strsplit(conditions(), "_")
@@ -290,6 +291,112 @@ mod_summarize_server <- function(input, output, session, f){
       rv$ggoff <- ggoff
 
       rv$summary_plots <- cowplot::plot_grid(ggstep, ggforce, ggton, ggoff, nrow = 1)
+
+     } else if(analyzer == "covar"){
+      if(input$split_conditions){
+        variables <- strsplit(conditions(), "_")
+        number_variables <- sapply(variables, length)
+        var_names <- purrr::map_chr(paste0('var', seq_len(number_variables[[1]])), ~input[[.x]])
+
+        all_measured_events <- rbind_measured_events(project = f$project$name, save_to_summary = FALSE, n_channels = 2)
+        all_measured_events <- split_conditions_column(all_measured_events, var_names = var_names, sep = "_")
+
+        summary_data <- summarize_trap(all_measured_events, by = c("conditions", var_names), n_channels = 2)
+
+        sc <- split_conditions_column(data.frame(conditions=summary_data$conditions), var_names = var_names, sep = "_")
+        data.table::fwrite(sc,
+                           file.path(summary_folder,
+                                     paste(Sys.Date(),
+                                           f$project_input,
+                                           "split-conditions.csv",
+                                           sep = "_")
+                                     )
+                                )
+      } else {
+        all_measured_events <- rbind_measured_events(project = f$project_input, save_to_summary = TRUE, n_channels = 2)
+        summary_data <- summarize_trap(all_measured_events, by = "conditions", n_channels = 2)
+      }
+
+      ## tt <- total_trap_time(f$project_input, is_shiny = TRUE)
+
+      ## summary_data <- merge(summary_data, tt, by = "conditions", all = TRUE)
+
+      purrr::walk2(list(all_measured_events, summary_data),
+            c("all-measured-events.csv", "summary-data.csv"),
+           ~ data.table::fwrite(.x,
+                               file.path(summary_folder,
+                                         paste(Sys.Date(),
+                                               f$project$name,
+                                               .y,
+                                               sep = "_"))))
+
+    all_measured_events[, displacement_nm := (displacement_bead_1_nm + displacement_bead_2_nm)/2 ]
+    all_measured_events[, time_on_s := (attachment_duration_bead_1_s + attachment_duration_bead_2_s)/2 ]
+    all_measured_events[, step1 := (substep_1_bead_1_nm + substep_1_bead_2_nm)/2 ]
+    all_measured_events[, step2 := (substep_2_bead_1_nm + substep_2_bead_2_nm)/2 ]
+
+      rv$all_measured_events <- all_measured_events
+      rv$summary_data <- summary_data
+      golem::print_dev("before colors")
+      setProgress(0.6)
+      ggstep <- plot_ecdf(all_measured_events,
+                          var = "displacement_nm",
+                          colorz = plot_colors,
+                          x_lab = "nanometers",
+                          title = "Total Displacement",
+                          basesize = 18)
+
+      rv$ggstep <- ggstep
+
+      ggstep1 <- plot_ecdf(all_measured_events,
+                          var = "step1",
+                          colorz = plot_colors,
+                          x_lab = "nanometers",
+                          title = "Substep 1",
+                          basesize = 18)
+
+      ggstep2 <- plot_ecdf(all_measured_events,
+                          var = "step2",
+                          colorz = plot_colors,
+                          x_lab = "nanometers",
+                          title = "Substep 2",
+                          basesize = 18)
+
+      setProgress(0.7)
+      ## ggforce <- plot_ecdf(all_measured_events,
+      ##                      var = "force",
+      ##                      colorz = plot_colors,
+      ##                      x_lab = "piconewtons",
+      ##                      title = "Forces",
+      ##                      basesize = 18)
+      ## rv$ggforce <- ggforce
+      setProgress(0.8)
+
+
+      me_fit_ton <- fit_attachment_durations(all_measured_events, colorz = plot_colors)
+
+      ggton <- me_fit_ton$gg
+      rv$ton_rate <- me_fit_ton$rate
+
+
+      ## ggton <- plot_ecdf(all_measured_events,
+      ##                    var = "time_on_ms",
+      ##                    colorz = plot_colors,
+      ##                    x_lab = "milliseconds",
+      ##                    title = "Time On",
+      ##                    basesize = 18)
+
+      rv$ggton <- ggton
+      setProgress(0.9)
+      ## ggoff <- plot_ecdf(all_measured_events,
+      ##                    var = "time_off_ms",
+      ##                    colorz = plot_colors,
+      ##                    x_lab = "milliseconds",
+      ##                    title = "Time Off",
+      ##                    basesize = 18)
+      ## rv$ggoff <- ggoff
+
+      rv$summary_plots <- cowplot::plot_grid(ggstep, ggstep1, ggstep2, ggton, nrow = 1)
 
 } else if(analyzer == "ifc") {
 
@@ -442,6 +549,8 @@ mod_summarize_server <- function(input, output, session, f){
         factor(rv$summary_data$conditions ,
                levels = input$factor_order)
     }
+
+     if(rv$analyzer %in% c("hm/cp", "mini")){
     rv$summary_data |>
       dplyr::arrange(conditions) |>
       dplyr::select("Conditions" = conditions, 
@@ -465,6 +574,39 @@ mod_summarize_server <- function(input, output, session, f){
                   scrollX = TRUE,
                   fixedColumns = list(leftColumns = 2)
                 ))
+    } else if(rv$analyzer == "covar"){
+      req(rv$ton_rate)
+      browser()
+       rate_df <- rv$ton_rate
+         ## dplyr::mutate(ton_rate = round(as.numeric(ton_rate), 0),
+                       ## CI = paste0("(-", boot_ci$k1_low[[1]], "/+", boot_ci$k1_up[[1]], ")")) |>
+         ## dplyr::select(conditions, ton_rate,  CI)
+
+       rate_df |>
+         dplyr::full_join(rv$summary_data) |>
+      dplyr::arrange(conditions) |>
+      dplyr::select("Conditions" = conditions,
+                    "Total Displacement (nm)" = displacement_avg,
+                    "SD Step Size" = displacement_sd,
+                    "Substep 1" = substep_1_avg,
+                    "SD Substep 1" = substep_1_sd,
+                    "Substep 2" = substep_2_avg,
+                    "SD Substep 2" = substep_2_avg,
+                    "Detachment Rate (Hz)" = html_label,
+                    ## "CI" = CI,
+                    "No. Events" = num_events
+      ) |>
+      dplyr::mutate_if(is.numeric, ~round(.,digits = 2)) |>
+      DT::datatable(
+                extensions = 'FixedColumns',
+                options = list(
+                  dom = 't',
+                  scrollX = TRUE,
+                  fixedColumns = list(leftColumns = 2)
+                ))
+
+
+    }
   })
 
 
