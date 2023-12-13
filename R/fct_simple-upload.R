@@ -28,7 +28,8 @@ simple_upload <- function(input_data,
                     nm2pn = NA,
                     analyzer = NA,
                     report = 'not run',
-                    review = NA)
+                    review = NA,
+                    original_filename = input_data$name[[r]])
     
   input_data <- dplyr::arrange(input_data, name)
   data_traces <- purrr::map(input_data$datapath,  data.table::fread)
@@ -40,8 +41,8 @@ simple_upload <- function(input_data,
                     conditions = conditions$name,
                     date = date$name, 
                     raw_bead =  data_traces[[r]][[1]],
-                    trap_position = 0,
-                    original_filename = input_data$datapath[[r]])
+                    trap_position = 0
+                    )
 
 
           if(downsample_by != 1){
@@ -124,7 +125,7 @@ upload_data_cal_in_header <- function(input_data,
                              review = NA,
                              channels = 1,
                              lab = "unknown",
-                             original_filename = input_data$datapath[[r]])
+                             original_filename = input_data$name[[r]])
 
             
              trap_data <- fread(input_data$datapath[[r]],
@@ -163,6 +164,8 @@ upload_data_cal_in_header <- function(input_data,
             dir.create(file.path(date$path, obs))
             
             t$obs <- obs
+
+          ## browser()
           if(downsample_by != 1){
             downsample_by_vec <- seq(1, nrow(t), by = downsample_by)
              t <- t[downsample_by_vec,]

@@ -169,7 +169,7 @@ str(input_sidemenu())
     ## req(ee$analyzer)
     if(is.null(ee$analyzer)) {
      tagList(h4("Data needs to be analyzed before ensemble averaging."))
-    } else if(ee$analyzer == "hm/cp"){
+    } else if(ee$analyzer == "hm/cp" || ee$analyzer == "covar"){
 
       tagList(
         tabBox(side = "right",
@@ -222,7 +222,7 @@ str(input_sidemenu())
   output$prep_tab <- renderUI({
     if(is.null(ee$analyzer)){
    tagList(h4("Data not analyzed"))
-    } else if(ee$analyzer == "hm/cp"){
+    } else if(ee$analyzer == "hm/cp" || ee$analyzer == "covar"){
       tagList(
         sliderInput(ns("ms_extend_s2"),
                     "Avg of ms to extend forward",
@@ -256,7 +256,7 @@ str(input_sidemenu())
   })
 
   output$average_tab <- renderUI({
-    if(is.null(ee$analyzer) || ee$analyzer == "hm/cp"){
+    if(is.null(ee$analyzer) || ee$analyzer == "hm/cp" || ee$analyzer == "covar"){
       tagList(
        fluidRow(column(6,
         numericInput(ns("length_of_ensembles_forward"),
