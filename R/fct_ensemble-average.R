@@ -13,7 +13,9 @@ prep_ensemble <- function(trap_selected_project,
                           ms_extend_s1 = 3, 
                           ms_2_skip,
                           hz,
-                          is_shiny = TRUE){
+                          is_shiny = TRUE,
+                          tmin_ms,
+                          analyzer ){
   # trap_selected_project <- "~/lasertrapr/project_myoV-phosphate"
   # ms_extend_s2 = 3
   # ms_extend_s1 = 3
@@ -27,7 +29,14 @@ prep_ensemble <- function(trap_selected_project,
       recursive = TRUE)
   
   file.remove(old_files$path)
-                      
+
+  old_files <-
+    lasertrapr:::list_files(
+      trap_selected_project,
+      pattern = "substeps.csv",
+      recursive = TRUE)
+
+  file.remove(old_files$path)
   # trap_data_paths <- 
   #   lasertrapr:::list_files(
   #     trap_selected_project,
@@ -77,15 +86,20 @@ prep_ensemble <- function(trap_selected_project,
 
   if(is.null(n_channels)) n_channels <- 1
     if(n_channels == 2){
-      measured_events[, keep_add := keep_1+keep_2]
-      measured_events[, keep := ifelse(keep_add == 2, TRUE, FALSE)]
-    }
+      event_files_filtered[, keep_add := keep_1+keep_2]
+      event_files_filtered[, keep := ifelse(keep_add == 2, TRUE, FALSE)]
+
+  longest_event_df <-
+    event_files_filtered[keep == TRUE & event_user_excluded == FALSE,
+                         .(longest_event = max(c(attachment_duration_bead_1_dp, attachment_duration_bead_2_dp))),
+                         by = conditions]
+    } else {
 
   longest_event_df <- 
     event_files_filtered[keep == TRUE & event_user_excluded == FALSE,
                          .(longest_event = max(cp_time_on_dp)),
                          by = conditions]
-
+}
   dp_extend_s2 <- ms_extend_s2*hz/1000
   dp_extend_s1 <- ms_extend_s1*hz/1000
   
@@ -99,7 +113,9 @@ prep_ensemble <- function(trap_selected_project,
                       options_data$date[[i]],
                       options_data$obs[[i]])
     trap_data_path <- file.path(path, "trap-data.csv")
-    for(b in seq_length(n_channels)){
+    substeps_list <- vector("list")
+    event_ensembles_list <- vector("list")
+    for(b in seq_len(n_channels)){
       if(n_channels == 1){
         trap_trace <- data.table::fread(trap_data_path, select = "processed_bead")$processed_bead
         measured_events_path <- file.path(path, "measured-events.csv")
@@ -108,9 +124,9 @@ prep_ensemble <- function(trap_selected_project,
                                                          "cp_event_start_dp",
                                                          "cp_event_stop_dp",
                                                          "keep",
-                                                         "front_signal_ratio",
-                                                         "back_signal_ratio",
-                                                         "is_positive",
+                                                         ## "front_signal_ratio",
+                                                         ## "back_signal_ratio",
+                                                         ## "is_positive",
                                                          "event_user_excluded"))
 
         measured_events$id <- 1:nrow(measured_events)
@@ -134,11 +150,14 @@ prep_ensemble <- function(trap_selected_project,
           measured_events$cp_event_stop_dp <- measured_events$cp_event_stop_dp_1
         } else {
           measured_events <- measured_events[keep_2 == TRUE & event_user_excluded == FALSE]
+          measured_events$cp_event_start_dp <- measured_events$cp_event_start_dp_2
           measured_events$cp_event_stop_dp <- measured_events$cp_event_stop_dp_2
         }
 
       }
 
+        measured_events[, event_length := (cp_event_stop_dp-cp_event_start_dp)+1]
+    measured_events <- measured_events[event_length >= (tmin_ms*(hz/1000))]
     substeps <- list()
     event_ensembles <- list()
     for(event in seq_len(nrow(measured_events))){
@@ -186,16 +205,16 @@ prep_ensemble <- function(trap_selected_project,
       forward_ensemble[,
                        `:=`(direction = "forward",
                             forward_backward_index = -(ms_10*5):(longest_event-1),
-                            event_index = event,
-                            signal_ratio =  measured_events$front_signal_ratio[[event]])
+                            event_index = event)
+                            ## signal_ratio =  measured_events$front_signal_ratio[[event]])
                        ]
       
       backwards_ensemble <- rbind(backwards_event, after_backwards)
       backwards_ensemble[,
                          `:=`(direction = "backwards",
                               forward_backward_index = longest_event:((2*longest_event)+((ms_10*5)-1)),
-                              event_index = event,
-                              signal_ratio = measured_events$back_signal_ratio[[event]])
+                              event_index = event)
+                              ## signal_ratio = measured_events$back_signal_ratio[[event]])
                          ]
       
       ensemble <-  rbind(forward_ensemble, backwards_ensemble)
@@ -206,10 +225,15 @@ prep_ensemble <- function(trap_selected_project,
                     obs = options_data$obs[[i]],
                     bead = b)
                ]
-      setorder(ensemble, cols = "forward_backward_index")
-      event_ensembles[[b]][[event]] <- ensemble
 
-      substeps[[b]][[event]] <- data.table(
+      if(analyzer == "covar"){
+        ensemble$data <- ensemble$data - mean_baseline_prior
+      }
+
+      setorder(ensemble, cols = "forward_backward_index")
+      event_ensembles[[event]] <- ensemble
+
+      substeps[[event]] <- data.table(
         project = options_data$project[[i]],
         conditions = options_data$conditions[[i]],
         date = options_data$date[[i]],
@@ -225,17 +249,38 @@ prep_ensemble <- function(trap_selected_project,
 
       print(paste0("b = ", b, "id: ", measured_events$id[[event]], "; substep1: ", s1_avg, "; substep2: ", s2_avg))
     }
-      }
-    ensemble_data <- data.table::rbindlist(lapply(event_ensembles, data.table::rbindlist))
-    ensemble_data$ms_extend_s2 <- ms_extend_s2
-    ensemble_data$ms_extend_s1 <- ms_extend_s1
-    ensemble_data$ms_stroke_to_skip <- ms_2_skip
-    ensemble_path <- file.path(path, "ensemble-data.csv")
-    data.table::fwrite(ensemble_data, file = ensemble_path, sep = ",")
 
-    substeps_data <- data.table::rbindlist(lapply(substeps, data.table::rbindlist))
-    substeps_path <- file.path(path, "substeps.csv")
-    data.table::fwrite(substeps_data, file = substeps_path, sep = ",")
+      event_ensembles <- data.table::rbindlist(event_ensembles)
+
+      event_ensembles$ms_extend_s2 <- ms_extend_s2
+      event_ensembles$ms_extend_s1 <- ms_extend_s1
+      event_ensembles$ms_stroke_to_skip <- ms_2_skip
+      ensemble_path <- file.path(path, "ensemble-data.csv")
+
+      if(file.exists(ensemble_path)){
+        data.table::fwrite(event_ensembles, file = ensemble_path, sep = ",", append = TRUE)
+      } else {
+        data.table::fwrite(event_ensembles, file = ensemble_path, sep = ",")
+      }
+
+      substeps <- data.table::rbindlist(substeps)
+      substeps_path <- file.path(path, "substeps.csv")
+      if(file.exists(substeps_path)){
+        data.table::fwrite(substeps, file = substeps_path, sep = ",", append = TRUE)
+      } else {
+        data.table::fwrite(substeps, file = substeps_path, sep = ",")
+      }
+    }
+    ## event_ensembles_list <- data.table::rbindlist(lapply(event_ensembles_list, data.table::rbindlist))
+    ## event_ensembles_list$ms_extend_s2 <- ms_extend_s2
+    ## event_ensembles_list$ms_extend_s1 <- ms_extend_s1
+    ## event_ensembles_list$ms_stroke_to_skip <- ms_2_skip
+    ## ensemble_path <- file.path(path, "ensemble-data.csv")
+    ## data.table::fwrite(event_ensembles_list, file = ensemble_path, sep = ",")
+
+    ## substeps_list <- data.table::rbindlist(lapply(substeps_list, data.table::rbindlist))
+    ## substeps_path <- file.path(path, "substeps.csv")
+    ## data.table::fwrite(substeps_list, file = substeps_path, sep = ",")
   }
 }
 
@@ -259,37 +304,61 @@ avg_ensembles <- function(project, is_shiny = TRUE){
   ee_backwards_data <- list()
   for(i in 1:length(con)){
     if(is_shiny) incProgress(1/(length(con)*2), detail = paste0("Reading ensembles from ", con[[i]]))
-     
+
     ee_paths <- list.files(path = file.path(project_path, con[[i]]),
                            recursive = TRUE,
                            full.names = TRUE, 
                            pattern = "ensemble-data.csv")
-    
-    ee_con_data <- data.table::rbindlist(lapply(ee_paths , ee_fread, is_shiny=is_shiny)) 
+
+    ee_forwards <- vector("list")
+    ee_backwards <- vector("list")
+    for(f in seq_along(ee_paths)){
+      ee_con_data <- ee_fread(ee_paths[[f]], is_shiny)
       
-    
-    ee_forward_data[[i]] <- ee_con_data[direction == "forward",  
-                                        .(avg = mean(data, na.rm = TRUE),
-                                          n = .N,
-                                          sd = sd(data, na.rm = TRUE),
-                                          se = sd(data, na.rm = TRUE)/sqrt(.N)),
-                                        by = .(conditions, direction, ensemble_index, forward_backward_index)]
-    
-    ee_backwards_data[[i]] <- ee_con_data[direction == "backwards",  
-                                          .(avg = mean(data, na.rm = TRUE),
-                                            n = .N,
-                                            sd = sd(data, na.rm = TRUE),
-                                            se = sd(data, na.rm = TRUE)/sqrt(.N)),
-                                          by = .(conditions, direction, ensemble_index, forward_backward_index)]
-    rm(ee_con_data)
-    
+
+      ee_forwards[[f]] <- ee_con_data[direction == "forward",
+                                      .(data = mean(data, na.rm = TRUE)),
+                                        ## n = .N,
+                                        ## sd = sd(data, na.rm = TRUE),
+                                        ## se = sd(data, na.rm = TRUE)/sqrt(.N)),
+                                      by = .(conditions, direction, ensemble_index, forward_backward_index)]
+
+      ee_backwards[[f]] <- ee_con_data[direction == "backwards",
+                                       .(data = mean(data, na.rm = TRUE)),
+                                         ## n = .N,
+                                         ## sd = sd(data, na.rm = TRUE),
+                                         ## se = sd(data, na.rm = TRUE)/sqrt(.N)),
+                                       by = .(conditions, direction, ensemble_index, forward_backward_index)]
+      rm(ee_con_data)
+
+    }
+    eef <- data.table::rbindlist(ee_forwards)
+    eef <- eef[direction == "forward",
+               .(avg = mean(data, na.rm = TRUE),
+                 ## n = .N,
+                 sd = sd(data, na.rm = TRUE),
+                 se = sd(data, na.rm = TRUE)/sqrt(.N)),
+               by = .(conditions, direction, ensemble_index, forward_backward_index)]
+
+    ee_forward_data[[i]] <- eef
+
+    eeb <- data.table::rbindlist(ee_backwards)
+    eeb <- eeb[direction == "backwards",
+               .(avg = mean(data, na.rm = TRUE),
+                 ## n = .N,
+                 sd = sd(data, na.rm = TRUE),
+                 se = sd(data, na.rm = TRUE)/sqrt(.N)),
+               by = .(conditions, direction, ensemble_index, forward_backward_index)]
+
+    ee_backwards_data[[i]] <- eeb
   }
   if(is_shiny) incProgress(1/(length(con)*2), detail = paste0("Combining all data", con[[i]]))
   ee_backwards_data <- data.table::rbindlist(ee_backwards_data)
   ee_forward_data <- data.table::rbindlist(ee_forward_data)
   forward_backward <- rbind(ee_forward_data, ee_backwards_data)
   print("Completed Avg")
-   return(forward_backward)
+  str(forward_backward)
+  return(forward_backward)
 }
 
 
@@ -306,7 +375,7 @@ avg_ensembles <- function(project, is_shiny = TRUE){
 #' @noRd
 fit_ensembles <- function(data, fit, hz, max_l_forward, max_l_backwards, is_shiny = TRUE){
   print("starting fits")
-
+## browser()
 
   if(is_shiny) incProgress(0.25, detail = "Fitting Forwards...")
 
@@ -318,14 +387,17 @@ fit_ensembles <- function(data, fit, hz, max_l_forward, max_l_backwards, is_shin
                         ensemble_index, 
                         avg, 
                         sd, 
-                        se, 
-                        n)]
+                        se
+                        ## n
+                        )]
   
   forward_nest <- forward_avg[, .(ensemble_data = list(.SD)), by = conditions]
   
   forward_nest[, `:=`(ensemble_k1_prep = lapply(ensemble_data, prep_forward_ensemble_exp, hz = hz, max_l = max_l_forward),
-                      avg_tail = vapply(ensemble_data, function(x) mean(tail(x$avg, -100)), FUN.VALUE = numeric(1)),
-                      n = vapply(ensemble_data, function(x) unique(x$n),  FUN.VALUE = numeric(1)))]
+                      avg_tail = vapply(ensemble_data, function(x) mean(tail(x$avg, -100)), FUN.VALUE = numeric(1))
+                      ## n = vapply(ensemble_data, function(x) unique(x$n),  FUN.VALUE = numeric(1)))
+                      )
+               ]
   
   if(fit == "2exp"){
 
@@ -339,6 +411,12 @@ fit_ensembles <- function(data, fit, hz, max_l_forward, max_l_backwards, is_shin
                                          fit_forward_ee_1exp, 
                                          start = list(d1 = 5, d2 = 2, k1 = 100))
                 ]
+  } else if(fit == "3exp"){
+
+    forward_nest[, forward_fit := lapply(ensemble_k1_prep,
+                                         fit_forward_ee_3exp)
+                 ]
+
   }
   
   
@@ -361,15 +439,18 @@ fit_ensembles <- function(data, fit, hz, max_l_forward, max_l_backwards, is_shin
                         ensemble_index, 
                         avg, 
                         sd, 
-                        se, 
-                        n)]
+                        se
+                        ## n
+                        )]
   
   backwards_nest <- backwards_avg[, .(ensemble_data = list(.SD)), by = conditions]
   
   backwards_nest[, `:=`(ensemble_k2_prep = lapply(ensemble_data, prep_backwards_ensemble_exp, hz = hz, max_l = max_l_backwards),
                         backwards_baseline_shifted = lapply(ensemble_data, prep_backwards_baseline_shift, hz = hz),
-                        avg_head = vapply(ensemble_data, function(x) mean(head(x$avg, 100)), FUN.VALUE = numeric(1)),
-                        n = vapply(ensemble_data, function(x) unique(x$n),  FUN.VALUE = numeric(1)))]
+                        avg_head = vapply(ensemble_data, function(x) mean(head(x$avg, 100)), FUN.VALUE = numeric(1))
+                        ## n = vapply(ensemble_data, function(x) unique(x$n),  FUN.VALUE = numeric(1)))
+                        )
+                 ]
   
   backwards_nest[, backwards_fit := lapply(ensemble_k2_prep, 
                                            fit_backwards_ee_1exp, 

@@ -31,8 +31,8 @@ simulate_single_molecule_trap_data <- function(n,
                                                adp_release,
                                                atp_binding, 
                                                time_off){
-  
-# n = 100
+ ## browser()
+# n = 100r
 # signal_to_noise = 2.5
 # hz = 5000
 # baseline = list(mean = 0, sd = 8)
@@ -64,9 +64,9 @@ simulate_single_molecule_trap_data <- function(n,
                               key = "baseline",
                               key_value = baseline$mean, 
                               state = 1)
-    
+
     step_size <- round(rnorm(1, mean = displacement$mean, sd = displacement$sd), 2)
-    
+
     if(pi_release[[1]] != "uncoupled"){
       #on times
       pi <- round(
@@ -82,9 +82,12 @@ simulate_single_molecule_trap_data <- function(n,
       
   
       if(pi_release$occurs == "before"){
-        pi_release_df <- data.frame(data = rnorm(pi_release_time, mean = baseline$mean, sd = sqrt((baseline$sd^2)/signal_to_noise)),
+        pi_brownian_capture <- round(rnorm(1, mean = 0, sd = displacement$sd), 2)
+        step_size <- pi_brownian_capture+displacement$mean
+        ## pi_brownian_capture <- round(rnorm(1, mean = 0, sd = displacement$sd), 2)
+        pi_release_df <- data.frame(data = rnorm(pi_release_time, pi_brownian_capture, sd = sqrt((baseline$sd^2)/signal_to_noise)),
                                     key = 'pi_release',
-                                    key_value = baseline$mean, 
+                                    key_value = pi_brownian_capture,
                                     state = 2)
       } else if(pi_release$occurs == "after"){
         pi_release_df <- data.frame(data = rnorm(pi_release_time, mean = step_size, sd = sqrt((baseline$sd^2)/signal_to_noise)),
