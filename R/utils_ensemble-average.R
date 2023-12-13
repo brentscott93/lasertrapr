@@ -20,7 +20,7 @@ prep_forward_ensemble_exp <- function(x, max_l, hz){
       avg,
       sd,
       se,
-      n,
+      ## n,
       time = ensemble_index/hz)]
 }
 
@@ -77,6 +77,62 @@ fit_forward_ee_2exp <- function(ee_data){
   return(fit)
 }
 
+
+
+#' @noRd
+fit_forward_ee_3exp <- function(ee_data){
+  ## browser()
+  start_list <- list(d1 = 1, d2 = 2, d3 = 3, k1 = 1000, k2 = 10, k3 = 70)
+  fit <- try(minpack.lm::nlsLM(avg ~ (d1*(1 - exp(-k1 * time))) + (d2*(1 - exp(-k2 * time))) + (d3*(1 - exp(-k3 * time))),
+                               data = ee_data,
+                               start = start_list,
+                               control = minpack.lm::nls.lm.control(maxiter = 1000)
+                               ),
+             silent = TRUE)
+
+  if(class(fit)=="try-error"){
+   start_list <- list(d1 = 1, d2 = 5, d3 = 2, k1 = 100, k2 = 100, k3 = 7)
+  fit <- try(minpack.lm::nlsLM(avg ~ (d1*(1 - exp(-k1 * time))) + (d2*(1 - exp(-k2 * time))) + (d3*(1 - exp(-k3 * time))),
+                                 data = ee_data,
+                                 start = start_list,
+                                 control = minpack.lm::nls.lm.control(maxiter = 1000)
+                                 ),
+               silent = TRUE)
+  }
+
+  if(class(fit)=="try-error"){
+    counter <- 1
+    grid_search <- expand.grid(c(5, 10, 15), c(1, 5, 10), c(1, 5, 10),
+                               c(1000, 100, 5000, 1),
+                               c(100, 1, 50, 1000),
+                               c(1, 100, 1000, 50))
+    while(counter <= 100){
+      samp_row <- sample(1:nrow(grid_search), 1)
+      start_list <- grid_search[samp_row,]
+      starter <- list(d1 = start_list[, 1],
+                      d2 = start_list[, 2],
+                      d3 = start_list[, 3],
+                      k1 = start_list[, 4],
+                      k2 = start_list[, 5],
+                      k3 = start_list[, 6])
+
+  fit <- try(minpack.lm::nlsLM(avg ~ (d1*(1 - exp(-k1 * time))) + (d2*(1 - exp(-k2 * time))) + (d3*(1 - exp(-k3 * time))),
+                                   data = ee_data,
+                                   start = starter,
+                                   control = minpack.lm::nls.lm.control(maxiter = 1000)
+                                   ),
+                 silent = TRUE)
+      if(class(fit)=="try-error"){
+        counter <- counter + 1
+      } else {
+        counter <- 101
+      }
+    }
+  }
+
+  return(fit)
+}
+
 #' @noRd
 prep_backwards_ensemble_exp <- function(x, max_l, hz){
   x[ensemble_index <= 0 & ensemble_index >= -max_l,
@@ -84,7 +140,7 @@ prep_backwards_ensemble_exp <- function(x, max_l, hz){
       avg,
       sd,
       se,
-      n,
+      ## n,
       time = sort(seq(0, by = -1/hz, along.with = ensemble_index)))]
 }
 
@@ -95,7 +151,7 @@ prep_backwards_baseline_shift <- function(x, hz){
       avg,
       sd,
       se,
-      n,
+      ## n,
       time = seq(1/hz, by = 1/hz, along.with = ensemble_index))]
 }
 #' @noRd

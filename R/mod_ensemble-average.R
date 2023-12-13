@@ -245,6 +245,7 @@ str(input_sidemenu())
                     max = 10,
                     step = 1,
                     width = "100%"),
+        numericInput(ns("tmin_ms"), label = "Tmin (ms)", value = 5, step = 1),
         actionButton(ns("prep_ensemble"), "Prep Ensembles", width = "100%", icon = icon("align-justify"))
       )
     } else if(ee$analyzer == "mini"){
@@ -276,7 +277,7 @@ str(input_sidemenu())
         shinyWidgets::radioGroupButtons(
                         inputId = ns('fit'),
                         label = "Fit Exponential?",
-                        choices = c("1exp", "2exp"),
+                        choices = c("1exp", "2exp", "3exp"),
                         justified = TRUE,
                         checkIcon = list(
                           yes = tags$i(class = "fa fa-check-square",
@@ -290,6 +291,9 @@ str(input_sidemenu())
 
         conditionalPanel("input.fit == '2exp'", ns=ns,
                          withMathJax(helpText("$$ y = d_1(1-e^{-k_0x}) + d_2(1-e^{-k_1x}) $$"))),
+
+        conditionalPanel("input.fit == '3exp'", ns=ns,
+                         withMathJax(helpText("$$ y = d_1(1-e^{-k_1x}) + d_2(1-e^{-k_2x}) + d_3(1-e^{-k_3x}) $$"))),
 
         actionButton(ns("avg_ensembles"), "Avg Ensembles", width = "100%", style  = "margin-top: 25px", icon = icon("calculator"))
       )
@@ -335,12 +339,14 @@ str(input_sidemenu())
     
     withProgress(message = "Preparing Ensembles", {
 
-      if(analyzer == "hm/cp"){
+      if(analyzer == "hm/cp" || analyzer == "covar"){
       prep_ensemble(trap_selected_project = f$project$path,
                     ms_extend_s2 = input$ms_extend_s2, 
                     ms_extend_s1 = input$ms_extend_s1, 
                     ms_2_skip = input$ms_2_skip,
-                    hz = ee$hz)
+                    hz = ee$hz,
+                    tmin_ms = input$tmin_ms,
+                    analyzer = analyzer )
       } else if(analyzer == "mini"){
         align_mini_events(project = f$project$name, is_shiny = TRUE)
       } else {
@@ -382,7 +388,7 @@ str(input_sidemenu())
      withProgress(message = "Averaging Ensembles", {
        ## browser()
 
-       if(analyzer == "hm/cp"){
+       if(analyzer == "hm/cp" || analyzer == "covar"){
        print(f$project_path)
        ee$data <- avg_ensembles(project = f$project_input)
        if(is.null(input$fit) || input$fit == "None"){
