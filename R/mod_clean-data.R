@@ -203,53 +203,74 @@ tagList(
                ),
 
 )}
+## if(o$data$lab == "lu")
+
         })
 
   # decide which nm conversion input to draw
   # depending on options listed in options.csv
-    output$nm_conversion <- renderUI({
-        req(substring(f$obs_input, 1, 3) == 'obs')
-        req(o$data)
-        if(file.exists(file.path(f$obs$path, "header.csv"))){
+  output$nm_conversion <- renderUI({
+    req(substring(f$obs_input, 1, 3) == 'obs')
+    req(o$data)
+    if(o$data$lab == "lumicks"){
 
-            if(o$data$channels == 2){
-                
-                tagList(
-                    fluidRow(style = "padding-top: 23px;",
-                        column(4, style = "padding-left: 5px; padding-right: 5px;",
-                               verbatimTextOutput(ns("options_hz"))
-                               ),
-                        column(4, style = "padding-left: 5px; padding-right: 5px;",
-                               verbatimTextOutput(ns("nm_v1"))
-                               ),
-                         column(4, style = "padding-left: 5px; padding-right: 5px;",
-                               verbatimTextOutput(ns("nm_v2"))
-                               )
-                      )
-                    )
-                  
-            } else {
-                tagList(
-                    fluidRow(
-                        column(6, 
-                               verbatimTextOutput(ns("options_hz"))
-                               ),
-                        column(6, 
-                               verbatimTextOutput(ns("nm_v1"))
-                               )
-                    )
-                    )
-            }
+      tagList(
+        column(6,
+               numericInput(ns('mv2nm'),
+                            'Step Cal (nm/mV)',
+                            value = 1,
+                            width = '100%')
+               ),
+        column(6,
+               numericInput(ns('nm2pn'),
+                            'Stiffness (pN/nm)',
+                            value = 1,
+                            width = '100%')
+               )
+      )
+
+    } else {
+      if(file.exists(file.path(f$obs$path, "header.csv"))){
+
+        if(o$data$channels == 2){
+
+          tagList(
+            fluidRow(style = "padding-top: 23px;",
+                     column(4, style = "padding-left: 5px; padding-right: 5px;",
+                            verbatimTextOutput(ns("options_hz"))
+                            ),
+                     column(4, style = "padding-left: 5px; padding-right: 5px;",
+                            verbatimTextOutput(ns("nm_v1"))
+                            ),
+                     column(4, style = "padding-left: 5px; padding-right: 5px;",
+                            verbatimTextOutput(ns("nm_v2"))
+                            )
+                     )
+          )
+
         } else {
+          tagList(
+            fluidRow(
+              column(6,
+                     verbatimTextOutput(ns("options_hz"))
+                     ),
+              column(6,
+                     verbatimTextOutput(ns("nm_v1"))
+                     )
+            )
+          )
+        }
+      } else {
 
-            tagList(
-              numericInput(ns('mv2nm'), 
-                             'Step Cal (nm/V)', 
-                             value = 1,
-                           width = '100%')
-              )
-            }
-        })
+        tagList(
+          numericInput(ns('mv2nm'),
+                       'Step Cal (nm/V)',
+                       value = 1,
+                       width = '100%')
+        )
+      }
+    }
+  })
 
         output$nm_v1 <- renderText({
             req(o$data)
@@ -559,6 +580,29 @@ column(3,
 
         } else if(o$data$channels == 2){
 
+          if(o$data$lab == "lumicks"){
+
+            mv2nm <- input$mv2nm
+            mv2nm2 <- input$mv2nm
+
+            nm2pn <- input$nm2pn
+            nm2pn2 <- input$nm2pn
+
+            # the lumicks data is uploaded in force (pN)
+            # the "raw data" column is initially in pN, not mV
+            # so
+            trap_data <- trap_data[, .(
+              time_sec = .I/hz(),
+              bead_1 = raw_bead_1/as.numeric(nm2pN),
+              bead_2 = raw_bead_2/as.numeric(nm2pN)
+            )
+            ]
+
+            if(input$flip_trace == "y"){
+              trap_data$bead_1 <- trap_data$bead_1*-1
+              trap_data$bead_2 <- trap_data$bead_2*-1
+            }
+          } else {
         if(has_header){
          mv2nm <- o$data$mv2nm
          mv2nm2 <- o$data$mv2nm2
@@ -578,6 +622,7 @@ column(3,
           trap_data$bead_2 <- trap_data$bead_2*-1
         }
 
+          }
         }
 
 
