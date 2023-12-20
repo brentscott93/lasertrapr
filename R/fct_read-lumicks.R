@@ -1,9 +1,13 @@
 #' @noRd
-read_lumicks <- function(input_data, project, conditions, date, downsample_by=5){
+read_lumicks <- function(input_data,
+                         project,
+                         conditions,
+                         date,
+                         downsample_by=5){
 
 
     withProgress(message = 'Initializing Data', value = 0, {
-       ## browser()
+       browser()
         for(r in seq_along(input_data$datapath)){
 
             shiny::incProgress(1/nrow(input_data))
@@ -11,19 +15,20 @@ read_lumicks <- function(input_data, project, conditions, date, downsample_by=5)
 
           lumicks <- rhdf5::h5read(input_data$datapath[[r]], name = "Force HF")
 
-          cal <- rhdf5::h5read(input_data$datapath[[r]], name = "Calibration/1")
+          l_dt <- data.table(t1 = lumicks$`Force 1x`,
+                             t2 = lumicks$`Force 2x`)
 
-          cal1 <- cal$`Force 1x`
-          cal2 <- cal$`Force 2x`
+          ## cal <- rhdf5::h5read(input_data$datapath[[r]], name = "Calibration/1")
+
+          ## cal1 <- cal$`Force 1x`
+          ## cal2 <- cal$`Force 2x`
 
           orig_hz <- 78125
-          new_hz <- hz/downsample_by
+          new_hz <- round(orig_hz/downsample_by)
           downsample_points <- seq(1, nrow(l_dt), by = downsample_by)
-          l_dt <- data.frame(t1 = lumicks$`Force 1x`,
-                             t2 = lumicks$`Force 2x`)
           l_dt <- l_dt[downsample_points]
 
-          t <- data.frame(project = project$name,
+          t <- data.table(project = project$name,
                           conditions = conditions$name,
                           date = date$name,
                           obs = NA,
@@ -38,10 +43,10 @@ read_lumicks <- function(input_data, project, conditions, date, downsample_by=5)
                              hz = new_hz,
                              processor = NA,
                              include = NA,
-                             ## mv2nm = ###,
-                             ## nm2pn = ###,
-                             ## mv2nm2 = ###,
-                             ## nm2pn2 = ###,
+                             mv2nm = NA,
+                             nm2pn = NA,
+                             mv2nm2 = NA,
+                             nm2pn2 = NA,
                              analyzer = NA,
                              report = 'not run',
                              review = NA,

@@ -19,6 +19,7 @@ mod_split_obs_ui <- function(id){
                                  inputId = ns("upload_method"),
                                  label = 'Method',
                                  choices = c("Upload" = "upload",
+                                             "Lumicks" = "lumicks",
                                              "Split Obs" = "split_obs"),
                                  direction = "horizontal",
                                  width = "100%",
@@ -181,6 +182,34 @@ mod_split_obs_ui <- function(id){
                                 icon = icon("play-circle"),
                                 style = 'margin-top: 25px;')
                  ), #conditional close
+
+                 conditionalPanel(
+                   condition = " input.upload_method == 'lumicks'", ns = ns,
+
+                   fluidRow(
+                     column(12,
+                            shinyFiles::shinyFilesButton(ns("file_input_lumicks"),
+                                                         label = "Browse for H5...",
+                                                         title = "Select one or more file",
+                                                         multiple = TRUE,
+                                                         style = "width: 100%; margin-bottom: 5px;"),
+                            )
+                   ),
+                   fluidRow(
+                     column(6,
+
+
+                   numericInput(ns("downsample_lumicks"), "Downsample By (factor)", value = 1)
+                   ),
+                   column(6,
+                   actionButton(ns("lumicks_upload"),
+                                "Initialize Data",
+                                width = "100%",
+                                icon = icon("play-circle"),
+                                style = 'margin-top: 25px;')
+                   )
+                   )
+                 ), #conditional close
                  conditionalPanel(
                    condition = " input.upload_method == 'split_obs'", ns = ns,
 
@@ -320,6 +349,12 @@ mod_split_obs_server <- function(input, output, session, f){
                     session = session)
 
 
+    shinyFileChoose(input = input,
+                    id = "file_input_lumicks",
+                    roots = c(home="/home"),
+                    defaultRoot = "home",
+                    defaultPath = "",
+                    session = session)
 
     ## header cal info
     ## these values correspond to the LINE NUMBERS where the info can be found in the headers of the data files
@@ -1031,7 +1066,43 @@ mod_split_obs_server <- function(input, output, session, f){
     showNotification(ui = "Simulation data saved", type = "message")
     
   })
-  
+
+
+
+############## read lumicks
+
+    observeEvent(input$lumicks_upload, {
+
+      defend_if_empty(f$project, "No 'Project' folder selected. Please select a folder with the folder chooser above.")
+      defend_if_empty(f$conditions, "No 'Conditions' folder selected. Please select a folder with the folder chooser above.")
+      defend_if_empty(f$date, "No 'Date' folder selected. Please select a folder with the folder chooser above.")
+      ## defend_if_equal(input$hz == 0, "Please enter sampling frequency, Hz.")
+      req(nchar(f$date$path>0))
+
+
+      input_data <- parseFilePaths(c(home="/home"), input$file_input_lumicks)
+
+      read_lumicks(input_data = input_data,
+                   project = f$project,
+                   conditions = f$conditions,
+                   date = f$date,
+                   downsample_by = input$downsample_lumicks)
+
+      print("Marangatang strikes again")
+
+      f$new_obs_from_split <- f$new_obs_from_split + 1
+    })
+
+
+
+
+
+
+
+
+
+
+    
   #### file choose ####
 
   # shinyFiles::shinyFileChoose(
