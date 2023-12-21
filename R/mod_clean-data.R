@@ -176,36 +176,69 @@ mod_clean_data_server <- function(input, output, session, f){
 
 # save options for single channel data
   output$save_options <- renderUI({
-        req(substring(f$obs_input, 1, 3) == 'obs')
-        req(o$data)
-        if(!file.exists(file.path(f$obs$path, "header.csv"))){
-            tagList(
-               numericInput(ns('nm2pn'),
-                         label  = 'Trap Stiffness (pN/nm)',
-                         value = 1),
-               verbatimTextOutput(ns('current_mv2nm'))
-            )
-            }
-        if(o$data$channels ==2){
-tagList(
-               shinyWidgets::radioGroupButtons(
-                 inputId = ns("preferred_channel"),
-                 label = "What is the preferred channel?",
-                 choices = c("1" = 1,
-                             "2" = 2),
-                 selected = "1",
-                 justified = T,
-                 checkIcon = list(
-                   yes = tags$i(class = "fa fa-check-square",
-                                style = "color: black"),
-                   no = tags$i(class = "fa fa-square-o",
-                               style = "color: black"))
-               ),
+    req(substring(f$obs_input, 1, 3) == 'obs')
+    req(o$data)
+    if(o$data$channels == 1){
+      if(!file.exists(file.path(f$obs$path, "header.csv"))){
+        tagList(
+          numericInput(ns('nm2pn'),
+                       label  = 'Trap Stiffness (pN/nm)',
+                       value = 1)
+          ## verbatimTextOutput(ns('current_mv2nm'))
+        )
+      } else {
+        tagList(
+          verbatimTextOutput(ns('pn_nm1'))
+                )
+      }
+    } else if(o$data$channels == 2){
+      if(o$data$lab == "lumicks"){
+        tagList(
+          shinyWidgets::radioGroupButtons(
+                          inputId = ns("preferred_channel"),
+                          label = "What is the preferred channel?",
+                          choices = c("1" = 1,
+                                      "2" = 2),
+                          selected = "1",
+                          justified = T,
+                          checkIcon = list(
+                            yes = tags$i(class = "fa fa-check-square",
+                                         style = "color: black"),
+                            no = tags$i(class = "fa fa-square-o",
+                                        style = "color: black"))
+                        ),
 
-)}
-## if(o$data$lab == "lu")
+          numericInput(ns('nm2pn'),
+                       label  = 'Trap Stiffness 1 (pN/nm)',
+                       value = 1),
 
-        })
+          numericInput(ns('nm2pn2'),
+                       label  = 'Trap Stiffness 2 (pN/nm)',
+                       value = 1)
+
+        )
+      } else {
+        tagList(
+          shinyWidgets::radioGroupButtons(
+                          inputId = ns("preferred_channel"),
+                          label = "What is the preferred channel?",
+                          choices = c("1" = 1,
+                                      "2" = 2),
+                          selected = "1",
+                          justified = T,
+                          checkIcon = list(
+                            yes = tags$i(class = "fa fa-check-square",
+                                         style = "color: black"),
+                            no = tags$i(class = "fa fa-square-o",
+                                        style = "color: black"))
+                        ),
+
+          )
+      }
+    }
+    ## if(o$data$lab == "lu")
+
+  })
 
   # decide which nm conversion input to draw
   # depending on options listed in options.csv
@@ -215,18 +248,20 @@ tagList(
     if(o$data$lab == "lumicks"){
 
       tagList(
-        column(6,
-               numericInput(ns('mv2nm'),
-                            'Step Cal (nm/mV)',
-                            value = 1,
-                            width = '100%')
-               ),
-        column(6,
-               numericInput(ns('nm2pn'),
-                            'Stiffness (pN/nm)',
-                            value = 1,
-                            width = '100%')
-               )
+        h5(),
+        h5("Lumick's data default unit is pN", style = "padding-top: 25px")
+        ## column(6,
+        ##        numericInput(ns('mv2nm'),
+        ##                     'Step Cal (nm/mV)',
+        ##                     value = 1,
+        ##                     width = '100%')
+        ##        ),
+        ## column(6,
+        ##        numericInput(ns('nm2pn'),
+        ##                     'Stiffness (pN/nm)',
+        ##                     value = 1,
+        ##                     width = '100%')
+        ##        )
       )
 
     } else {
@@ -493,7 +528,7 @@ tagList(
   output$trap_filter <- renderUI({
 
     req(substring(f$obs_input, 1, 3) == 'obs')
-    if(file.exists(file.path(f$obs$path, "header.csv"))){
+    if(file.exists(file.path(f$obs$path, "header.csv")) || o$data$lab == "lumicks"){
 tagList(
 column(9,
     sliderInput(ns("trap_filter_sliderInput"),
@@ -582,26 +617,29 @@ column(3,
 
           if(o$data$lab == "lumicks"){
 
-            mv2nm <- input$mv2nm
-            mv2nm2 <- input$mv2nm
 
-            nm2pn <- input$nm2pn
-            nm2pn2 <- input$nm2pn
+            ## mv2nm <- input$mv2nm
+            ## mv2nm2 <- input$mv2nm
+
+            ## nm2pn <- input$nm2pn2
+            ## nm2pn2 <- input$nm2pn2
 
             # the lumicks data is uploaded in force (pN)
             # the "raw data" column is initially in pN, not mV
-            # so
+            # so will just display in Force
             trap_data <- trap_data[, .(
               time_sec = .I/hz(),
-              bead_1 = raw_bead_1/as.numeric(nm2pN),
-              bead_2 = raw_bead_2/as.numeric(nm2pN)
-            )
+              bead_1 = raw_bead_1,
+              bead_2 = raw_bead_2)
             ]
 
             if(input$flip_trace == "y"){
               trap_data$bead_1 <- trap_data$bead_1*-1
               trap_data$bead_2 <- trap_data$bead_2*-1
             }
+
+
+
           } else {
         if(has_header){
          mv2nm <- o$data$mv2nm
@@ -691,7 +729,6 @@ column(3,
     }
     } else if(dg_data$channels == 2){
 
-
     if(isolate(input$mode) == 'nm'){
 
       data <- dg_data$data
@@ -727,6 +764,21 @@ column(3,
      data <- data[ds]
     }
 
+
+      if(o$data$lab == "lumicks"){
+
+      dg <- dygraphs::dygraph(data,  ylab = "pN", xlab = "Seconds",  main = dg_data$title) |>
+        dygraphs::dySeries("bead_1", color = "black") |>
+        dygraphs::dySeries("bead_2", color = "red") |>
+        dygraphs::dyRangeSelector(fillColor ="", strokeColor = "black") |>
+        dygraphs::dyUnzoom() |>
+        dygraphs::dyOptions(axisLabelColor = "black",
+                            gridLineColor = "black",
+                            axisLineColor = "black",
+                            axisLineWidth = 3,
+                            axisLabelFontSize = 15,
+                            drawGrid = FALSE)
+      } else {
       dg <- dygraphs::dygraph(data,  ylab = "nm", xlab = "Seconds",  main = dg_data$title) |>
         dygraphs::dySeries("bead_1", color = "black") |>
         dygraphs::dySeries("bead_2", color = "red") |>
@@ -738,8 +790,8 @@ column(3,
                             axisLineWidth = 3,
                             axisLabelFontSize = 15,
                             drawGrid = FALSE)
-
-    }
+      }
+}
    dg
   })
 
@@ -1141,8 +1193,15 @@ output$move_files <- renderText({
 
       }  else if(o$data$channels == 2){
 ## browser()
-            pb1 <- data$raw_bead_1*o$data$mv2nm[1]
-            pb2 <- data$raw_bead_2*o$data$mv2nm2[1]
+        if(o$data$lab == "lumicks"){
+          # lumicks data comes in force, keep in force until end
+          # by dividing by the step cal/nm2pn
+          pb1 <- data$raw_bead_1
+          pb2 <- data$raw_bead_2
+        } else {
+          pb1 <- data$raw_bead_1*o$data$mv2nm[1]
+          pb2 <- data$raw_bead_2*o$data$mv2nm2[1]
+        }
 
         if(!is.null(input$flip_trace)){
           if(input$flip_trace == "y"){
@@ -1173,8 +1232,16 @@ output$move_files <- renderText({
 
           setProgress(0.5)
 
+
+        if(o$data$lab == "lumicks"){
+          # lumicks data comes in force, convert to nm for processed bead
+          # by dividing by the step cal/nm2pn
+          data[, `:=`(processed_bead_1 = pb1/input$nm2pn,
+                        processed_bead_2 = pb2/input$nm2pn2) ]
+        } else {
           data[, `:=`(processed_bead_1 = pb1,
                         processed_bead_2 = pb2) ]
+        }
 
         opt <- list.files(path = f$obs$path,
                           pattern = "options.csv",
