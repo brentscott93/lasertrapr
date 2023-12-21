@@ -494,7 +494,7 @@ str(input_sidemenu())
            )
 
           ee$substeps_data <- substeps_data
-          data.table::fwrite(substeps_data, file = file.path(summary_folder, paste0(Sys.Date(), "_substeps-ensemble-average.csv")))
+          data.table::fwrite(substeps_data, file = file.path(summary_folder, paste0(Sys.Date(), "_all-substeps-ensemble-average.csv")))
 
          showNotification("Ensembles Averaged & Fit", type = "message")
        }
