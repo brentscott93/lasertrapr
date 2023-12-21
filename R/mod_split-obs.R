@@ -343,7 +343,7 @@ mod_split_obs_server <- function(input, output, session, f){
     
     shinyFileChoose(input = input,
                     id = "file_input",
-                    roots = c(home="/home"),
+                    roots = c(home=dirname(path.expand("~"))),
                     defaultRoot = "home",
                     defaultPath = "",
                     session = session)
@@ -351,7 +351,7 @@ mod_split_obs_server <- function(input, output, session, f){
 
     shinyFileChoose(input = input,
                     id = "file_input_lumicks",
-                    roots = c(home="/home"),
+                    roots = c(home=dirname(path.expand("~"))),
                     defaultRoot = "home",
                     defaultPath = "",
                     session = session)
@@ -389,7 +389,7 @@ mod_split_obs_server <- function(input, output, session, f){
         req(nchar(f$date$path>0))
 
         
-        input_data <- parseFilePaths(c(home="/home"), input$file_input)
+        input_data <- parseFilePaths(c(home=dirname(path.expand("~"))), input$file_input)
         if(input$in_header){
             
 
@@ -1080,7 +1080,7 @@ mod_split_obs_server <- function(input, output, session, f){
       req(nchar(f$date$path>0))
 
 
-      input_data <- parseFilePaths(c(home="/home"), input$file_input_lumicks)
+      input_data <- parseFilePaths(c(home=dirname(path.expand("~"))), input$file_input_lumicks)
 
       read_lumicks(input_data = input_data,
                    project = f$project,
