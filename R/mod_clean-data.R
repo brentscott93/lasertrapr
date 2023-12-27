@@ -192,6 +192,8 @@ mod_clean_data_server <- function(input, output, session, f){
                 )
       }
     } else if(o$data$channels == 2){
+
+      if(is.null(o$data$lab)) o$data$lab <- "not"
       if(o$data$lab == "lumicks"){
         tagList(
           shinyWidgets::radioGroupButtons(
@@ -245,6 +247,7 @@ mod_clean_data_server <- function(input, output, session, f){
   output$nm_conversion <- renderUI({
     req(substring(f$obs_input, 1, 3) == 'obs')
     req(o$data)
+    if(is.null(o$data$lab)) o$data$lab <- "not"
     if(o$data$lab == "lumicks"){
 
       tagList(
@@ -528,6 +531,7 @@ mod_clean_data_server <- function(input, output, session, f){
   output$trap_filter <- renderUI({
 
     req(substring(f$obs_input, 1, 3) == 'obs')
+    if(is.null(o$data$lab)) o$data$lab <- "not"
     if(file.exists(file.path(f$obs$path, "header.csv")) || o$data$lab == "lumicks"){
 tagList(
 column(9,
@@ -615,6 +619,7 @@ column(3,
 
         } else if(o$data$channels == 2){
 
+          if(is.null(o$data$lab)) o$data$lab <- "not"
           if(o$data$lab == "lumicks"){
 
 
@@ -764,6 +769,8 @@ column(3,
      data <- data[ds]
     }
 
+
+      if(is.null(o$data$lab)) o$data$lab <- "not"
 
       if(o$data$lab == "lumicks"){
 
@@ -1193,9 +1200,8 @@ output$move_files <- renderText({
 
       }  else if(o$data$channels == 2){
 ## browser()
+        if(is.null(o$data$lab)) o$data$lab <- "not"
         if(o$data$lab == "lumicks"){
-          # lumicks data comes in force, keep in force until end
-          # by dividing by the step cal/nm2pn
           pb1 <- data$raw_bead_1
           pb2 <- data$raw_bead_2
         } else {
@@ -1230,29 +1236,37 @@ output$move_files <- renderText({
           } else {
           }
 
-          setProgress(0.5)
 
 
-        if(o$data$lab == "lumicks"){
-          # lumicks data comes in force, convert to nm for processed bead
-          # by dividing by the step cal/nm2pn
-          data[, `:=`(processed_bead_1 = pb1/input$nm2pn,
-                        processed_bead_2 = pb2/input$nm2pn2) ]
-        } else {
-          data[, `:=`(processed_bead_1 = pb1,
-                        processed_bead_2 = pb2) ]
-        }
+        setProgress(0.5)
 
         opt <- list.files(path = f$obs$path,
                           pattern = "options.csv",
                           full.names = TRUE)
         opt <- fread(opt)
 
+        ## if(is.null(o$data$lab)) o$data$lab <- "not"
+        if(o$data$lab == "lumicks"){
+                                        # lumicks data comes in force, convert to nm for processed bead
+                                        # by dividing by the step cal/nm2pn
+          data[, `:=`(processed_bead_1 = pb1/input$nm2pn,
+                      processed_bead_2 = pb2/input$nm2pn2) ]
+
           opt[, `:=`(processor = input$how_to_process,
                      include = input_include,
-                   preferred_channel = as.numeric(input$preferred_channel))
+                     preferred_channel = as.numeric(input$preferred_channel),
+                     nm2pn = input$nm2pn,
+                     nm2pn2 = input$nm2pn2)
               ]
+        } else {
+          data[, `:=`(processed_bead_1 = pb1,
+                      processed_bead_2 = pb2) ]
 
+          opt[, `:=`(processor = input$how_to_process,
+                     include = input_include,
+                     preferred_channel = as.numeric(input$preferred_channel))
+              ]
+        }
 
           data.table::fwrite(data, file = file.path(f$obs$path, 'trap-data.csv'), sep = ",")
           data.table::fwrite(opt, file = file.path(f$obs$path, 'options.csv'), sep = ",")
