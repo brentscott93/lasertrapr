@@ -7,7 +7,7 @@ read_lumicks <- function(input_data,
 
 
     withProgress(message = 'Initializing Data', value = 0, {
-       browser()
+       ## browser()
         for(r in seq_along(input_data$datapath)){
 
             shiny::incProgress(1/nrow(input_data))
@@ -31,7 +31,7 @@ read_lumicks <- function(input_data,
           t <- data.table(project = project$name,
                           conditions = conditions$name,
                           date = date$name,
-                          obs = NA,
+                          obs = "",
                           raw_bead_1 = l_dt$t1,
                           raw_bead_2 = l_dt$t2)
 
@@ -39,7 +39,7 @@ read_lumicks <- function(input_data,
              o <- data.frame(project = project$name,
                              conditions = conditions$name,
                              date = date$name,
-                             obs = NA,
+                             obs = "",
                              hz = new_hz,
                              processor = NA,
                              include = NA,
@@ -52,7 +52,7 @@ read_lumicks <- function(input_data,
                              review = NA,
                              channels = 2,
                              lab = "lumicks",
-                             original_filename = input_data$datapath[[r]])
+                             original_filename = input_data$name[[r]])
 
 
           if(r < 10){
