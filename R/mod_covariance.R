@@ -184,7 +184,7 @@ mod_covariance_server <- function(input, output, session, f){
                                     hz = a$hz,
                                     w_width = a$w_width,
                                     w_slide = a$w_slide,
-                                    median_w_width = a$median_w_width,
+                                    ## median_w_width = a$median_w_width,
                                     em_random_start = a$em_random_start,
                                     front_cp_method = a$front_cp_method,
                                     back_cp_method = a$back_cp_method,
@@ -407,8 +407,8 @@ mod_covariance_server <- function(input, output, session, f){
 
     observeEvent(input$set_options, {
       a$w_width <- input$w_width
-      ## a$w_slide <- input$w_slide
-      a$median_w_width <- input$median_w_width
+      a$w_slide <- input$w_slide
+      ## a$median_w_width <- input$median_w_width
       a$em_random_start <- input$em_random_start
       a$front_cp_method <-input$front_cp_method
       a$back_cp_method <-input$back_cp_method
@@ -431,9 +431,14 @@ mod_covariance_server <- function(input, output, session, f){
                                              width = "100%")
                          ),
                          column(6,
-                                numericInput(ns("median_w_width"), "Running median window Width",
-                                             value = a$median_w_width,
-                                             width = "100%")
+                                shinyWidgets::sliderTextInput(ns("w_slide"),
+                                                              "Slide Window", c("1-Pt", "1/4", "1/2", "3/4", "No-overlap"),
+                                                              grid = TRUE,
+                                                              selected = a$w_slide,
+                                                              width = "100%")
+                                ## numericInput(ns("median_w_width"), "Running median window Width",
+                                ##              value = a$median_w_width,
+                                ##              width = "100%")
                          )
                        ) ,
                        fluidRow(

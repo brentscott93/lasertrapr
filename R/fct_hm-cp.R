@@ -39,8 +39,8 @@ hidden_markov_changepoint_analysis <- function(trap_data,
   mv2nm <-  o$mv2nm
   nm2pn <- o$nm2pn
   hz <- o$hz
-  if(is.null(o$channels)) channels <- 1
-  if(is.na(o$channels)) channels <- 1
+  if(is.null(o$channels)) o$channels <- 1
+  ## if(is.na(o$channels)) o$channels <- 1
   channels <- o$channels
 
   path <- file.path(path.expand("~"),

@@ -8,14 +8,14 @@ covariance_hidden_markov_changepoint_analysis <- function(trap_data,
                                                f = f,
                                                w_width = 150,
                                                w_slide = "1/2",
-                                               median_w_width = 200,
+                                               ## median_w_width = 200,
                                                em_random_start,
                                                front_cp_method,
                                                back_cp_method,
                                                is_shiny = F,
                                                opt,
                                                ...){
-  #browser()
+  ## browser()
   project <- unique(trap_data$project)
   conditions <- unique(trap_data$conditions)
   date <- unique(trap_data$date)
@@ -95,18 +95,18 @@ covariance_hidden_markov_changepoint_analysis <- function(trap_data,
 
 
         #### RUNNING MEAN & VAR ####
-        ws <- 1
-        ## if(w_slide == "1-Pt"){
-        ##   ws <- 1
-        ## } else if(w_slide == "1/4"){
-        ##   ws <- round_any(w_width*0.25, 1)
-        ## } else if(w_slide == "1/2"){
-        ##   ws <- round_any(w_width*0.5, 1)
-        ## } else if(w_slide == "3/4"){
-        ##   ws <- round_any(w_width*0.75, 1)
-        ## } else if(w_slide == "No-overlap"){
-        ##   ws <- w_width
-        ## }
+        ## ws <- 1
+        if(w_slide == "1-Pt"){
+          ws <- 1
+        } else if(w_slide == "1/4"){
+          ws <- round_any(w_width*0.25, 1)
+        } else if(w_slide == "1/2"){
+          ws <- round_any(w_width*0.5, 1)
+        } else if(w_slide == "3/4"){
+          ws <- round_any(w_width*0.75, 1)
+        } else if(w_slide == "No-overlap"){
+          ws <- w_width
+        }
 
         if(is_shiny) setProgress(0.1, detail = "Calculating Running Windows")
 
@@ -134,12 +134,12 @@ covariance_hidden_markov_changepoint_analysis <- function(trap_data,
  ##            AB_filt = movmean(A.*B, averagingWindow);
  ##            cov = AB_filt - A_filt.*B_filt;
         #FROM SPASM
-           pb1_smooth <- na.omit(RcppRoll::roll_meanl(pb1, n = w_width, by = 1))
-           pb2_smooth <- na.omit(RcppRoll::roll_meanl(pb2, n = w_width, by = 1))
-           pb12_smooth <- na.omit(RcppRoll::roll_meanl(pb1*pb2, n = w_width, by = 1))
+           pb1_smooth <- na.omit(RcppRoll::roll_meanl(pb1, n = w_width, by = ws))
+           pb2_smooth <- na.omit(RcppRoll::roll_meanl(pb2, n = w_width, by = ws))
+           pb12_smooth <- na.omit(RcppRoll::roll_meanl(pb1*pb2, n = w_width, by = ws))
            covar <- pb12_smooth - (pb1_smooth*pb2_smooth)
-## covar_smooth <- covar
-           covar_smooth <- na.omit(RcppRoll::roll_medianl(covar, n = median_w_width, by = 1))
+        covar_smooth <- covar
+           ## covar_smooth <- na.omit(RcppRoll::roll_medianl(covar, n = median_w_width, by = w_slide))
            ## covar_smooth <- pracma::savgol(covar, 101)
          ## dygraphs::dygraph(data.frame(seq_along(covar_smooth), covar_smooth))|>dygraphs::dyRangeSelector()
          ## dygraphs::dygraph(data.frame(seq_along(pb1), pb1, pb2))|>dygraphs::dyRangeSelector()
@@ -194,6 +194,7 @@ covariance_hidden_markov_changepoint_analysis <- function(trap_data,
                                      hz = hz,
                                      w_width = w_width,
                                      median_w_width = median_w_width,
+                                     ws = ws,
                                      value1 = value1,
                                      nm2pn = nm2pn,
                                      nm2pn2 = nm2pn2,
