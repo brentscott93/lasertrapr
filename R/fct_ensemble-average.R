@@ -247,29 +247,41 @@ prep_ensemble <- function(trap_selected_project,
         substep_2_nm = s2_avg-s1_avg
       )
 
-      print(paste0("b = ", b, "id: ", measured_events$id[[event]], "; substep1: ", s1_avg, "; substep2: ", s2_avg))
+      ## print(paste0("b = ", b, "id: ", measured_events$id[[event]], "; substep1: ", s1_avg, "; substep2: ", s2_avg))
     }
 
       event_ensembles <- data.table::rbindlist(event_ensembles)
+      if(analyzer == "covar"){
+      event_ensembles <- event_ensembles[, .(data = mean(data)), by = .(project,
+                                                                        conditions,
+                                                                        date,
+                                                                        obs,
+                                                                        direction,
+                                                                        forward_backward_index,
+                                                                        ensemble_index,
+                                                                        event_index)]
+      }
 
       event_ensembles$ms_extend_s2 <- ms_extend_s2
       event_ensembles$ms_extend_s1 <- ms_extend_s1
       event_ensembles$ms_stroke_to_skip <- ms_2_skip
-      ensemble_path <- file.path(path, "ensemble-data.csv")
 
-      if(file.exists(ensemble_path)){
-        data.table::fwrite(event_ensembles, file = ensemble_path, sep = ",", append = TRUE)
-      } else {
-        data.table::fwrite(event_ensembles, file = ensemble_path, sep = ",")
-      }
+      ## ensemble_path <- file.path(path, "ensemble-data.csv")
+
+      ## if(file.exists(ensemble_path)){
+      ## data.table::fwrite(event_ensembles, file = ensemble_path, sep = ",", append = TRUE)
+      ## } else {
+      data.table::fwrite(event_ensembles[direction=="forward"], file = file.path(path, "forward-ensemble-data.csv"), sep = ",")
+      data.table::fwrite(event_ensembles[direction=="backwards"], file = file.path(path, "backwards-ensemble-data.csv"), sep = ",")
+      ## }
 
       substeps <- data.table::rbindlist(substeps)
       substeps_path <- file.path(path, "substeps.csv")
-      if(file.exists(substeps_path)){
-        data.table::fwrite(substeps, file = substeps_path, sep = ",", append = TRUE)
-      } else {
-        data.table::fwrite(substeps, file = substeps_path, sep = ",")
-      }
+      ## if(file.exists(substeps_path)){
+      ## data.table::fwrite(substeps, file = substeps_path, sep = ",", append = TRUE)
+      ## } else {
+      data.table::fwrite(substeps, file = substeps_path, sep = ",")
+      ## }
     }
     ## event_ensembles_list <- data.table::rbindlist(lapply(event_ensembles_list, data.table::rbindlist))
     ## event_ensembles_list$ms_extend_s2 <- ms_extend_s2
@@ -305,15 +317,53 @@ avg_ensembles <- function(project, is_shiny = TRUE){
   for(i in 1:length(con)){
     if(is_shiny) incProgress(1/(length(con)*2), detail = paste0("Reading ensembles from ", con[[i]]))
 
-    ee_paths <- list.files(path = file.path(project_path, con[[i]]),
+    forward_ee_paths <- list.files(path = file.path(project_path, con[[i]]),
                            recursive = TRUE,
                            full.names = TRUE, 
-                           pattern = "ensemble-data.csv")
+                           pattern = "forward-ensemble-data.csv")
+
+    backwards_ee_paths <- list.files(path = file.path(project_path, con[[i]]),
+                           recursive = TRUE,
+                           full.names = TRUE,
+                           pattern = "backwards-ensemble-data.csv")
+
+# improved list of objects
+## .ls.objects <- function (pos = 1, pattern, order.by,
+##                         decreasing=FALSE, head=FALSE, n=5) {
+##     napply <- function(names, fn) sapply(names, function(x)
+##                                          fn(get(x, pos = pos)))
+##     names <- ls(pos = pos, pattern = pattern)
+##     obj.class <- napply(names, function(x) as.character(class(x))[1])
+##     obj.mode <- napply(names, mode)
+##     obj.type <- ifelse(is.na(obj.class), obj.mode, obj.class)
+##     obj.size <- napply(names, object.size)
+##     obj.dim <- t(napply(names, function(x)
+##                         as.numeric(dim(x))[1:2]))
+##     vec <- is.na(obj.dim)[, 1] & (obj.type != "function")
+##     obj.dim[vec, 1] <- napply(names, length)[vec]
+##     out <- data.frame(obj.type, obj.size, obj.dim)
+##     names(out) <- c("Type", "Size", "Rows", "Columns")
+##     if (!missing(order.by))
+##         out <- out[order(out[[order.by]], decreasing=decreasing), ]
+##     if (head)
+##         out <- head(out, n)
+##     out
+## }
+## # shorthand
+## lsos <- function(..., n=10) {
+##     .ls.objects(..., order.by="Size", decreasing=TRUE, head=TRUE, n=n)
+## }
+
+
+
+    ####################
 
     ee_forwards <- vector("list")
     ee_backwards <- vector("list")
-    for(f in seq_along(ee_paths)){
-      ee_con_data <- ee_fread(ee_paths[[f]], is_shiny)
+    for(f in seq_along(forward_ee_paths)){
+      print("forwards avg")
+
+      ee_con_data <- ee_fread(forward_ee_paths[[f]], is_shiny)
       
 
       ee_forwards[[f]] <- ee_con_data[direction == "forward",
@@ -323,16 +373,18 @@ avg_ensembles <- function(project, is_shiny = TRUE){
                                         ## se = sd(data, na.rm = TRUE)/sqrt(.N)),
                                       by = .(conditions, direction, ensemble_index, forward_backward_index)]
 
-      ee_backwards[[f]] <- ee_con_data[direction == "backwards",
-                                       .(data = mean(data, na.rm = TRUE)),
-                                         ## n = .N,
-                                         ## sd = sd(data, na.rm = TRUE),
-                                         ## se = sd(data, na.rm = TRUE)/sqrt(.N)),
-                                       by = .(conditions, direction, ensemble_index, forward_backward_index)]
+      ## ee_backwards[[f]] <- ee_con_data[direction == "backwards",
+      ##                                  .(data = mean(data, na.rm = TRUE)),
+      ##                                    ## n = .N,
+      ##                                    ## sd = sd(data, na.rm = TRUE),
+      ##                                    ## se = sd(data, na.rm = TRUE)/sqrt(.N)),
+      ##                                  by = .(conditions, direction, ensemble_index, forward_backward_index)]
       rm(ee_con_data)
 
     }
+    ## lsos()
     eef <- data.table::rbindlist(ee_forwards)
+    rm(ee_forwards)
     eef <- eef[direction == "forward",
                .(avg = mean(data, na.rm = TRUE),
                  ## n = .N,
@@ -342,7 +394,27 @@ avg_ensembles <- function(project, is_shiny = TRUE){
 
     ee_forward_data[[i]] <- eef
 
+
+    for(f in seq_along(backwards_ee_paths)){
+
+      print("backwards avg")
+
+      ee_con_data <- ee_fread(backwards_ee_paths[[f]], is_shiny)
+
+      ee_backwards[[f]] <- ee_con_data[direction == "backwards",
+                                       .(data = mean(data, na.rm = TRUE)),
+                                         ## n = .N,
+                                         ## sd = sd(data, na.rm = TRUE),
+                                         ## se = sd(data, na.rm = TRUE)/sqrt(.N)),
+                                       by = .(conditions, direction, ensemble_index, forward_backward_index)]
+      rm(ee_con_data)
+    }
+
+
+
+
     eeb <- data.table::rbindlist(ee_backwards)
+    rm(ee_backwards)
     eeb <- eeb[direction == "backwards",
                .(avg = mean(data, na.rm = TRUE),
                  ## n = .N,
@@ -358,7 +430,18 @@ avg_ensembles <- function(project, is_shiny = TRUE){
   forward_backward <- rbind(ee_forward_data, ee_backwards_data)
   print("Completed Avg")
   str(forward_backward)
-  return(forward_backward)
+
+
+  summary_folder <- file.path(project_path, "summary")
+  if(!dir.exists(summary_folder)){
+    dir.create(summary_folder)
+  }
+  data.table::fwrite(forward_backward,
+                     file.path(summary_folder, "ensemble-averages.csv")
+                     )
+
+  ## return(forward_backward)
+  return(invisible())
 }
 
 

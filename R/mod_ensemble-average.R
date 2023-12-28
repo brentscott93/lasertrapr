@@ -295,7 +295,8 @@ str(input_sidemenu())
         conditionalPanel("input.fit == '3exp'", ns=ns,
                          withMathJax(helpText("$$ y = d_1(1-e^{-k_1x}) + d_2(1-e^{-k_2x}) + d_3(1-e^{-k_3x}) $$"))),
 
-        actionButton(ns("avg_ensembles"), "Avg Ensembles", width = "100%", style  = "margin-top: 25px", icon = icon("calculator"))
+        actionButton(ns("avg_ensembles"), "Avg Ensembles", width = "50", style  = "margin-top: 25px", icon = icon("calculator")),
+        actionButton(ns("fit_ensembles"), "Avg Ensembles", width = "50", style  = "margin-top: 25px", icon = icon("square-root-variable"))
       )
 
     } else if(ee$analyzer == "mini"){
@@ -387,10 +388,81 @@ str(input_sidemenu())
 
      withProgress(message = "Averaging Ensembles", {
        ## browser()
-
        if(analyzer == "hm/cp" || analyzer == "covar"){
        print(f$project_path)
-       ee$data <- avg_ensembles(project = f$project_input)
+       avg_ensembles(project = f$project_input)
+       showNotification("Ensembles Averaged", type = "message")
+} else if(analyzer == "mini"){
+
+  ee$mini_ensemble_ensembles <- avg_aligned_mini_events(project = f$project_input, is_shiny = TRUE)
+
+
+
+         summary_folder <- file.path(f$project$path, "summary")
+         if(!file.exists(summary_folder)){
+           dir.create(summary_folder)
+         }
+
+         mini_fits <- ee$mini_ensemble_ensembles$nls_models
+
+         sink(file.path(summary_folder, paste0(Sys.Date(), "_mini-ensemble-ensemble-average-models.txt")))
+         writeLines("\n
+██╗      █████╗ ███████╗███████╗██████╗ ████████╗██████╗  █████╗ ██████╗ ██████╗
+██║     ██╔══██╗██╔════╝██╔════╝██╔══██╗╚══██╔══╝██╔══██╗██╔══██╗██╔══██╗██╔══██╗
+██║     ███████║███████╗█████╗  ██████╔╝   ██║   ██████╔╝███████║██████╔╝██████╔╝
+██║     ██╔══██║╚════██║██╔══╝  ██╔══██╗   ██║   ██╔══██╗██╔══██║██╔═══╝ ██╔══██╗
+███████╗██║  ██║███████║███████╗██║  ██║   ██║   ██║  ██║██║  ██║██║     ██║  ██║
+╚══════╝╚═╝  ╚═╝╚══════╝╚══════╝╚═╝  ╚═╝   ╚═╝   ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝     ╚═╝  ╚═╝
+\n")
+         writeLines("############################### \n Mini Ensemble, Ensemble Average Fits \n ############################### \n")
+         print(lapply(mini_fits, base::summary))
+         sink()
+
+         showNotification("Mini Ensembles Averaged & Fit", type = "message")
+
+}
+
+})
+
+     })
+
+   observeEvent(input$fit_ensembles, {
+     defend_if_null(f$project_input, ui = 'Please Select a Project', type = 'error')
+     defend_if_blank(f$project_input, ui = "Please Select a Project", type = "error")
+## browser()
+       ea_file <- file.path(path.expand("~"), "lasertrapr", f$project_input, "summary", "ensemble-averages.csv")
+
+    defend_if(!file.exists(ea_file),
+              ui = "Ensemble-averages.csv does not exists",
+              type = "error")
+
+     options_paths <- list.files(path = f$project$path,
+                                 pattern = "options.csv",
+                                 full.names = TRUE,
+                                 recursive = TRUE)
+
+     options_data <-
+       data.table::rbindlist(
+         lapply(options_paths, data.table::fread),
+         fill = TRUE
+       )
+
+     options_data <- options_data[include == TRUE & review == TRUE & report == "success"]
+     ee$hz <- unique(options_data$hz)
+
+     defend_if(length(ee$hz) != 1,
+               ui = "Data has different sampling frequencies. Ensmeble averaging not currently supported.",
+               type = "error")
+
+    analyzer <- unique(options_data$analyzer)
+    defend_if(length(analyzer) != 1,
+              ui = "Multiple analyzers detected for trap data. Unable to ensemble average.",
+              type = "error")
+
+     withProgress(message = "Averaging Ensembles", {
+       ee$data <- fread(ea_file)
+
+       if(analyzer == "hm/cp" || analyzer == "covar"){
        if(is.null(input$fit) || input$fit == "None"){
           showNotification("Ensembles Averaged", type = "message")
        } else {
@@ -499,35 +571,12 @@ str(input_sidemenu())
          showNotification("Ensembles Averaged & Fit", type = "message")
        }
 
-} else if(analyzer == "mini"){
-
-  ee$mini_ensemble_ensembles <- avg_aligned_mini_events(project = f$project_input, is_shiny = TRUE)
+       } else {
 
 
+         showNotification("Unsupported data type", type = "message")
+       }
 
-         summary_folder <- file.path(f$project$path, "summary")
-         if(!file.exists(summary_folder)){
-           dir.create(summary_folder)
-         }
-
-         mini_fits <- ee$mini_ensemble_ensembles$nls_models
-
-         sink(file.path(summary_folder, paste0(Sys.Date(), "_mini-ensemble-ensemble-average-models.txt")))
-         writeLines("\n
-██╗      █████╗ ███████╗███████╗██████╗ ████████╗██████╗  █████╗ ██████╗ ██████╗
-██║     ██╔══██╗██╔════╝██╔════╝██╔══██╗╚══██╔══╝██╔══██╗██╔══██╗██╔══██╗██╔══██╗
-██║     ███████║███████╗█████╗  ██████╔╝   ██║   ██████╔╝███████║██████╔╝██████╔╝
-██║     ██╔══██║╚════██║██╔══╝  ██╔══██╗   ██║   ██╔══██╗██╔══██║██╔═══╝ ██╔══██╗
-███████╗██║  ██║███████║███████╗██║  ██║   ██║   ██║  ██║██║  ██║██║     ██║  ██║
-╚══════╝╚═╝  ╚═╝╚══════╝╚══════╝╚═╝  ╚═╝   ╚═╝   ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝     ╚═╝  ╚═╝
-\n")
-         writeLines("############################### \n Mini Ensemble, Ensemble Average Fits \n ############################### \n")
-         print(lapply(mini_fits, base::summary))
-         sink()
-
-         showNotification("Mini Ensembles Averaged & Fit", type = "message")
-
-}
 
      })
      

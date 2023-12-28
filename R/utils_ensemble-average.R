@@ -28,7 +28,9 @@ prep_forward_ensemble_exp <- function(x, max_l, hz){
 fit_forward_ee_1exp <- function(ee_data, start){
   minpack.lm::nlsLM(avg ~ d1 + (d2*(1 - exp(-k1 * time))),
                     data = ee_data,
-                    start = start)
+                    start = start,
+                    control = minpack.lm::nls.lm.control(maxiter = 1000)
+                    )
 }
 
 #' @noRd

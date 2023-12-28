@@ -171,13 +171,17 @@ mod_clean_data_server <- function(input, output, session, f){
           req(substring(f$obs_input, 1, 3) == 'obs')
           ## print("here-172")
           req(f$obs$path)
-          o$data <- fread(file = file.path(f$obs$path, "options.csv"))
+          o_data <- fread(file = file.path(f$obs$path, "options.csv"))
+          if(is.null(o_data$channels)) o_data$channels <- 1
+          if(is.null(o_data$lab)) o_data$lab <- "not"
+          o$data <- o_data
          })
 
 # save options for single channel data
   output$save_options <- renderUI({
     req(substring(f$obs_input, 1, 3) == 'obs')
     req(o$data)
+    ## if(is.null(o$data$channels))o$data$channels <- 1
     if(o$data$channels == 1){
       if(!file.exists(file.path(f$obs$path, "header.csv"))){
         tagList(

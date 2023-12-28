@@ -105,6 +105,7 @@ covar_changepoint <- function(pb_data,
                               nm2pn2,
                               value1,
                               w_width,
+                              ws,
                               median_w_width,
                               front_cp_method,
                               back_cp_method,
@@ -142,30 +143,46 @@ for(b in seq_len(2)){
 
   for(i in 1:nrow(hm_event_transitions)){
     print(i)
-##     #estimated window index that the event starts and ends at from window time
-    estimated_start <- (hm_event_transitions$state_1_end[[i]] + 1 )
-    estimated_stop <-  hm_event_transitions$state_2_end[[i]]
+## ##     #estimated window index that the event starts and ends at from window time
+##     estimated_start <- (hm_event_transitions$state_1_end[[i]] + 1 ) * ws
+##     estimated_stop <-  hm_event_transitions$state_2_end[[i]] * ws
 
-      forward_cp_window_stop <- estimated_start + median_w_width #rolling median smoother window width
+##       forward_cp_window_start <- estimated_start - (1.5*ws) #- 10
+##       forward_cp_window_stop <- estimated_start + (1.5*ws) #
 
-      backwards_cp_window_start <- estimated_stop - w_width #rolling covariance window
+##       backwards_cp_window_start <- estimated_stop - (1.5*ws) #
+##        backwards_cp_window_stop <- estimated_stop + (1.5*ws)
 
-
+    ## length_of_hm_event <- hm_time_ons$lengths[[i]] #* conversion
     length_of_prior_baseline <- value1$lengths[[i]] #* conversion
     length_of_after_baseline <- try(value1$lengths[[(i+1)]]) #* conversion)
 
-    ## if(length_of_prior_baseline <= 100) {
-      ## forward_cp_window_start <- estimated_start - 50
-   ## } else {
-      forward_cp_window_start <- estimated_start  #- 10
-   ## }
+    #estimated window index that the event starts and ends at from window time
+    estimated_start <- (hm_event_transitions$state_1_end[[i]] + 1 )
+    estimated_stop <-  hm_event_transitions$state_2_end[[i]]
+    #if(length_of_hm_event == 1){
+      forward_cp_window_stop <- ceiling((estimated_start * ws) + ws)
+    #} else {
+    #  forward_cp_window_stop <- ceiling(((estimated_start+1) * conversion))
+   # }
+      backwards_cp_window_start <- floor((estimated_stop * ws) - ws)
+   # }
+    # else {
+    #   forward_cp_window_stop <- (estimated_start + 1) * conversion
+    #   backwards_cp_window_start <- floor((estimated_stop - 1.5)) * conversion
+    # }
 
-    if(length_of_after_baseline <= median_w_width || class(length_of_after_baseline) == 'try-error'){
-       backwards_cp_window_stop <- estimated_stop + (round(median_w_width*0.8, 0))
+    if(length_of_prior_baseline == 1) {
+      forward_cp_window_start <- floor((estimated_start - 1.5) * ws)
+   } else {
+      forward_cp_window_start <- floor(((estimated_start - 2) * ws) - ws)
+   }
+
+    if(length_of_after_baseline == 1 || class(length_of_after_baseline) == 'try-error'){
+       backwards_cp_window_stop <- ceiling((estimated_stop + 1.5)) * ws
     } else {
-       backwards_cp_window_stop <- estimated_stop + median_w_width
+       backwards_cp_window_stop <- ceiling((estimated_stop + 2.5)) * ws
     }
-
 
     forward_event_chunk <- trap_data[forward_cp_window_start:forward_cp_window_stop,]
 
