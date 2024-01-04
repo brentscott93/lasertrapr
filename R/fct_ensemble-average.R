@@ -15,11 +15,13 @@ prep_ensemble <- function(trap_selected_project,
                           hz,
                           is_shiny = TRUE,
                           tmin_ms,
-                          analyzer ){
+                          analyzer,
+                          downsample_ensemble_by){
   # trap_selected_project <- "~/lasertrapr/project_myoV-phosphate"
   # ms_extend_s2 = 3
   # ms_extend_s1 = 3
   ## browser()
+
   if(is_shiny) incProgress(0.01, detail = "Removing Old Files")
   
   old_files <- 
@@ -223,7 +225,8 @@ prep_ensemble <- function(trap_selected_project,
                     conditions = options_data$conditions[[i]],
                     date = options_data$date[[i]],
                     obs = options_data$obs[[i]],
-                    bead = b)
+                    bead = b,
+                    fb_time = forward_backward_index/hz)
                ]
 
       if(analyzer == "covar"){
@@ -231,6 +234,12 @@ prep_ensemble <- function(trap_selected_project,
       }
 
       setorder(ensemble, cols = "forward_backward_index")
+
+      if(downsample_ensemble_by != 1){
+        ds_pts <- seq(1, nrow(ensemble), by = downsample_ensemble_by)
+        ensemble <- ensemble[ds_pts]
+      }
+
       event_ensembles[[event]] <- ensemble
 
       substeps[[event]] <- data.table(
@@ -262,17 +271,38 @@ prep_ensemble <- function(trap_selected_project,
                                                                         event_index)]
       }
 
-      event_ensembles$ms_extend_s2 <- ms_extend_s2
-      event_ensembles$ms_extend_s1 <- ms_extend_s1
-      event_ensembles$ms_stroke_to_skip <- ms_2_skip
+      ensemble_options <- data.table::data.table( ms_extend_s2, ms_extend_s1, ms_2_skip)
+      data.table::fwrite(ensemble_options, file = file.path(path, "options-prep-ensemble.csv"), sep = ",")
+      ## event_ensembles[[event]] <- ensemble
+
+      ensemble_path_f <- file.path(path, "forward-ensemble-data.csv")
+      ensemble_path_b <- file.path(path, "backwards-ensemble-data.csv")
+
+      print(paste0("writing forward ", event))
+      if(file.exists(ensemble_path_f)){
+        data.table::fwrite(event_ensembles[direction=="forward"], file = ensemble_path_f, sep = ",", append = TRUE)
+      } else {
+        data.table::fwrite(event_ensembles[direction=="forward"], file = ensemble_path_f, sep = ",")
+      }
+
+      print(paste0("writing backwards ", event))
+      if(file.exists(ensemble_path_b)){
+        data.table::fwrite(event_ensembles[direction=="backwards"], file = ensemble_path_b, sep = ",", append = TRUE)
+      } else {
+        data.table::fwrite(event_ensembles[direction=="backwards"], file = ensemble_path_b, sep = ",")
+      }
+
+      ## event_ensembles$ms_extend_s2 <- ms_extend_s2
+      ## event_ensembles$ms_extend_s1 <- ms_extend_s1
+      ## event_ensembles$ms_stroke_to_skip <- ms_2_skip
 
       ## ensemble_path <- file.path(path, "ensemble-data.csv")
 
       ## if(file.exists(ensemble_path)){
       ## data.table::fwrite(event_ensembles, file = ensemble_path, sep = ",", append = TRUE)
       ## } else {
-      data.table::fwrite(event_ensembles[direction=="forward"], file = file.path(path, "forward-ensemble-data.csv"), sep = ",")
-      data.table::fwrite(event_ensembles[direction=="backwards"], file = file.path(path, "backwards-ensemble-data.csv"), sep = ",")
+      ## data.table::fwrite(event_ensembles[direction=="forward"], file = file.path(path, "forward-ensemble-data.csv"), sep = ",")
+      ## data.table::fwrite(event_ensembles[direction=="backwards"], file = file.path(path, "backwards-ensemble-data.csv"), sep = ",")
       ## }
 
       substeps <- data.table::rbindlist(substeps)

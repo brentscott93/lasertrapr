@@ -245,7 +245,8 @@ str(input_sidemenu())
                     max = 10,
                     step = 1,
                     width = "100%"),
-        numericInput(ns("tmin_ms"), label = "Tmin (ms)", value = 5, step = 1),
+        numericInput(ns("tmin_ms"), label = "Tmin (ms)", value = 5, step = 1, width = "49%"),
+        numericInput(ns("downsample_ensemble_by"), "Downsample ensemble by (factor)", value = 1, step = 1, width = "49%"),
         actionButton(ns("prep_ensemble"), "Prep Ensembles", width = "100%", icon = icon("align-justify"))
       )
     } else if(ee$analyzer == "mini"){
@@ -295,8 +296,8 @@ str(input_sidemenu())
         conditionalPanel("input.fit == '3exp'", ns=ns,
                          withMathJax(helpText("$$ y = d_1(1-e^{-k_1x}) + d_2(1-e^{-k_2x}) + d_3(1-e^{-k_3x}) $$"))),
 
-        actionButton(ns("avg_ensembles"), "Avg Ensembles", width = "50", style  = "margin-top: 25px", icon = icon("calculator")),
-        actionButton(ns("fit_ensembles"), "Avg Ensembles", width = "50", style  = "margin-top: 25px", icon = icon("square-root-variable"))
+        actionButton(ns("avg_ensembles"), "Avg Ensembles", width = "49%", style  = "margin-top: 25px", icon = icon("calculator")),
+        actionButton(ns("fit_ensembles"), "Avg Ensembles", width = "49%", style  = "margin-top: 25px", icon = icon("square-root-variable"))
       )
 
     } else if(ee$analyzer == "mini"){
@@ -347,7 +348,8 @@ str(input_sidemenu())
                     ms_2_skip = input$ms_2_skip,
                     hz = ee$hz,
                     tmin_ms = input$tmin_ms,
-                    analyzer = analyzer )
+                    analyzer = analyzer ,
+                    downsample_ensemble_by = input$downsample_ensemble_by)
       } else if(analyzer == "mini"){
         align_mini_events(project = f$project$name, is_shiny = TRUE)
       } else {
