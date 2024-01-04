@@ -661,23 +661,23 @@ mod_covariance_server <- function(input, output, session, f){
     output$numbers <- renderPlot({
 
       req(trap_data())
-      measured_events <- trap_data()$events
-      measured_events[, displacement_nm := (displacement_bead_1_nm + displacement_bead_2_nm)/2 ]
-      measured_events[, time_on_s := (attachment_duration_bead_1_s + attachment_duration_bead_2_s)/2 ]
-      measured_events[, step1 := (substep_1_bead_1_nm + substep_1_bead_2_nm)/2 ]
-      measured_events[, step2 := (substep_2_bead_1_nm + substep_2_bead_2_nm)/2 ]
-      measured_events <- measured_events[keep_1 == TRUE & keep_2 == TRUE & event_user_excluded == FALSE]
+      measured_events_data <- trap_data()$events
+      measured_events_data[, displacement_nm := (displacement_bead_1_nm + displacement_bead_2_nm)/2 ]
+      measured_events_data[, time_on_s := (attachment_duration_bead_1_s + attachment_duration_bead_2_s)/2 ]
+      measured_events_data[, step1 := (substep_1_bead_1_nm + substep_1_bead_2_nm)/2 ]
+      measured_events_data[, step2 := (substep_2_bead_1_nm + substep_2_bead_2_nm)/2 ]
+      measured_events_data <- measured_events_data[keep_1 == TRUE & keep_2 == TRUE & event_user_excluded == FALSE]
       step <-
         ggplot()+
-        stat_ecdf(data = measured_events, aes(displacement_nm), color = "red", pad = F)+
+        stat_ecdf(data = measured_events_data, aes(displacement_nm), color = "red", pad = F)+
         stat_ecdf(aes(rnorm(1000,
-                            mean = mean(measured_events$displacement_nm),
-                            sd(measured_events$displacement_nm))),
+                            mean = mean(measured_events_data$displacement_nm),
+                            sd(measured_events_data$displacement_nm))),
                   linetype = "dashed")+
-        geom_vline(aes(xintercept = mean(measured_events$displacement_nm)), linetype = "dashed")+
-        geom_label(aes(mean(measured_events$displacement_nm),
+        geom_vline(aes(xintercept = mean(measured_events_data$displacement_nm)), linetype = "dashed")+
+        geom_label(aes(mean(measured_events_data$displacement_nm),
                        y = 0.9,
-                       label = paste0("bar(x)==", round(mean(measured_events$displacement_nm), 1))),
+                       label = paste0("bar(x)==", round(mean(measured_events_data$displacement_nm), 1))),
                    parse = TRUE,
                    size = 6)+
         ggtitle("Total Displacements")+
@@ -693,15 +693,15 @@ mod_covariance_server <- function(input, output, session, f){
 
       step1 <-
         ggplot()+
-        stat_ecdf(data = measured_events, aes(step1), color = "red", pad = F)+
+        stat_ecdf(data = measured_events_data, aes(step1), color = "red", pad = F)+
         stat_ecdf(aes(rnorm(1000,
-                            mean = mean(measured_events$step1),
-                            sd(measured_events$step1))),
+                            mean = mean(measured_events_data$step1),
+                            sd(measured_events_data$step1))),
                   linetype = "dashed")+
-        geom_vline(aes(xintercept = mean(measured_events$step1, na.rm = TRUE)), linetype = "dashed")+
-        geom_label(aes(mean(measured_events$step1, na.rm = TRUE),
+        geom_vline(aes(xintercept = mean(measured_events_data$step1, na.rm = TRUE)), linetype = "dashed")+
+        geom_label(aes(mean(measured_events_data$step1, na.rm = TRUE),
                        y = 0.9,
-                       label = paste0("bar(x)==", round(mean(measured_events$step1, na.rm = TRUE), 1))),
+                       label = paste0("bar(x)==", round(mean(measured_events_data$step1, na.rm = TRUE), 1))),
                    parse = TRUE,
                    size = 6)+
         ggtitle("Substep 1")+
@@ -717,15 +717,15 @@ mod_covariance_server <- function(input, output, session, f){
 
       step2 <-
         ggplot()+
-        stat_ecdf(data = measured_events, aes(step2), color = "red", pad = F)+
+        stat_ecdf(data = measured_events_data, aes(step2), color = "red", pad = F)+
         stat_ecdf(aes(rnorm(1000,
-                            mean = mean(measured_events$step2),
-                            sd(measured_events$step2))),
+                            mean = mean(measured_events_data$step2),
+                            sd(measured_events_data$step2))),
                   linetype = "dashed")+
-        geom_vline(aes(xintercept = mean(measured_events$step2, na.rm = TRUE)), linetype = "dashed")+
-        geom_label(aes(mean(measured_events$step2, na.rm = TRUE),
+        geom_vline(aes(xintercept = mean(measured_events_data$step2, na.rm = TRUE)), linetype = "dashed")+
+        geom_label(aes(mean(measured_events_data$step2, na.rm = TRUE),
                        y = 0.4,
-                       label = paste0("bar(x)==", round(mean(measured_events$step2, na.rm = TRUE), 1))),
+                       label = paste0("bar(x)==", round(mean(measured_events_data$step2, na.rm = TRUE), 1))),
                    parse = TRUE,
                    size = 6)+
         ggtitle("Substep 2")+
@@ -741,11 +741,11 @@ mod_covariance_server <- function(input, output, session, f){
 
       time_on <-
         ggplot()+
-        stat_ecdf(data = measured_events, aes(time_on_s), color = "red", pad = F)+
-        geom_vline(aes(xintercept = median(measured_events$time_on_s)), linetype = "dashed")+
-        geom_label(aes(x = median(measured_events$time_on_s),
+        stat_ecdf(data = measured_events_data, aes(time_on_s), color = "red", pad = F)+
+        geom_vline(aes(xintercept = median(measured_events_data$time_on_s)), linetype = "dashed")+
+        geom_label(aes(x = median(measured_events_data$time_on_s),
                        y = 0.9,
-                       label = paste0("Med. = ", round(median(measured_events$time_on_s*1000), 0))),
+                       label = paste0("Med. = ", round(median(measured_events_data$time_on_s*1000), 0))),
                    size = 6)+
         ggtitle("Time On")+
         xlab("ms")+

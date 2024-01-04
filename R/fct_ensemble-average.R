@@ -20,51 +20,62 @@ prep_ensemble <- function(trap_selected_project,
   # trap_selected_project <- "~/lasertrapr/project_myoV-phosphate"
   # ms_extend_s2 = 3
   # ms_extend_s1 = 3
+                                        # trap_selected_project <- "~/lasertrapr/project_myoV-phosphate"
+                                        # ms_extend_s2 = 3
+                                        # ms_extend_s1 = 3
   ## browser()
 
   if(is_shiny) incProgress(0.01, detail = "Removing Old Files")
   
   old_files <- 
     lasertrapr:::list_files(
-      trap_selected_project,
-      pattern = "ensemble-data.csv",
-      recursive = TRUE)
+                   trap_selected_project,
+                   pattern = "ensemble-data.csv",
+                   recursive = TRUE)
   
   file.remove(old_files$path)
 
   old_files <-
     lasertrapr:::list_files(
-      trap_selected_project,
-      pattern = "substeps.csv",
-      recursive = TRUE)
+                   trap_selected_project,
+                   pattern = "ensemble-data.rds",
+                   recursive = TRUE)
 
   file.remove(old_files$path)
-  # trap_data_paths <- 
-  #   lasertrapr:::list_files(
-  #     trap_selected_project,
-  #     pattern = "trap-data.csv",
-  #     recursive = TRUE)
+
+  old_files <-
+    lasertrapr:::list_files(
+                   trap_selected_project,
+                   pattern = "substeps.csv",
+                   recursive = TRUE)
+
+  file.remove(old_files$path)
+                                        # trap_data_paths <-
+                                        #   lasertrapr:::list_files(
+                                        #     trap_selected_project,
+                                        #     pattern = "trap-data.csv",
+                                        #     recursive = TRUE)
   
   options_data_paths <- 
     lasertrapr:::list_files(
-      trap_selected_project,
-      pattern = "options.csv",
-      recursive = TRUE)
+                   trap_selected_project,
+                   pattern = "options.csv",
+                   recursive = TRUE)
   
   options_data <- 
     data.table::rbindlist(
-      lapply(
-        options_data_paths$path, 
-        data.table::fread),
-      fill = TRUE)
-    
-  # trap_data <- 
-  #   data.table::rbindlist(
-  #     lapply(
-  #       trap_data_paths$path, 
-  #       data.table::fread, 
-  #       nrows = 1), 
-  #     fill = TRUE)
+                  lapply(
+                    options_data_paths$path,
+                    data.table::fread),
+                  fill = TRUE)
+
+                                        # trap_data <-
+                                        #   data.table::rbindlist(
+                                        #     lapply(
+                                        #       trap_data_paths$path,
+                                        #       data.table::fread,
+                                        #       nrows = 1),
+                                        #     fill = TRUE)
   
   options_data <- options_data[report == "success" & review == TRUE & include == TRUE]
 
@@ -80,28 +91,28 @@ prep_ensemble <- function(trap_selected_project,
 
   event_files_filtered <- 
     data.table::rbindlist(
-      lapply(
-        event_file_paths, 
-        data.table::fread
-        )
-    )
+                  lapply(
+                    event_file_paths,
+                    data.table::fread
+                  )
+                )
 
   if(is.null(n_channels)) n_channels <- 1
-    if(n_channels == 2){
-      event_files_filtered[, keep_add := keep_1+keep_2]
-      event_files_filtered[, keep := ifelse(keep_add == 2, TRUE, FALSE)]
+  if(n_channels == 2){
+    event_files_filtered[, keep_add := keep_1+keep_2]
+    event_files_filtered[, keep := ifelse(keep_add == 2, TRUE, FALSE)]
 
-  longest_event_df <-
-    event_files_filtered[keep == TRUE & event_user_excluded == FALSE,
-                         .(longest_event = max(c(attachment_duration_bead_1_dp, attachment_duration_bead_2_dp))),
-                         by = conditions]
-    } else {
+    longest_event_df <-
+      event_files_filtered[keep == TRUE & event_user_excluded == FALSE,
+                           .(longest_event = max(c(attachment_duration_bead_1_dp, attachment_duration_bead_2_dp))),
+                           by = conditions]
+  } else {
 
-  longest_event_df <- 
-    event_files_filtered[keep == TRUE & event_user_excluded == FALSE,
-                         .(longest_event = max(cp_time_on_dp)),
-                         by = conditions]
-}
+    longest_event_df <-
+      event_files_filtered[keep == TRUE & event_user_excluded == FALSE,
+                           .(longest_event = max(cp_time_on_dp)),
+                           by = conditions]
+  }
   dp_extend_s2 <- ms_extend_s2*hz/1000
   dp_extend_s1 <- ms_extend_s1*hz/1000
   
@@ -158,80 +169,89 @@ prep_ensemble <- function(trap_selected_project,
 
       }
 
-        measured_events[, event_length := (cp_event_stop_dp-cp_event_start_dp)+1]
-    measured_events <- measured_events[event_length >= (tmin_ms*(hz/1000))]
-    substeps <- list()
-    event_ensembles <- list()
-    for(event in seq_len(nrow(measured_events))){
-      #print(paste0("event=", event))
-      start <- measured_events$cp_event_start_dp[[event]]
-      stop <- measured_events$cp_event_stop_dp[[event]]
-      event_chunk <- trap_trace[start:stop]
-      longest_event <- longest_event_df[which(longest_event_df$conditions == measured_events$conditions[[event]]),]
-      longest_event <- longest_event$longest_event
-      if(length(event_chunk) == longest_event){
-        forward_event <- data.table(data = event_chunk,
-                                    ensemble_index = 0:(longest_event-1))
-        backwards_event <- data.table(data = event_chunk,
-                                      ensemble_index = -(longest_event-1):0)
-      } else {
-        s2_avg <- mean(trap_trace[(stop - dp_extend_s2):stop])
-        time_diff <- longest_event - length(event_chunk)
-        forward_extended_event <- c(event_chunk, rep(s2_avg, time_diff))
-        forward_event <- data.table(data = forward_extended_event,
-                                    ensemble_index = 0:(longest_event-1))
-        delay_s1_start <- ms_2_skip*hz/1000
-        s1_total_time <- delay_s1_start+dp_extend_s1
-        if(length(event_chunk) <= s1_total_time) next
-        s1_avg <-  mean(event_chunk[(delay_s1_start:(delay_s1_start+dp_extend_s1))])
-        backwards_extended_event <- c(rep(s1_avg, (time_diff+delay_s1_start)), event_chunk[-c(1:delay_s1_start)])
-        backwards_event <- data.table(data = backwards_extended_event,
-                                      ensemble_index = -(longest_event-1):0)
-      }
-      
-      ms_10 <- 10*hz/1000
-      end_forward_base <- start - 1
-      before_forwards <- data.table(data = trap_trace[(end_forward_base - ((ms_10*5)-1)):end_forward_base],
-                                    ensemble_index = -(ms_10*5):-1)
+      measured_events[, event_length := (cp_event_stop_dp-cp_event_start_dp)+1]
+      measured_events <- measured_events[event_length >= (tmin_ms*(hz/1000))]
+      substeps <- list()
+      event_ensembles <- list()
+      for(event in seq_len(nrow(measured_events))){
+                                        #print(paste0("event=", event))
+        start <- measured_events$cp_event_start_dp[[event]]
+        stop <- measured_events$cp_event_stop_dp[[event]]
+        event_chunk <- trap_trace[start:stop]
+        longest_event <- longest_event_df[which(longest_event_df$conditions == measured_events$conditions[[event]]),]
+        longest_event <- longest_event$longest_event
+        if(length(event_chunk) == longest_event){
+          forward_event <- data.table(data = event_chunk,
+                                      ensemble_index = 0:(longest_event-1))
+          backwards_event <- data.table(data = event_chunk,
+                                        ensemble_index = -(longest_event-1):0)
+        } else {
+          s2_avg <- mean(trap_trace[(stop - dp_extend_s2):stop])
+          time_diff <- longest_event - length(event_chunk)
+          forward_extended_event <- c(event_chunk, rep(s2_avg, time_diff))
+          forward_event <- data.table(data = forward_extended_event,
+                                      ensemble_index = 0:(longest_event-1))
+          delay_s1_start <- ms_2_skip*hz/1000
+          s1_total_time <- delay_s1_start+dp_extend_s1
+          if(length(event_chunk) <= s1_total_time) next
+          s1_avg <-  mean(event_chunk[(delay_s1_start:(delay_s1_start+dp_extend_s1))])
+          backwards_extended_event <- c(rep(s1_avg, (time_diff+delay_s1_start)), event_chunk[-c(1:delay_s1_start)])
+          backwards_event <- data.table(data = backwards_extended_event,
+                                        ensemble_index = -(longest_event-1):0)
+        }
 
-      ms_1 <- 1*hz/1000
-      ms_5 <- 3 *hz/1000
+        ms_10 <- 10*hz/1000
+        end_forward_base <- start - 1
+        before_forwards <- data.table(data = trap_trace[(end_forward_base - ((ms_10*5)-1)):end_forward_base],
+                                      ensemble_index = -(ms_10*5):-1)
 
-      mean_baseline_prior <- mean( trap_trace[(end_forward_base - (ms_5-1)):(end_forward_base-ms_1)] )
+        ms_1 <- 1*hz/1000
+        ms_5 <- 3 *hz/1000
 
-      start_backwards_base <- stop + 1
-      after_backwards <- data.table(data = trap_trace[start_backwards_base:(start_backwards_base + ((ms_10*5)-1))],
-                                    ensemble_index = 1:(ms_10*5))
-      
-      forward_ensemble <- rbind(before_forwards, forward_event)
-      forward_ensemble[,
-                       `:=`(direction = "forward",
-                            forward_backward_index = -(ms_10*5):(longest_event-1),
-                            event_index = event)
-                            ## signal_ratio =  measured_events$front_signal_ratio[[event]])
-                       ]
-      
-      backwards_ensemble <- rbind(backwards_event, after_backwards)
-      backwards_ensemble[,
-                         `:=`(direction = "backwards",
-                              forward_backward_index = longest_event:((2*longest_event)+((ms_10*5)-1)),
+        mean_baseline_prior <- mean( trap_trace[(end_forward_base - (ms_5-1)):(end_forward_base-ms_1)] )
+
+        start_backwards_base <- stop + 1
+        after_backwards <- data.table(data = trap_trace[start_backwards_base:(start_backwards_base + ((ms_10*5)-1))],
+                                      ensemble_index = 1:(ms_10*5))
+
+        forward_ensemble <- rbind(before_forwards, forward_event)
+        forward_ensemble[,
+                         `:=`(direction = "forward",
+                              forward_backward_index = -(ms_10*5):(longest_event-1),
                               event_index = event)
-                              ## signal_ratio = measured_events$back_signal_ratio[[event]])
+                         ## signal_ratio =  measured_events$front_signal_ratio[[event]])
                          ]
-      
-      ensemble <-  rbind(forward_ensemble, backwards_ensemble)
-      ensemble[,
-               `:=`(project = options_data$project[[i]],
-                    conditions = options_data$conditions[[i]],
-                    date = options_data$date[[i]],
-                    obs = options_data$obs[[i]],
-                    bead = b,
-                    fb_time = forward_backward_index/hz)
-               ]
 
-      if(analyzer == "covar"){
-        ensemble$data <- ensemble$data - mean_baseline_prior
-      }
+      ## ensemble <-  rbind(forward_ensemble, backwards_ensemble)
+      ## ensemble[,
+      ##          `:=`(project = options_data$project[[i]],
+      ##               conditions = options_data$conditions[[i]],
+      ##               date = options_data$date[[i]],
+      ##               obs = options_data$obs[[i]],
+      ##               bead = b,
+      ##               fb_time = forward_backward_index/hz)
+               ## ]
+
+        backwards_ensemble <- rbind(backwards_event, after_backwards)
+        backwards_ensemble[,
+                           `:=`(direction = "backwards",
+                                forward_backward_index = longest_event:((2*longest_event)+((ms_10*5)-1)),
+                                event_index = event)
+                           ## signal_ratio = measured_events$back_signal_ratio[[event]])
+                           ]
+
+        ensemble <-  rbind(forward_ensemble, backwards_ensemble)
+        ensemble[,
+                 `:=`(project = options_data$project[[i]],
+                      conditions = options_data$conditions[[i]],
+                      date = options_data$date[[i]],
+                      obs = options_data$obs[[i]],
+                      bead = b)
+                 ]
+
+        if(analyzer == "covar"){
+          ensemble$data <- ensemble$data - mean_baseline_prior
+        }
 
       setorder(ensemble, cols = "forward_backward_index")
 
@@ -261,36 +281,36 @@ prep_ensemble <- function(trap_selected_project,
 
       event_ensembles <- data.table::rbindlist(event_ensembles)
       if(analyzer == "covar"){
-      event_ensembles <- event_ensembles[, .(data = mean(data)), by = .(project,
-                                                                        conditions,
-                                                                        date,
-                                                                        obs,
-                                                                        direction,
-                                                                        forward_backward_index,
-                                                                        ensemble_index,
-                                                                        event_index)]
+        event_ensembles <- event_ensembles[, .(data = mean(data)), by = .(project,
+                                                                          conditions,
+                                                                          date,
+                                                                          obs,
+                                                                          direction,
+                                                                          forward_backward_index,
+                                                                          ensemble_index,
+                                                                          event_index)]
       }
 
       ensemble_options <- data.table::data.table( ms_extend_s2, ms_extend_s1, ms_2_skip)
       data.table::fwrite(ensemble_options, file = file.path(path, "options-prep-ensemble.csv"), sep = ",")
       ## event_ensembles[[event]] <- ensemble
 
-      ensemble_path_f <- file.path(path, "forward-ensemble-data.csv")
-      ensemble_path_b <- file.path(path, "backwards-ensemble-data.csv")
+      ## ensemble_path_f <- file.path(path, "forward-ensemble-data.rds")
+      ## ensemble_path_b <- file.path(path, "backwards-ensemble-data.rds")
 
-      print(paste0("writing forward ", event))
-      if(file.exists(ensemble_path_f)){
-        data.table::fwrite(event_ensembles[direction=="forward"], file = ensemble_path_f, sep = ",", append = TRUE)
-      } else {
-        data.table::fwrite(event_ensembles[direction=="forward"], file = ensemble_path_f, sep = ",")
-      }
+      ## print(paste0("writing forward ", event))
+      ## if(file.exists(ensemble_path_f)){
+      ##   data.table::fwrite(event_ensembles[direction=="forward"], file = ensemble_path_f, sep = ",", append = TRUE)
+      ## } else {
+      ##   data.table::fwrite(event_ensembles[direction=="forward"], file = ensemble_path_f, sep = ",")
+      ## }
 
-      print(paste0("writing backwards ", event))
-      if(file.exists(ensemble_path_b)){
-        data.table::fwrite(event_ensembles[direction=="backwards"], file = ensemble_path_b, sep = ",", append = TRUE)
-      } else {
-        data.table::fwrite(event_ensembles[direction=="backwards"], file = ensemble_path_b, sep = ",")
-      }
+      ## print(paste0("writing backwards ", event))
+      ## if(file.exists(ensemble_path_b)){
+      ##   data.table::fwrite(event_ensembles[direction=="backwards"], file = ensemble_path_b, sep = ",", append = TRUE)
+      ## } else {
+      ##   data.table::fwrite(event_ensembles[direction=="backwards"], file = ensemble_path_b, sep = ",")
+      ## }
 
       ## event_ensembles$ms_extend_s2 <- ms_extend_s2
       ## event_ensembles$ms_extend_s1 <- ms_extend_s1
@@ -304,6 +324,8 @@ prep_ensemble <- function(trap_selected_project,
       ## data.table::fwrite(event_ensembles[direction=="forward"], file = file.path(path, "forward-ensemble-data.csv"), sep = ",")
       ## data.table::fwrite(event_ensembles[direction=="backwards"], file = file.path(path, "backwards-ensemble-data.csv"), sep = ",")
       ## }
+      saveRDS(event_ensembles[direction=="forward"], file.path(path, "forward-ensemble-data.rds"))
+      saveRDS(event_ensembles[direction=="backwards"], file.path(path, "backwards-ensemble-data.rds"))
 
       substeps <- data.table::rbindlist(substeps)
       substeps_path <- file.path(path, "substeps.csv")

@@ -70,7 +70,7 @@ fit_hm_model_to_covar_smooth <- function(covar_smooth,
     obs_trap_data_exit <- trap_data  |>
       dplyr::mutate(report = 'hmm-error',
                     analyzer = 'hm/cp')
-    data.table::fwrite(obs_trap_data_exit, file = file.path(path.expand('~'), 'lasertrapr', project, conditions, date, obs, 'trap-data.csv'), sep = ",")
+    ## data.table::fwrite(obs_trap_data_exit, file = file.path(path.expand('~'), 'lasertrapr', project, conditions, date, obs, 'trap-data.csv'), sep = ",")
     if(is_shiny) showNotification('Skipping...HM-Model starts in state 2. Try trimming beginnging of obs.', type = 'warning')
     stop("HM-Model Starts in State 2. Try trimming the beginning of the obs.")
   }
