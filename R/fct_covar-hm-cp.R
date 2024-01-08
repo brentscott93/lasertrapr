@@ -14,6 +14,7 @@ covariance_hidden_markov_changepoint_analysis <- function(trap_data,
                                                back_cp_method,
                                                is_shiny = F,
                                                opt,
+                                               merge_threshold_dp,
                                                ...){
   ## browser()
   project <- unique(trap_data$project)
@@ -147,6 +148,8 @@ covariance_hidden_markov_changepoint_analysis <- function(trap_data,
         if(is_shiny) setProgress(0.25, detail = "HM-Model")
 
         hm_model_results <- fit_hm_model_to_covar_smooth(covar_smooth = covar_smooth,
+                                                         pb1_smooth = pb1_smooth,
+                                                         pb2_smooth = pb2_smooth,
                                                          em_random_start = em_random_start,
                                                          is_shiny = TRUE,
                                                          project = project,
@@ -227,10 +230,78 @@ covariance_hidden_markov_changepoint_analysis <- function(trap_data,
 
         #get some data for plotting later
 
+# merge close events
+## browser()
+        cp_event_start_preferred <- paste0("cp_event_start_dp_", o$preferred_channel[[1]])
+        cp_event_stop_preferred <- paste0("cp_event_stop_dp_", o$preferred_channel[[1]])
+                                        #event start
+        es <- cp_data[, base::get(cp_event_start_preferred)]
+                                        #event end
+        ee <- cp_data[, base::get(cp_event_stop_preferred)]
+        skip_next <- FALSE
+        rows_to_remove <- vector()
+        for(r in seq_len(nrow(cp_data))){
+          if(r == nrow(cp_data)) next
+          if(skip_next){
+            skip_next <- FALSE
+            next
+          }
+          if(is.na(ee[r])) next
+          if(is.na(es[r+1])) next
+              if((es[r+1]-ee[r]) <= merge_threshold_dp){
+                print(r)
+                if(is.na(cp_data$cp_event_start_dp_1[[r]]) ||
+                   is.na(cp_data$cp_event_stop_dp_1[[(r+1)]]) ||
+                   is.na(cp_data$cp_event_start_dp_2[[r]]) ||
+                   is.na(cp_data$cp_event_stop_dp_2[[(r+1)]]) ) { next }
 
 
+                cp_data$cp_event_stop_dp_1[[r]] <- cp_data$cp_event_stop_dp_1[[(r+1)]]
+                cp_data$cp_event_stop_dp_2[[r]] <- cp_data$cp_event_stop_dp_2[[(r+1)]]
 
-        report_data  <- "success"
+                cp_data$absolute_substep_2_bead_1_nm[[r]] <- cp_data$absolute_substep_2_bead_1_nm[[r+1]]
+                cp_data$absolute_substep_2_bead_1_nm[[r]] <- cp_data$absolute_substep_2_bead_2_nm[[r+1]]
+                ## cp_data$substep_1_bead_1_nm # same
+                cp_data$substep_2_bead_1_nm[[r]] <- cp_data$absolute_substep_2_bead_1_nm[[(r+1)]] - cp_data$absolute_substep_1_bead_1_nm[[r]]
+                cp_data$substep_2_bead_2_nm[[r]] <- cp_data$absolute_substep_2_bead_2_nm[[(r+1)]] - cp_data$absolute_substep_1_bead_2_nm[[r]]
+
+                cp_data$baseline_after_1ms_bead_1_nm[[r]] <- cp_data$baseline_after_1ms_bead_1_nm[[r+1]]
+                cp_data$baseline_after_1ms_bead_2_nm[[r]] <- cp_data$baseline_after_1ms_bead_2_nm[[r+1]]
+
+                cp_data$absolute_displacement_bead_1_nm[[r]] <- mean(pb1[cp_data$cp_event_start_dp_1[[r]]:cp_data$cp_event_stop_dp_1[[r]]])
+                cp_data$absolute_displacement_bead_2_nm[[r]] <- mean(pb2[cp_data$cp_event_start_dp_2[[r]]:cp_data$cp_event_stop_dp_2[[r]]])
+
+                cp_data$displacement_bead_1_nm[[r]] <- cp_data$absolute_displacement_bead_1_nm[[r]] - cp_data$baseline_prior_1ms_bead_1[[r]]
+                cp_data$displacement_bead_2_nm[[r]] <- cp_data$absolute_displacement_bead_2_nm[[r]] - cp_data$baseline_prior_1ms_bead_2[[r]]
+
+                cp_data$attachment_duration_bead_1_dp[[r]] <- length(cp_data$cp_event_start_dp_1[[r]]:cp_data$cp_event_stop_dp_1[[r]])
+                cp_data$attachment_duration_bead_2_dp[[r]] <- length(cp_data$cp_event_start_dp_2[[r]]:cp_data$cp_event_stop_dp_2[[r]])
+
+                cp_data$attachment_duration_bead_1_s[[r]] <- cp_data$attachment_duration_bead_1_dp[[r]]/hz
+                cp_data$attachment_duration_bead_2_s[[r]] <- cp_data$attachment_duration_bead_2_dp[[r]]/hz
+
+                cp_data$attachment_duration_bead_1_ms[[r]] <- cp_data$attachment_duration_bead_1_dp[[r]]/hz*1000
+                cp_data$attachment_duration_bead_2_ms[[r]] <- cp_data$attachment_duration_bead_2_dp[[r]]/hz*1000
+
+                cp_data$force_baed_1_pn[[r]] <- cp_data$displacement_bead_1_nm[[r]] * nm2pn
+                cp_data$force_baed_2_pn[[r]] <- cp_data$displacement_bead_2_nm[[r]] * nm2pn2
+
+                cp_data$absolute_force_bead_1_pn[[r]] <- cp_data$absolute_displacement_bead_1_nm[[r]] * nm2pn
+                cp_data$absolute_force_bead_2_pn[[r]] <- cp_data$absolute_displacement_bead_2_nm[[r]] * nm2pn2
+
+                print(paste0(nrow(cp_data), " = cp_data rows"))
+                rows_to_remove[[r]] <- r+1
+                skip_next <- TRUE
+              } else {
+                skip_next <- FALSE
+              }
+          }
+
+        if(length(rows_to_remove) != 0){
+          cp_data <- cp_data[-na.omit(rows_to_remove)]
+        }
+
+          report_data  <- "success"
         ## str(cp_results$did_it_flip_vec)
 
         ## if(cp_results$did_it_flip_vec[[1]]){

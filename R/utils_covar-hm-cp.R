@@ -5,6 +5,8 @@
 #' @param is_shiny TRUE/FALSE
 #' @return a list of two. 1) a table with running mean, variance, and hm-model identified state. 2) variance signal-to-noise.
 fit_hm_model_to_covar_smooth <- function(covar_smooth,
+                                         pb1_smooth,
+                                         pb2_smooth,
                                          em_random_start,
                                          is_shiny,
                                          project,
@@ -12,12 +14,25 @@ fit_hm_model_to_covar_smooth <- function(covar_smooth,
                                          date,
                                          obs){
 
+
+  ## browser()
+
   seed <- floor(runif(1, 0, 1e6))
 
-    hmm <- depmixS4::depmix(covar_smooth~1,
-                            data = data.frame(covar_smooth = covar_smooth),
-                            nstates = 2,
-                            family = stats::gaussian())
+  hmm <- depmixS4::depmix(list(covar_smooth~1,
+                               pb1_smooth~1
+                               ## pb2_smooth~1
+                               ),
+                          data = data.frame(covar_smooth = covar_smooth,
+                                            pb1_smooth = pb1_smooth
+                                            ## pb2_smooth = pb2_smooth
+                                            ),
+                          nstates = 2,
+                          family = list(stats::gaussian(),
+                                        stats::gaussian()
+                                        ## stats::gaussian()
+                                        )
+                          )
 
 
   hmm_initial_parameters <- c(0.98, 0.02,        #Initial state probabilities
@@ -25,14 +40,18 @@ fit_hm_model_to_covar_smooth <- function(covar_smooth,
                               0.02, 0.98)       #transition probs s2 to s1/s2. Again a guess
 
 
+  mean_pb1 <- mean(pb1_smooth)
+  sd_pb1 <- sd(pb1_smooth)
+  mean_pb2 <- mean(pb2_smooth)
+  sd_pb2 <- sd(pb2_smooth)
   sd_covar_smooth <- sd(covar_smooth)
   mean_covar_smooth <- mean(covar_smooth)
  ## em_random_start <- T
   if(em_random_start == T){
     hmm_fit <- depmixS4::fit(hmm, emcontrol = depmixS4::em.control(random.start = TRUE))
   } else {
-    estimate_hmm_gaussians <- c(mean_covar_smooth, sd_covar_smooth,
-                                mean_covar_smooth/4, sd_covar_smooth/4)
+    estimate_hmm_gaussians <- c(mean_covar_smooth, sd_covar_smooth, mean_pb1, sd_pb1/2, #mean_pb2, sd_pb2/2,
+                                mean_covar_smooth/4, sd_covar_smooth/4, mean_pb1+6, sd_pb1)#, mean_pb2+6, sd_pb2)
     hmm <- depmixS4::setpars(hmm, c(hmm_initial_parameters, estimate_hmm_gaussians))
     set.seed(seed)
     hmm_fit <- depmixS4::fit(hmm, emcontrol = depmixS4::em.control(random.start = FALSE))
@@ -84,6 +103,8 @@ fit_hm_model_to_covar_smooth <- function(covar_smooth,
 
   #save running mean, var, & state for dygraph
   data <- data.table::data.table(covar_smooth = unname(covar_smooth),
+                                 run_mean_1 = unname(pb1_smooth),
+                                 run_mean_2 = unname(pb2_smooth),
                                  state = hmm_posterior$state,
                                  index = seq_along(covar_smooth),
                                  var_signal_ratio = s2n)
