@@ -1,4 +1,4 @@
-# Set options here
+                                        # Set options here
 options(golem.app.prod = FALSE,
         browser = "firefox") # TRUE = production mode, FALSE = development mode
 

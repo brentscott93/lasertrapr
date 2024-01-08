@@ -6,6 +6,8 @@
 \usage{
 fit_hm_model_to_covar_smooth(
   covar_smooth,
+  pb1_smooth,
+  pb2_smooth,
   em_random_start,
   is_shiny,
   project,

@@ -79,6 +79,9 @@ mod_covariance_ui <- function(id){
       fluidRow(
         column(9,
              tabBox(width = NULL, title = 'Insights', side = 'right',
+               tabPanel("M-CV",
+                 plotOutput(ns('hmm_state')) |> shinycssloaders::withSpinner(type = 8, color = "#373B38")
+               ),
                tabPanel("HMM/Covar",
                  plotOutput(ns('hmm_covar')) |> shinycssloaders::withSpinner(type = 8, color = "#373B38")
                ),
@@ -190,6 +193,7 @@ mod_covariance_server <- function(input, output, session, f){
                                     back_cp_method = a$back_cp_method,
                                     ## cp_running_var_window = a$cp_running_var_window,
                                     opt = opt,
+                                    merge_threshold_dp = a$merge_threshold_dp,
                                     is_shiny = TRUE)
               )
        })
@@ -235,17 +239,28 @@ mod_covariance_server <- function(input, output, session, f){
 
     me_data <- trap_data()$events
     periods_df <- data.table::data.table(
-                                start = round((me_data$cp_event_start_dp_1 + me_data$cp_event_start_dp_2)/2, 0)/hz,
-                                stop = round((me_data$cp_event_stop_dp_1 + me_data$cp_event_stop_dp_2)/2, 0)/hz,
+                                start = me_data$cp_event_start_dp_1/hz,
+                                stop = me_data$cp_event_stop_dp_1/hz,
                                 keep_1 = me_data$keep_1,
                                 keep_2 = me_data$keep_2,
                                 event_user_excluded = me_data$event_user_excluded,
-                                color = scales::alpha("#D95F02" , 0.4)
+                                color = scales::alpha("#FF0000" , 0.4)
                               )
 
 
    periods_df <- periods_df[keep_1 == T & keep_2 == T & event_user_excluded == F]
 
+    periods_df2 <- data.table::data.table(
+                                start = me_data$cp_event_start_dp_2/hz,
+                                stop = me_data$cp_event_stop_dp_2/hz,
+                                keep_1 = me_data$keep_1,
+                                keep_2 = me_data$keep_2,
+                                event_user_excluded = me_data$event_user_excluded,
+                                color = scales::alpha("#0000FF" , 0.4)
+                              )
+
+
+   periods_df2 <- periods_df2[keep_1 == T & keep_2 == T & event_user_excluded == F]
     # add a column providiing the real event number
     # so when user filters out events, the events retain their real event number
     # making it easier to pick other events to exclude
@@ -261,6 +276,7 @@ mod_covariance_server <- function(input, output, session, f){
                         dygraphs::dySeries('bead_2', color = 'red') |>
                         dygraphs::dyRangeSelector(fillColor ='white', strokeColor = 'black') |>
                         add_shades(periods_df) |> #raw_periods
+                        add_shades(periods_df2) |> #raw_periods
                         #add_shades(excluded_events, color = "#BDBDBD") %>%
                         add_labels_hmm(labels, labelLoc = 'bottom') |> #results$events
                         dygraphs::dyAxis('x', label = 'seconds', drawGrid = FALSE) |>
@@ -285,6 +301,34 @@ mod_covariance_server <- function(input, output, session, f){
       theme_linedraw(base_size = 18)+
       theme(legend.position = 'none')
 
+
+  })
+
+  output$hmm_state <- renderPlot({
+
+   req(trap_data())
+    mv_data <- trap_data()$running
+    mv_data$state <- factor(mv_data$state, levels = c(1, 2))
+
+    mv1 <- ggplot2::ggplot(mv_data)+
+              geom_point(aes(x = run_mean_1, y = covar_smooth, color = state), size = 3, alpha = 0.5)+
+              scale_color_manual(values = c("#1B9E77", "#D95F02"))+
+              ggtitle('M-CV Bead 1')+
+              ylab('Covariance')+
+              xlab('Mean (nm)')+
+              theme_linedraw(base_size = 18)+
+              theme(legend.position = 'none')
+
+    mv2 <- ggplot(mv_data)+
+              geom_point(aes(x = run_mean_2, y = covar_smooth, color = state), size = 3, alpha = 0.5)+
+              scale_color_manual(values = c("#1B9E77", "#D95F02"))+
+              ## facet_wrap(~state)+
+              ggtitle('M-CV Bead 2')+
+              ylab('Covariance')+
+              xlab('Mean (nm)')+
+              theme_linedraw(base_size = 18)
+
+      gridExtra::grid.arrange(mv1, mv2, nrow = 1)
 
   })
 
@@ -401,7 +445,8 @@ mod_covariance_server <- function(input, output, session, f){
                         median_w_width = 200,
                         em_random_start = FALSE,
                         front_cp_method = "Mean/Var",
-                        back_cp_method = "Mean/Var"
+                        back_cp_method = "Mean/Var",
+                        merge_threshold_dp = 0
                         ## cp_running_var_window = 5
                         )
 
@@ -412,6 +457,7 @@ mod_covariance_server <- function(input, output, session, f){
       a$em_random_start <- input$em_random_start
       a$front_cp_method <-input$front_cp_method
       a$back_cp_method <-input$back_cp_method
+      a$merge_threshold_dp <- input$merge_threshold_dp
       ## a$cp_running_var_window <- input$cp_running_var_window
       removeModal()
     })
@@ -424,80 +470,76 @@ mod_covariance_server <- function(input, output, session, f){
         footer = tagList(modalButton("Cancel"), actionButton(ns("set_options"), "OK")),
         tabsetPanel(
           tabPanel("HM-Model",
-                       fluidRow(
-                         column(6,
-                                numericInput(ns("w_width"), "Covariance Window Width",
-                                             value = a$w_width,
-                                             width = "100%")
-                         ),
-                         column(6,
-                                shinyWidgets::sliderTextInput(ns("w_slide"),
-                                                              "Slide Window", c("1-Pt", "1/4", "1/2", "3/4", "No-overlap"),
-                                                              grid = TRUE,
-                                                              selected = a$w_slide,
-                                                              width = "100%")
-                                ## numericInput(ns("median_w_width"), "Running median window Width",
-                                ##              value = a$median_w_width,
-                                ##              width = "100%")
-                         )
-                       ) ,
-                       fluidRow(
-                         column(4,
-                                div(style = "margin-top: 25px;",
+                   fluidRow(
+                     column(6,
+                            numericInput(ns("w_width"), "Covariance Window Width",
+                                         value = a$w_width,
+                                         width = "100%")
+                            ),
+                     column(6,
+                            shinyWidgets::sliderTextInput(ns("w_slide"),
+                                                          "Slide Window", c("1-Pt", "1/4", "1/2", "3/4", "No-overlap"),
+                                                          grid = TRUE,
+                                                          selected = a$w_slide,
+                                                          width = "100%")
+                            ## numericInput(ns("median_w_width"), "Running median window Width",
+                            ##              value = a$median_w_width,
+                            ##              width = "100%")
+                            )
+                   ) ,
+                   fluidRow(
+                     column(4,
+                            div(style = "margin-top: 25px;",
                                 shinyWidgets::prettyCheckbox(inputId = ns('em_random_start'),
                                                              value = a$em_random_start,
                                                              label = "EM Random Start?",
                                                              status = "primary",
                                                              shape = "curve",
                                                              outline = TRUE)
-                          )
-                         )
-                        )
-        ), #hm-model tab close
-        tabPanel("Changepoint",
-                 fluidRow(
-                   column(6,
-                          h4("Front"),
-                          shinyWidgets::prettyRadioButtons(
-                            inputId = ns("front_cp_method"),
-                            label = "Channels",
-                            choices = c("Mean/Var", "Variance"),
-                            selected = a$front_cp_method,
-                            inline = TRUE,
-                            status = "primary",
-                            fill = TRUE
-                          )
-                   ),
-                          column(6,
-                                 h4("Back"),
-                                 shinyWidgets::prettyRadioButtons(
-                                   inputId = ns("back_cp_method"),
-                                   label = "Channels",
-                                   choices = c("Mean/Var", "Variance"),
-                                   selected = a$back_cp_method,
-                                   inline = TRUE,
-                                   status = "primary",
-                                   fill = TRUE
-                                 )
-                          )
+                                )
+                            )
                    )
-                    ## sliderInput(ns("cp_running_var_window"), "Running Variance Window Width", min = 5, max = 100, value = a$cp_running_var_window, width = "100%")
-          ) #cp tab panel
-        )
-       )
-      )
+                   ), #hm-model tab close
+          tabPanel("Changepoint",
+                   fluidRow(
+                     column(6,
+                            h4("Front"),
+                            shinyWidgets::prettyRadioButtons(
+                                            inputId = ns("front_cp_method"),
+                                            label = "Channels",
+                                            choices = c("Mean/Var", "Variance"),
+                                            selected = a$front_cp_method,
+                                            inline = TRUE,
+                                            status = "primary",
+                                            fill = TRUE
+                                          )
+                            ),
+                     column(6,
+                            h4("Back"),
+                            shinyWidgets::prettyRadioButtons(
+                                            inputId = ns("back_cp_method"),
+                                            label = "Channels",
+                                            choices = c("Mean/Var", "Variance"),
+                                            selected = a$back_cp_method,
+                                            inline = TRUE,
+                                            status = "primary",
+                                            fill = TRUE
+                                          )
+                            )
+                   )
 
-    observe({
-      if(is.null(input$back_cp_method)){
-        shinyjs::hide("cp_running_var_window")
-      } else {
-        if(input$back_cp_method == "Variance" || input$front_cp_method == "Variance"){
-          shinyjs::show("cp_running_var_window")
-        } else  {
-          shinyjs::hide("cp_running_var_window")
-        }
-      }
-      })
+                   ),
+                                        #cp tab panel
+          tabPanel("Merge Events",
+                   fluidRow(
+                     column(6,
+                            numericInput(ns("merge_threshold_dp"), label = "Merge event threshold (dp)", value = 0)
+                            )
+                   )
+                   )
+        )
+      )
+    )
   })
 
     #### Review Options ####
@@ -672,7 +714,7 @@ mod_covariance_server <- function(input, output, session, f){
         stat_ecdf(data = measured_events_data, aes(displacement_nm), color = "red", pad = F)+
         stat_ecdf(aes(rnorm(1000,
                             mean = mean(measured_events_data$displacement_nm),
-                            sd(measured_events_data$displacement_nm))),
+                            sd = sd(measured_events_data$displacement_nm))),
                   linetype = "dashed")+
         geom_vline(aes(xintercept = mean(measured_events_data$displacement_nm)), linetype = "dashed")+
         geom_label(aes(mean(measured_events_data$displacement_nm),
@@ -696,7 +738,7 @@ mod_covariance_server <- function(input, output, session, f){
         stat_ecdf(data = measured_events_data, aes(step1), color = "red", pad = F)+
         stat_ecdf(aes(rnorm(1000,
                             mean = mean(measured_events_data$step1),
-                            sd(measured_events_data$step1))),
+                            sd = sd(measured_events_data$step1))),
                   linetype = "dashed")+
         geom_vline(aes(xintercept = mean(measured_events_data$step1, na.rm = TRUE)), linetype = "dashed")+
         geom_label(aes(mean(measured_events_data$step1, na.rm = TRUE),
@@ -720,7 +762,7 @@ mod_covariance_server <- function(input, output, session, f){
         stat_ecdf(data = measured_events_data, aes(step2), color = "red", pad = F)+
         stat_ecdf(aes(rnorm(1000,
                             mean = mean(measured_events_data$step2),
-                            sd(measured_events_data$step2))),
+                            sd = sd(measured_events_data$step2))),
                   linetype = "dashed")+
         geom_vline(aes(xintercept = mean(measured_events_data$step2, na.rm = TRUE)), linetype = "dashed")+
         geom_label(aes(mean(measured_events_data$step2, na.rm = TRUE),
