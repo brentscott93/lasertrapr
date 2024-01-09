@@ -19,7 +19,9 @@ read_lumicks <- function(input_data,
                              t2 = lumicks$`Force 2x`)
 
           ## cal <- rhdf5::h5read(input_data$datapath[[r]], name = "Calibration/1")
-
+          ## rhdf5::h5ls("~/Downloads/20240103-123852 Marker 210.h5")
+          ## stage_position <- rhdf5::h5read("~/Downloads/20240103-124233 Marker 209.h5", name = "Nanostage position")
+          ## stage_position <- stage_position$X
           ## cal1 <- cal$`Force 1x`
           ## cal2 <- cal$`Force 2x`
 
