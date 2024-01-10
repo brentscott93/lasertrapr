@@ -576,7 +576,7 @@ mod_summarize_server <- function(input, output, session, f){
                 ))
     } else if(rv$analyzer == "covar"){
       req(rv$ton_rate)
-      browser()
+      ## browser()
        rate_df <- rv$ton_rate
          ## dplyr::mutate(ton_rate = round(as.numeric(ton_rate), 0),
                        ## CI = paste0("(-", boot_ci$k1_low[[1]], "/+", boot_ci$k1_up[[1]], ")")) |>

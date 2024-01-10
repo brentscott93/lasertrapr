@@ -703,7 +703,7 @@ mod_covariance_server <- function(input, output, session, f){
     output$numbers <- renderPlot({
 
       req(trap_data())
-      measured_events_data <- trap_data()$events
+      measured_events_data <- data.table::copy(trap_data()$events)
       measured_events_data[, displacement_nm := (displacement_bead_1_nm + displacement_bead_2_nm)/2 ]
       measured_events_data[, time_on_s := (attachment_duration_bead_1_s + attachment_duration_bead_2_s)/2 ]
       measured_events_data[, step1 := (substep_1_bead_1_nm + substep_1_bead_2_nm)/2 ]
