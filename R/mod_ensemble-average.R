@@ -891,7 +891,7 @@ str(input_sidemenu())
   output$substeps <- renderTable({
     validate(need(ee$substeps_data, "Please average & fit ensembles"))
 
-    tab <- ee$substeps_data[, .(total_step = mean(bead_position_substep_2_nm - prior_2ms_unbound_position_nm),
+    tab <- ee$substeps_data[, .(total_step = mean(bead_position_substep_2_nm - prior_unbound_position_nm),
                                 substep_1 = mean(substep_1_nm, na.rm = TRUE),
                                 substep_2  = mean(substep_2_nm, na.rm = TRUE)),
                             by = "conditions"]
@@ -913,7 +913,7 @@ str(input_sidemenu())
 
     substeps_data <- ee$substeps_data
 
-    substeps_data[, total_step := bead_position_substep_2_nm - prior_2ms_unbound_position_nm]
+    substeps_data[, total_step := bead_position_substep_2_nm - prior_unbound_position_nm]
 
     if(is.null(ee$plot_colors)){
       plot_colors <- unname(palette.colors())
