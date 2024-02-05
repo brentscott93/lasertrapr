@@ -209,13 +209,16 @@ prep_ensemble <- function(trap_selected_project,
                                       ensemble_index = -(ms_10*5):-1)
 
         ms_1 <- 1*hz/1000
-        ms_5 <- 3 *hz/1000
+        ms_5 <- 3*hz/1000
 
         mean_baseline_prior <- mean( trap_trace[(end_forward_base - (ms_5-1)):(end_forward_base-ms_1)] )
 
         start_backwards_base <- stop + 1
         after_backwards <- data.table(data = trap_trace[start_backwards_base:(start_backwards_base + ((ms_10*5)-1))],
                                       ensemble_index = 1:(ms_10*5))
+
+
+        mean_baseline_after <- mean( trap_trace[start_backwards_base:(start_backwards_base + (ms_5-1))] )
 
         forward_ensemble <- rbind(before_forwards, forward_event)
         forward_ensemble[,
@@ -283,11 +286,12 @@ prep_ensemble <- function(trap_selected_project,
         obs = options_data$obs[[i]],
         bead = b,
         event_id = measured_events$id[[event]],
-        prior_2ms_unbound_position_nm = mean_baseline_prior,
+        prior_unbound_position_nm = mean_baseline_prior,
         bead_position_substep_1_nm = s1_avg,
         substep_1_nm = s1_avg-mean_baseline_prior,
         bead_position_substep_2_nm = s2_avg,
-        substep_2_nm = s2_avg-s1_avg
+        substep_2_nm = s2_avg-s1_avg,
+        after_unbound_position_nm = mean_baseline_after
       )
 
       ## print(paste0("b = ", b, "id: ", measured_events$id[[event]], "; substep1: ", s1_avg, "; substep2: ", s2_avg))
