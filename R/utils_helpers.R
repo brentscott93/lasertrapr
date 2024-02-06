@@ -205,10 +205,15 @@ plot_overlay <- function(obs_path, time_period_dp, color, bead_offset = 0){
    measured_events_path <-  list.files(obs_path,
                                   pattern = "measured-events.csv",
                                   full.names = TRUE)
-   
-  
+
    measured_events <- data.table::fread(measured_events_path)
+   if(options$analyzer != "covar"){
    measured_events <- measured_events[cp_event_start_dp >= time_period_dp[[1]] & cp_event_stop_dp <= time_period_dp[[2]] ]
+   } else {
+
+   measured_events <- measured_events[cp_event_start_dp_1 >= time_period_dp[[1]] & cp_event_stop_dp_1 <= time_period_dp[[2]] ]
+
+   }
 
 if(options$analyzer == "hm/cp"){
    
@@ -297,6 +302,45 @@ ggplot(all_data, aes(new_time_index/hz, processed_bead, color = population))+
       legend.position = "none",
       axis.text = element_blank()
     )
+
+} else if(options$analyzer == "covar"){
+
+   events <- list()
+   for(i in 1:nrow(measured_events)){
+      events[[i]] <-
+        trap_data |>
+          dplyr::filter(real_time_index >= measured_events$cp_event_start_dp_1[[i]],
+                        real_time_index <= measured_events$cp_event_stop_dp_1[[i]]) |>
+          dplyr::mutate(population = paste0("event", i)) |>
+        dplyr::select(new_time_index,
+                      real_time_index,
+                      processed_bead_1,
+                      population)
+   }
+
+events <- data.table::rbindlist(events)
+
+all_data <-
+  trap_data |>
+   dplyr::select(new_time_index,
+                 real_time_index,
+                 processed_bead_1,
+                 population) |>
+  rbind(events)
+
+
+ggplot(all_data, aes(new_time_index/hz, processed_bead_1, color = population))+
+  geom_line()+
+  scale_color_manual(values = c("black", rep(color, nrow(measured_events))))+
+  xlab("")+
+  scale_x_continuous(breaks = seq(1, 100, 1))+
+  ylab("")+
+  scale_y_continuous(breaks = seq(-100, 100, by = 20))+
+  theme_minimal_grid()+
+  theme(
+    legend.position = "none",
+    axis.text = element_blank()
+  )
 
 }
 }
