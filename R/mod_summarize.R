@@ -134,6 +134,7 @@ mod_summarize_server <- function(input, output, session, f){
                      ~div(style = 'display:inline-block', colourpicker::colourInput(ns(paste0('color', .x)),
                                                                                     label = paste('Color', .x),
                                                                                     value = .y))),
+         numericInput(ns("fmin"), label = "Fmin (pN)", value = -1),
          numericInput(ns("ifc_tmin_ms"), label = "Tmin (ms)", value = 0)
        )
      } else {
@@ -142,6 +143,7 @@ mod_summarize_server <- function(input, output, session, f){
                                                                        label = 'Color 1',
                                                                        value = colorz())),
 
+         numericInput(ns("fmin"), label = "Fmin (pN)", value = -1),
          numericInput(ns("ifc_tmin_ms"), label = "Tmin (ms)", value = 0)
        )
      }
@@ -411,7 +413,7 @@ mod_summarize_server <- function(input, output, session, f){
         all_measured_events <- split_conditions_column(all_measured_events, var_names = var_names, sep = "_")
         all_measured_events <- all_measured_events[keep == TRUE & event_user_excluded == FALSE]
 
-        all_measured_events <- all_measured_events[force_pn >= -1]
+        all_measured_events <- all_measured_events[force_pn >= input$fmin]
 
         if(!is.null(input$factor_order)){
           all_measured_events$conditions <- factor(all_measured_events$conditions, levels = input$factor_order)
@@ -450,7 +452,7 @@ mod_summarize_server <- function(input, output, session, f){
         }
 
 
-        all_measured_events <- all_measured_events[force_pn >= -1]
+        all_measured_events <- all_measured_events[force_pn >= input$fmin]
 
         clamp_fit <- fit_force_clamp(measured_events = all_measured_events,
                                      tmin = input$ifc_tmin_ms/1000,
