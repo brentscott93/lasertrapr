@@ -118,6 +118,7 @@ prep_ensemble <- function(trap_selected_project,
   
   for(i in seq_len(nrow(options_data))){
     print(paste0("i=", i))
+    ## if(i==16) browser()
     if(is_shiny) incProgress(1/nrow(options_data), detail = paste0(i, " of ", nrow(options_data)))
     path <- file.path(path.expand("~"), 
                       "lasertrapr",
@@ -205,8 +206,17 @@ prep_ensemble <- function(trap_selected_project,
 
         ms_10 <- 10*hz/1000
         end_forward_base <- start - 1
-        before_forwards <- data.table(data = trap_trace[(end_forward_base - ((ms_10*5)-1)):end_forward_base],
-                                      ensemble_index = -(ms_10*5):-1)
+        if((end_forward_base - ((ms_10*2)-1) <= 0)){
+          pad2do <- abs(end_forward_base - ((ms_10*2)-1))
+          tt2 <- trap_trace[1:end_forward_base]
+          ei2 <- -(ms_10*2):-1
+          tt2 <- c(rep(tt2[1], pad2do), tt2)
+          before_forwards <- data.table(data = tt2,
+                                        ensemble_index = ei2)
+        } else {
+        before_forwards <- data.table(data = trap_trace[(end_forward_base - ((ms_10*2)-1)):end_forward_base],
+                                      ensemble_index = -(ms_10*2):-1)
+         }
 
         ms_1 <- 1*hz/1000
         ms_5 <- 3*hz/1000
@@ -214,8 +224,8 @@ prep_ensemble <- function(trap_selected_project,
         mean_baseline_prior <- mean( trap_trace[(end_forward_base - (ms_5-1)):(end_forward_base-ms_1)] )
 
         start_backwards_base <- stop + 1
-        after_backwards <- data.table(data = trap_trace[start_backwards_base:(start_backwards_base + ((ms_10*5)-1))],
-                                      ensemble_index = 1:(ms_10*5))
+        after_backwards <- data.table(data = trap_trace[start_backwards_base:(start_backwards_base + ((ms_10*2)-1))],
+                                      ensemble_index = 1:(ms_10*2))
 
 
         mean_baseline_after <- mean( trap_trace[start_backwards_base:(start_backwards_base + (ms_5-1))] )
@@ -223,7 +233,7 @@ prep_ensemble <- function(trap_selected_project,
         forward_ensemble <- rbind(before_forwards, forward_event)
         forward_ensemble[,
                          `:=`(direction = "forward",
-                              forward_backward_index = -(ms_10*5):(longest_event-1)
+                              forward_backward_index = -(ms_10*2):(longest_event-1)
                               ## event_index = event
                               )
                          ## signal_ratio =  measured_events$front_signal_ratio[[event]])
@@ -242,7 +252,7 @@ prep_ensemble <- function(trap_selected_project,
         backwards_ensemble <- rbind(backwards_event, after_backwards)
         backwards_ensemble[,
                            `:=`(direction = "backwards",
-                                forward_backward_index = longest_event:((2*longest_event)+((ms_10*5)-1))
+                                forward_backward_index = longest_event:((2*longest_event)+((ms_10*2)-1))
                                 ## event_index = event
                                 )
                            ## signal_ratio = measured_events$back_signal_ratio[[event]])
