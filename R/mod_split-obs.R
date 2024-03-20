@@ -199,7 +199,9 @@ mod_split_obs_ui <- function(id){
                      column(6,
 
 
-                   numericInput(ns("downsample_lumicks"), "Downsample By (factor)", value = 1)
+                   numericInput(ns("downsample_lumicks"), "Downsample By (factor)", value = 1),
+                  checkboxInput(ns("has_stage_position"), "Stage Position?"),
+                  checkboxInput(ns("round_stage"), "Round Stage?")
                    ),
                    column(6,
                    actionButton(ns("lumicks_upload"),
@@ -1086,7 +1088,9 @@ mod_split_obs_server <- function(input, output, session, f){
                    project = f$project,
                    conditions = f$conditions,
                    date = f$date,
-                   downsample_by = input$downsample_lumicks)
+                   downsample_by = input$downsample_lumicks,
+                   has_stage_position = input$has_stage_position,
+                   round_stage = input$round_stage)
 
       print("Marangatang strikes again")
 
