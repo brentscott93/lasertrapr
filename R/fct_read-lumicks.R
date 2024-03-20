@@ -3,7 +3,9 @@ read_lumicks <- function(input_data,
                          project,
                          conditions,
                          date,
-                         downsample_by=5){
+                         downsample_by=5,
+                         has_stage_position=FALSE,
+                         round_stage=FALSE){
 
 
     withProgress(message = 'Initializing Data', value = 0, {
@@ -14,16 +16,10 @@ read_lumicks <- function(input_data,
 
 
           lumicks <- rhdf5::h5read(input_data$datapath[[r]], name = "Force HF")
+          ## lumicks <- rhdf5::h5read("~/Downloads/20240305-131442 Marker 1.h5", name = "Force HF")
 
           l_dt <- data.table(t1 = lumicks$`Force 1x`,
                              t2 = lumicks$`Force 2x`)
-
-          ## cal <- rhdf5::h5read(input_data$datapath[[r]], name = "Calibration/1")
-          ## rhdf5::h5ls("~/Downloads/20240103-123852 Marker 210.h5")
-          ## stage_position <- rhdf5::h5read("~/Downloads/20240103-124233 Marker 209.h5", name = "Nanostage position")
-          ## stage_position <- stage_position$X
-          ## cal1 <- cal$`Force 1x`
-          ## cal2 <- cal$`Force 2x`
 
           orig_hz <- 78125
           new_hz <- round(orig_hz/downsample_by)
@@ -36,7 +32,6 @@ read_lumicks <- function(input_data,
                           obs = "",
                           raw_bead_1 = l_dt$t1,
                           raw_bead_2 = l_dt$t2)
-
 
              o <- data.frame(project = project$name,
                              conditions = conditions$name,
@@ -55,6 +50,17 @@ read_lumicks <- function(input_data,
                              channels = 2,
                              lab = "lumicks",
                              original_filename = input_data$name[[r]])
+
+          if(has_stage_position){
+            stage_position <- rhdf5::h5read(input_data$datapath[[r]], name = "Nanostage position")
+            stage_position <- stage_position$X
+            stage_position <- stage_position[downsample_points]
+            if(round_stage){
+              round_any <- function(x, accuracy, f=round){f(x/ accuracy) * accuracy}
+              stage_position <- round_any(stage_position, 0.2, f=round)
+            }
+            t$stage_position <- stage_position
+          }
 
 
           if(r < 10){
