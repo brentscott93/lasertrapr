@@ -301,6 +301,12 @@ covariance_hidden_markov_changepoint_analysis <- function(trap_data,
           cp_data <- cp_data[-na.omit(rows_to_remove)]
         }
 
+        time_off_calc_1 <- tail(cp_data$cp_event_start_dp_1, -1) - head(cp_data$cp_event_stop_dp_1, -1)
+        time_off_calc_2 <- tail(cp_data$cp_event_start_dp_2, -1) - head(cp_data$cp_event_stop_dp_2, -1)
+
+        cp_data$time_off_1 <- c(NA, time_off_calc_1)
+        cp_data$time_off_2 <- c(NA, time_off_calc_2)
+
           report_data  <- "success"
         ## str(cp_results$did_it_flip_vec)
 

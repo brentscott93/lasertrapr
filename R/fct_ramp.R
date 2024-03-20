@@ -1,4 +1,179 @@
-## trap_data <- data.table::fread("~/lasertrapr/project_vinculin/vinculin/2023-07-11/obs-06/trap-data.csv")
+force_ramp_analysis <- function(trap_data,
+                                f = f,
+                                threshold_time_ms,
+                                is_shiny = FALSE){
+
+  project <- unique(trap_data$project)
+  conditions <- unique(trap_data$conditions)
+  date <- unique(trap_data$date)
+  obs <- unique(trap_data$obs)
+
+  o_path <- file.path(path.expand("~"),
+                    "lasertrapr",
+                    project,
+                    conditions,
+                    date,
+                    obs,
+                    "options.csv")
+
+  o <- data.table::fread(o_path)
+
+  if(is.null(o$channels)) channels <- 1
+  if(is.na(o$channels)) channels <- 1
+  channels <- o$channels
+
+  ## if(channels != 2) stop("Covariance requires 2 channel data")
+  include <- o$include
+  if(is.na(include)) include <- FALSE
+  mv2nm <-  o$mv2nm
+  nm2pn <- o$nm2pn
+  mv2nm2 <-  o$mv2nm2
+  nm2pn2 <- o$nm2pn2
+  hz <- o$hz
+
+  path <- file.path(path.expand("~"),
+                    "lasertrapr",
+                    project,
+                    conditions,
+                    date,
+                    obs,
+                    "trap-data.csv")
+
+  if(is_shiny) setProgress(0.03, paste("Reading Data", conditions, obs))
+
+  trap_data <- data.table::fread(path)
+
+  report_data  <- "error"
+  error_file <- file(file.path(f$date$path, "error-log.txt"), open = "a")
+      tryCatch({
+        if(!include){
+          obs_trap_data_exit <-
+            o %>%
+            dplyr::mutate(report = 'user-excluded',
+                          analyzer = 'none',
+                          review = F)
+
+           data.table::fwrite(obs_trap_data_exit,
+                              file = file.path(path.expand("~"),
+                                              "lasertrapr",
+                                              project,
+                                              conditions,
+                                              date,
+                                              obs,
+                                              "options.csv"),
+                              sep = ",")
+          stop("User Excluded")
+        }
+
+        if(channels == 1){
+        stop("Only 2 channels data can be used with force ramp")
+        } else {
+        not_ready <- rlang::is_empty(trap_data$processed_bead_1)
+        }
+        if(not_ready){
+          if(is_shiny) showNotification(paste0(trap_data$obs, ' not processed. Skipping...'), type = 'warning')
+          stop('Data not processed')
+          }
+
+        if(is_shiny){
+          setProgress(0.05, paste("Analyzing", conditions, obs))
+          defend_if_empty(trap_data$processed_bead_1, ui = paste0(obs, ' data not processed.'), type = 'error')
+        }
+
+        if(rlang::is_empty(trap_data$stage_position)){
+          showNotification(paste0(trap_data$obs, ' does not have stage data'), type = "warning")
+          stop("No Stage Data")
+        }
+
+
+
+## max(trap_data$aod_position)
+## min(trap_data$aod_position)
+
+trap_data[, is_max_range := ifelse(stage_position == max(stage_position) | stage_position == min(stage_position),
+                                   1,
+                                   0) ]
+
+events <- data.table::as.data.table(unclass(rle(trap_data$is_max_range)))
+
+events[, end_event_dp := cumsum(lengths)]
+events[, begin_event_dp := end_event_dp - lengths + 1 ]
+events[, index := .I]
+
+## hz <- 4000
+
+threshold_time_dp <- threshold_time_ms/1000*hz
+
+events_filtered <- events[lengths >= threshold_time_dp & values == 1]
+
+          report_data  <- "success"
+
+
+        opt_df <- as.data.frame(opt)
+
+                                        # option cols to keep is a terrible name
+                                        # its the columns names to keep, SO they can be removed
+        options_cols_to_keep <- names(opt_df) %in% names(o)
+        options_cols_to_keep <- names(opt_df)[options_cols_to_keep]
+
+        options_df <-
+          o |>
+          dplyr::select(-c(options_cols_to_keep)) |>
+          cbind(opt_df) |>
+          dplyr::mutate( analyzer = 'ramp',
+                        status = 'analyzed',
+                        report = report_data,) |>
+          dplyr::select(project, conditions, date, obs, everything())
+
+        if(is_shiny == T) setProgress(0.95, detail = 'Saving Data')
+        file_names <-  c('trap-data.csv',
+                         'measured-events.csv',
+                         #'ensemble-data.csv',
+                         'hm-model-data.csv',
+                         ## 'event-frequency.csv',
+                         'options.csv')
+
+        file_paths <-  file.path(path.expand("~"), "lasertrapr", project,  conditions, date, obs, file_names)
+
+        data_to_save <- list(trap_data,
+                             cp_data,
+                             hm_model_results,
+                             options_df)
+
+        purrr::walk2(data_to_save, file_paths, ~data.table::fwrite(x = .x, file = .y, sep = ","))
+
+
+      }, error=function(e){
+        if(!include){
+          showNotification(paste0("Skipping ", obs, ' user excluded'), type = 'message', duration = 2)
+        } else {
+        showNotification(paste0("Analysis error in ",
+                                date,
+                                " ",
+                                conditions,
+                                " ",
+                                obs,
+                                ". Error Message: ",
+                                as.character(e)), type = 'warning', duration = NULL)
+        writeLines(
+          paste0("Analysis error in ",
+                          date,
+                          " ",
+                          conditions,
+                          " ",
+                          obs,
+                          ". Error Message: ",
+                          as.character(e)),
+          error_file)
+        }
+      })
+
+    close(error_file)
+    if(is_shiny == T) setProgress(1, detail = "Done!")
+
+    return(invisible())
+
+  }
 ## options <- data.table::fread("~/lasertrapr/project_vinculin/vinculin/2023-07-11/obs-06/options.csv")
 
 ## trap_data$processed_bead_1 <- trap_data$raw_bead_1 * options$mv2nm
@@ -139,3 +314,4 @@
 ##   add_shades(periods_df)|>
 ##   add_labels_cpt(unlist(changepoint_locations))|>
 ##   dyRangeSelector()
+## }
