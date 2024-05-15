@@ -22,6 +22,7 @@ Several peer-reviewed research articles have used either this app or prior versi
 2) [A mutation in switch I alters the load-dependent kinetics of myosin Va](https://www.nature.com/articles/s41467-023-38535-0)
 3) [Myosin's powerstroke occurs prior to the release of phosphate from the active site](https://onlinelibrary.wiley.com/doi/epdf/10.1002/cm.21682)
 4) [Positional Isomers of a Non-Nucleoside Substrate Differentially Affect Myosin Function](https://www.sciencedirect.com/science/article/pii/S0006349520305002)
+5) [Modeling thick filament activation suggests a molecular basis for force depression](https://www.cell.com/biophysj/pdf/S0006-3495(24)00040-7.pdf)
 
 ## Installation
 
