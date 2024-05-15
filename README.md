@@ -16,8 +16,6 @@ The app is still being heavily developed, end-users should proceed with
 caution. For more information and the official documentation refer to
 the [website](https://lasertrapr.app).
 
-Project future: The goal is to have the app published in the Journal of Open Source Software and rOpenSci. Updates and tests need to be added to prepare this for submission. Additionally, updates to support co-variance and two detector systems are being developed as well as an analyzer for isometric force clamping. 
-
 Several peer-reviewed research articles have used either this app or prior versions of the codebase including: 
 
 1) [FRET and optical trapping reveal mechanisms of actin activation of the power stroke and phosphate release in myosin V](https://www.jbc.org/article/S0021-9258(17)50627-4/fulltext)
