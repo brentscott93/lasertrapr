@@ -537,6 +537,16 @@ mod_summarize_server <- function(input, output, session, f){
         data.table::fwrite(rv$clamp_fit$boot_params, file.path(f$project$path,
                                                                "summary",
                                                                paste0(Sys.Date(), "_ifc-bootstrap-bell-parameters.csv")))
+
+        data.table::fwrite(rv$clamp_fit$predict_df, file.path(f$project$path,
+                                                               "summary",
+                                                               paste0(Sys.Date(), "_ifc-predict-line.csv")))
+
+        data.table::fwrite(rv$clamp_fit$ci_ribbon_df, file.path(f$project$path,
+                                                               "summary",
+                                                               paste0(Sys.Date(), "_ifc-ci-ribbon.csv")))
+
+
       }
     })
   })

@@ -17,20 +17,20 @@ run_app()
 ## shiny::reactlogShow()
 
 #rename project and conditions
-## trap_data_files <- list.files("~/lasertrapr/project_dani-1mM-atp/10uM-atp",
+## trap_data_files <- list.files("~/lasertrapr/project_dani-OM-only-copied",
 ##                               pattern = "trap-data.csv",
 ##                               full.names = TRUE,
 ##                               recursive = TRUE)
 
 
 
-## options_files <- list.files("~/lasertrapr/project_dani-1mM-atp/10uM-atp",
+## options_files <- list.files("~/lasertrapr/project_dani-OM-only-copied",
 ##                               pattern = "options.csv",
 ##                               full.names = TRUE,
 ##                               recursive = TRUE)
 
 
-## me_files <- list.files("~/lasertrapr/project_dani-1mM-atp/10uM-atp",
+## me_files <- list.files("~/lasertrapr/project_dani-OM-only-copied",
 ##                               pattern = "measured-events.csv",
 ##                               full.names = TRUE,
 ##                               recursive = TRUE)
@@ -48,7 +48,7 @@ run_app()
 ##   ##   ## date  := "2022-02-22"
 ##   ## ]
 ##   ## f$date <- "2022-02-22"
-##   ## f$project <- "project_dani-single-molecule_1uM-atp"
-##   f$conditions <- "10uM-dani_1mM-atp"
+##   f$project <- "project_dani-OM-only-copied"
+##   ## f$conditions <- "10uM-dani_1mM-atp"
 ##   data.table::fwrite(f, fname)
 ## }

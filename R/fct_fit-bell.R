@@ -116,6 +116,13 @@ fit_force_clamp <- function(measured_events, tmin = NULL, plot_colors = NULL, ba
     ci_low <- list(par = c(ci$k0_95[2], ci$d_95[1]))
     ci_high <- list(par = c(ci$k0_95[1], ci$d_95[2]))
 
+    fit_ci_low <- predict_bell(ci_low, F = data$force_avg)
+    fit_ci_high <- predict_bell(ci_high, F = data$force_avg)
+
+    ci_df <- data.frame(F = fit_ci_low$F,
+                        tmin = fit_ci_low$t,
+                        tmax = fit_ci_high$t)
+
     k0_low_diff <- round(mod$par[[1]] - ci$k0_95[[1]], 0)
     k0_high_diff <- round(ci$k0_95[[2]] - mod$par[[1]], 0)
     d_low_diff <- format(round(mod$par[[2]] - ci$d_95[[1]], 2), nsmall = 2)
@@ -140,6 +147,7 @@ fit_force_clamp <- function(measured_events, tmin = NULL, plot_colors = NULL, ba
     list(
       mod = mod,
       predict_df = predict_df,
+      ci_ribbon_df = ci_df,
       boot_df = ci$boot_df,
       boot_ci = list(k1_low = k0_low_diff,
                      k1_up = k0_high_diff,
@@ -156,6 +164,7 @@ fit_force_clamp <- function(measured_events, tmin = NULL, plot_colors = NULL, ba
     tidyr::nest() |>
     dplyr::mutate(fit = purrr::map(data, ~fit_bell(.x, tmin = tmin)),
                   predict = purrr::map(fit, `[[`, "predict_df"),
+                  ci_ribbon = purrr::map(fit, `[[`, "ci_ribbon_df"),
                   label  = purrr::map_chr(fit, `[[`, "label"),
                   n = purrr::map_dbl(data, nrow)
                   )
@@ -179,6 +188,10 @@ fit_force_clamp <- function(measured_events, tmin = NULL, plot_colors = NULL, ba
     dplyr::select(conditions, predict) |>
     tidyr::unnest(cols = c(predict))
 
+  ci_ribbon_df <-
+    bell_df |>
+    dplyr::select(conditions, ci_ribbon) |>
+    tidyr::unnest(cols = c(ci_ribbon))
 
   gg_bell <-
     ggplot()+
@@ -214,6 +227,8 @@ fit_force_clamp <- function(measured_events, tmin = NULL, plot_colors = NULL, ba
   return(
     list(
       data = data,
+      predict_df = predict_df,
+      ci_ribbon_df = ci_ribbon_df,
       boot_data = bell_df,
       boot_params = boot_bell_df,
       plot = gg_bell)

@@ -10,8 +10,9 @@ simple_upload(
   conditions,
   date,
   ready_for_analysis,
-  nm2pn,
+  nm2pn_val,
   hz,
+  number_of_channels,
   downsample_by
 )
 }

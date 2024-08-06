@@ -94,7 +94,8 @@ prep_ensemble <- function(trap_selected_project,
                   lapply(
                     event_file_paths,
                     data.table::fread
-                  )
+                  ),
+                  fill = TRUE #do i really want this?
                 )
 
   if(is.null(n_channels)) n_channels <- 1
@@ -171,8 +172,11 @@ prep_ensemble <- function(trap_selected_project,
 
       }
 
+
       measured_events[, event_length := (cp_event_stop_dp-cp_event_start_dp)+1]
       measured_events <- measured_events[event_length >= (tmin_ms*(hz/1000))]
+      end_of_prior_event_dp <- c(1, head(measured_events$cp_event_stop_dp, -1))
+      start_of_next_event_dp <- c(tail(measured_events$cp_event_start_dp, -1), length(trap_trace))
       substeps <- list()
       event_ensembles <- list()
       running_average_f <- vector()
@@ -221,14 +225,23 @@ prep_ensemble <- function(trap_selected_project,
         ms_1 <- 1*hz/1000
         ms_5 <- 3*hz/1000
 
-        mean_baseline_prior <- mean( trap_trace[(end_forward_base - (ms_5-1)):(end_forward_base-ms_1)] )
+        ## mean_baseline_prior <- mean( trap_trace[(end_forward_base - (ms_5-1)):(end_forward_base-ms_1)] )
+        #get entire baseline mean before and after
+        #end prior event
+        epe <- end_of_prior_event_dp[[event]]
+        mean_baseline_prior <- mean( trap_trace[epe:start] )
+
+        #start next event
+        sne <- start_of_next_event_dp[[event]]
+        mean_baseline_after <- mean( trap_trace[stop:sne] )
+
 
         start_backwards_base <- stop + 1
         after_backwards <- data.table(data = trap_trace[start_backwards_base:(start_backwards_base + ((ms_10*2)-1))],
                                       ensemble_index = 1:(ms_10*2))
 
 
-        mean_baseline_after <- mean( trap_trace[start_backwards_base:(start_backwards_base + (ms_5-1))] )
+        ## mean_baseline_after <- mean( trap_trace[start_backwards_base:(start_backwards_base + (ms_5-1))] )
 
         forward_ensemble <- rbind(before_forwards, forward_event)
         forward_ensemble[,
@@ -269,7 +282,7 @@ prep_ensemble <- function(trap_selected_project,
 
         if(analyzer == "covar"){
           forward_ensemble$data <- forward_ensemble$data - mean_baseline_prior
-          backwards_ensemble$data <- backwards_ensemble$data - mean_baseline_prior
+          backwards_ensemble$data <- backwards_ensemble$data - mean_baseline_after
         }
 
       ## setorder(ensemble, cols = "forward_backward_index")
@@ -301,6 +314,9 @@ prep_ensemble <- function(trap_selected_project,
         substep_1_nm = s1_avg-mean_baseline_prior,
         bead_position_substep_2_nm = s2_avg,
         substep_2_nm = s2_avg-s1_avg,
+        total_step_nm = (s1_avg-mean_baseline_prior)+(s2_avg-s1_avg),
+        substep_2_nm_alt = (s2_avg-mean_baseline_after)-(s1_avg-mean_baseline_prior),
+        total_step_nm_alt = s2_avg - mean_baseline_after,
         after_unbound_position_nm = mean_baseline_after
       )
 
