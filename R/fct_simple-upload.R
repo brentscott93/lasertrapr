@@ -12,31 +12,35 @@ simple_upload <- function(input_data,
                           conditions,
                           date,
                           ready_for_analysis,
-                          nm2pn,
+                          nm2pn_val,
                           hz,
+                          number_of_channels,
                           downsample_by){
   withProgress(message = 'Initializing Data', value = 0, {
   #read in uploaded datq
    # browser()
-    o <- data.table(project = project$name,
-                    conditions = conditions$name,
-                    date = date$name, 
-                    hz = hz,
-                    processor = NA,
-                    include = NA,
-                    mv2nm = NA, 
-                    nm2pn = NA,
-                    analyzer = NA,
-                    report = 'not run',
-                    review = NA,
-                    original_filename = input_data$name[[r]])
-    
+
   input_data <- dplyr::arrange(input_data, name)
   data_traces <- purrr::map(input_data$datapath,  data.table::fread)
   
   for(r in seq_along(data_traces)){
     incProgress(amount = 1/length(data_traces), detail = paste0("Obs", r))
-  
+
+    o <- data.table(project = project$name,
+                    conditions = conditions$name,
+                    date = date$name,
+                    hz = hz,
+                    processor = NA,
+                    include = NA,
+                    mv2nm = NA,
+                    nm2pn = NA,
+                    analyzer = NA,
+                    report = 'not run',
+                    review = NA,
+                    channels = number_of_channels,
+                    original_filename = input_data$name[[r]]
+                    )
+
     t <- data.table(project = project$name,
                     conditions = conditions$name,
                     date = date$name, 
@@ -56,7 +60,7 @@ simple_upload <- function(input_data,
       o[, `:=`( processor = "user",
                include = TRUE,
                mv2nm = 1,
-               nm2pn = nm2pn )
+               nm2pn = nm2pn_val )
         ]
     }
     

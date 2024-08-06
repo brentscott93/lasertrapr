@@ -392,6 +392,7 @@ mod_split_obs_server <- function(input, output, session, f){
 
         
         input_data <- parseFilePaths(c(home=dirname(path.expand("~"))), input$file_input)
+
         if(input$in_header){
             
 
@@ -406,13 +407,14 @@ mod_split_obs_server <- function(input, output, session, f){
         } else {
 
             
-            simple_upload(input_data = input$simple_data_input,
+            simple_upload(input_data = input_data,
                           project = f$project,
                           conditions = f$conditions,
                           date = f$date,
                           nm2pn = input$nm_to_pn, 
                           ready_for_analysis = input$ready_for_analysis,
                           hz = input$hz,
+                          number_of_channels = input$channels,
                           downsample_by = input$downsample_by)
         }
         
