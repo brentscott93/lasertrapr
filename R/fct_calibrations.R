@@ -43,6 +43,7 @@ equipartition <- function(data){
 #' todays_step_cal <- step_cal(data$bead, 50)
 
 step_cal <- function(data, step){
+  ## browser()
   
   find_changepoint <- changepoint::cpt.mean(data)
   
