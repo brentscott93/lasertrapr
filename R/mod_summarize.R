@@ -253,9 +253,10 @@ mod_summarize_server <- function(input, output, session, f){
                                                .y, 
                                                sep = "_"))))
       
-      rv$all_measured_events <- all_measured_events
+      rv$all_measured_events <- copy(all_measured_events)
       rv$summary_data <- summary_data
       golem::print_dev("before colors")
+## browser()
       setProgress(0.6)
       ggstep <- plot_ecdf(all_measured_events,
                           var = "displacement_nm",
@@ -275,22 +276,34 @@ mod_summarize_server <- function(input, output, session, f){
                            basesize = 18)
       rv$ggforce <- ggforce
       setProgress(0.8)
-      ggton <- plot_ecdf(all_measured_events,
-                         var = "time_on_ms",
-                         colorz = plot_colors,
-                         x_lab = "milliseconds",
-                         title = "Time On",
-                         basesize = 18)
+      ## ggton <- plot_ecdf(all_measured_events,
+      ##                    var = "time_on_ms",
+      ##                    colorz = plot_colors,
+      ##                    x_lab = "milliseconds",
+      ##                    title = "Time On",
+      ##                    basesize = 18)
+## browser()
+      all_measured_events$time_on_s <- all_measured_events$time_on_ms/1000
+      me_fit_ton <- fit_attachment_durations(all_measured_events, colorz = plot_colors)
 
-      rv$ggton <- ggton
+      ggton <- me_fit_ton$gg
+      rv$ton_rate <- me_fit_ton$rate
+
+
+      ## rv$ggton <- ggton
       setProgress(0.9)
-      ggoff <- plot_ecdf(all_measured_events,
-                         var = "time_off_ms",
-                         colorz = plot_colors,
-                         x_lab = "milliseconds",
-                         title = "Time Off",
-                         basesize = 18)
-      rv$ggoff <- ggoff
+      all_measured_events$time_off_s <- all_measured_events$time_off_ms/1000
+      me_fit_toff <- fit_time_off(all_measured_events, colorz = plot_colors)
+
+      ggoff <- me_fit_toff$gg
+      rv$toff_rate <- me_fit_toff$rate
+      ## ggoff <- plot_ecdf(all_measured_events,
+      ##                    var = "time_off_ms",
+      ##                    colorz = plot_colors,
+      ##                    x_lab = "milliseconds",
+      ##                    title = "Time Off",
+      ##                    basesize = 18)
+      ## rv$ggoff <- ggoff
 
       rv$summary_plots <- cowplot::plot_grid(ggstep, ggforce, ggton, ggoff, nrow = 1)
 
@@ -563,18 +576,26 @@ mod_summarize_server <- function(input, output, session, f){
     }
 
      if(rv$analyzer %in% c("hm/cp", "mini")){
-    rv$summary_data |>
+
+      req(rv$ton_rate)
+      req(rv$toff_rate)
+
+       toff_rate <- rv$toff_rate |> dplyr::rename(attach_rate = html_label)
+       rate_df <- dplyr::full_join(rv$ton_rate, toff_rate)
+
+
+       rate_df |>
+         dplyr::full_join(rv$summary_data) |>
       dplyr::arrange(conditions) |>
       dplyr::select("Conditions" = conditions, 
                     "Step Size (nm)" = displacement_avg,
                     "SE Step Size" = displacement_se,
                     "Force (pN)" = force_avg,
-                    "SE Force" = force_se, 
-                    "Avg Time On (ms)" = time_on_avg,
-                    "SE Ton" = time_on_se, 
-                    'Median Time on (ms)' = time_on_median,
-                    "Time Off (ms)" = time_off_avg,
-                    "SE Toff" = time_off_se, 
+                    "SE Force" = force_se,
+                    "Detachment Rate (Hz)" = html_label,
+                    "Attachment Rate (Hz)" = attach_rate,
+                    ## "Time Off (ms)" = time_off_avg,
+                    ## "SE Toff" = time_off_se,
                     "No. Events" = num_events,
                     "Minutes Collected" = minutes
       ) |>
