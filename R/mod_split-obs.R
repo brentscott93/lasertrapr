@@ -282,7 +282,7 @@ mod_split_obs_ui <- function(id){
                                        width = '100%',
                                        placeholder = 'Step.txt'),
                                         #shinyWidgets::setSliderColor('#ff41c8', c(1, 2)),
-                          sliderInput(ns('step_cal_stepsize'),
+                          numericInput(ns('step_cal_stepsize'),
                                       'Step Cal Step Size',
                                       min = NA,
                                       max = NA,
