@@ -257,7 +257,7 @@ mod_figures_server <- function(input, output, session, f){
       to_color <- unique(fig$split_conditions[[input$fill_by]]) 
       
       colorz <-  if(length(to_color) == 1){
-                  "#002cd3"
+                   "#002cd3"
                    } else if(length(to_color) == 2){
                     c("#002cd3", "#d30000")
                   } else {
@@ -399,12 +399,30 @@ mod_figures_server <- function(input, output, session, f){
           
       } else if(input$gg_type == "Histogram"){
         
-    
+# thunking about drawing gaussian curves
+##         if(input$x == "displacement_nm"){
+##          plot_data_sum <- plot_data[, .(y = mean(displacement_nm, na.rm = TRUE),
+##                                    ysd = sd(displacement_nm, na.rm = TRUE)),
+##                                    by = names(fig$split_conditions)]
+##         gaus <- vector("list")
+##         for(i in 1:nrow(plot_data_sum)){
+##           displacement_nm <- rnorm(1000, mean = plot_data_sum$y[[i]], sd = plot_data_sum$ysd[[i]])
+##           conditions <- plot_data_sum$conditions[[i]]
+
+##           gaus[[i]] <- data.frame(conditions = conditions,
+##                                   displacement_nm = displacement_nm)
+##         }
+
+##         gaus <- data.table::rbindlist(gaus)
+
+##          fig$displacement_gaus <- gaus
+## }
+
         fig$plot <- 
           ggplot()+
           geom_histogram(data = plot_data,
                        aes(x = base::get(input$x),
-                           y = stat(density),
+                           y = after_stat(density),
                            fill = base::get(input$fill_by)),
                        color = "black",
                        position = position_dodge(), 

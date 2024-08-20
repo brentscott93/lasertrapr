@@ -425,3 +425,187 @@ fit_attachment_durations <- function(data, colorz){
   )
   )
 }
+
+#' Define a function to use mle to estimate detachment rate and boostrap CI
+#' @import ggplot2 cowplot
+#' @noRd
+fit_time_off <- function(data, colorz){
+## browser()
+  fit_ton <- function(data){
+    ## browser()
+                                        #from Schulte/Scott 2023 Biophysical Journal
+                                        #get attachement times
+    ton <- as.vector(na.omit(data$time_off_s))
+    fit_ton_pdf_mle <- function(ton, k){
+                                        # pass the pars through to the negative log likelihood function
+                                        # optim will optimize these
+                                        # the variables ton will be inherited from parent function (no need to pass directly)
+      nll_fun <- function(k){
+                                        # PDF function from SPASM
+        -sum(log(k*exp(-k*ton)))
+      }
+
+      fit <- optimize(nll_fun, lower = 0, upper = 100)
+
+      return(fit)
+    } #close fit_ton_pdf_mle
+
+                                        # find k
+    mod <- fit_ton_pdf_mle(ton = ton, k = 5)
+
+                                        # extract fitted value from the model
+    k <- mod$minimum[1]
+
+                                        # function to generate fitted values to the exponential cumulative distribution
+    fit_cdf <- function(x, k){ 1-exp(-k*x) }
+
+                                        #calculate number of missing events
+    n_missing <- fit_cdf(min(ton), k)*length(ton)
+
+                                        #layout the range of x values for the real data bound by upper/lower bounds of data
+    x_range <- seq(min(ton), max(ton), by = 1/1000)
+
+                                        # generate the cdf values for the data
+    cdf <- sapply(x_range, \(x) (sum(ton<=x)+n_missing) / (length(ton)+n_missing) )
+
+    real_cdf <- data.frame(x = x_range,
+                           y = cdf)
+
+
+
+                                        # predict the fitted values from optimized points
+    predict_x_range <- seq(0, max(ton), by = 1/1000)
+    predict_y <- fit_cdf(k = k, x = predict_x_range)
+
+    predict_df <- data.frame(x = predict_x_range,
+                             y = predict_y)
+
+#### BOOTSTRAP ####
+    boostrap_ton_ci <- function(ton){
+
+      boot_ton_fit <- function(ton){
+        s <- sample(1:length(ton), replace = TRUE)
+        new_ton <- ton[s]
+        mod <- fit_ton_pdf_mle(ton = new_ton,
+                               k = 5)
+      } #close boot_ton_fit
+
+      boot <- replicate(1000, boot_ton_fit(ton), simplify = FALSE)
+
+      boot_df <- data.frame(k = sapply(boot, \(x) x$minimum[1]))
+
+      ks <- sort(boot_df$k)
+
+      k_lower <- ks[25]
+      k_upper <- ks[975]
+
+      return(list(boot_df = boot_df,
+                  k_95 = c(k_lower, k_upper)))
+
+    } #close bootstrap_ton_ci
+
+    ci <- boostrap_ton_ci(ton = ton)
+
+    k_low_diff <- round(mod$minimum[[1]] - ci$k_95[[1]], 2)
+    k_high_diff <- round(ci$k_95[[2]] - mod$minimum[[1]], 2)
+
+    html_label <- paste0(round(mod$minimum[1], 1),
+                         " (-",
+                         round(k_low_diff, 1),
+                         "/+",
+                         round(k_high_diff, 1),
+                         ")")
+
+    parse_label <- paste0(round(mod$minimum[1], 1),
+                          "~(-",
+                          round(k_low_diff, 1),
+                          "/+",
+                          round(k_high_diff, 1),
+                          ")")
+
+    list(
+      data_df = real_cdf,
+      mod = mod,
+      rate = mod$minimum[1],
+      predict_df = predict_df,
+      boot_df = ci$boot_df,
+      boot_ci = list(k1_low = k_low_diff,
+                     k1_up = k_high_diff),
+      html_label = html_label,
+      parse_label = parse_label
+    )
+  }
+
+
+                                        # fit the data
+  ton_boot <-
+    data |>
+    dplyr::select(conditions, time_off_s)|>
+    dplyr::group_by(conditions)|>
+    tidyr::nest() |>
+    dplyr::mutate(fit = purrr::map(data, fit_ton),
+                  ton_rate = purrr::map(fit, `[[`, "rate"),
+                  boot_ci = purrr::map(fit, `[[`, "boot_ci"),
+                  predict = purrr::map(fit, `[[`, "predict_df"),
+                  parse_label  = purrr::map_chr(fit, `[[`, "parse_label"),
+                  html_label  = purrr::map_chr(fit, `[[`, "html_label"),
+                  boot_df = purrr::map(fit, `[[`, "boot_df"),
+                  cdf_data = purrr::map(fit, `[[`, "data_df"))
+
+
+  ton_rate <-
+    ton_boot |>
+    dplyr::select(conditions, html_label)|>
+    tidyr::unnest(cols = c( html_label))
+
+
+  ## ton_ci <-
+  ##   ton_boot |>
+  ##   dplyr::select(conditions, boot_ci)|>
+  ##   tidyr::unnest(cols = c(boot_ci))
+                                        # unravel data from the nest back to long data for ggplot
+                                        # gets the real emperical CDF
+  ton_real_df <-
+    ton_boot |>
+    dplyr::select(conditions, cdf_data) |>
+    tidyr::unnest(cols = c(cdf_data))
+
+                                        # unravel data from the nest back to long data for ggplot
+                                        # gets the fit prediction line
+  ton_predict_df <-
+    ton_boot |>
+    dplyr::select(conditions, predict) |>
+    tidyr::unnest(cols = c(predict))
+
+                                        # make the plots
+  ton_cdf <-
+    ggplot()+
+    geom_step(data = ton_real_df,
+              aes(x = x,
+                  y = y,
+                  color = conditions),
+              alpha = 0.6,
+              linewidth= 1)+
+    geom_line(data = ton_predict_df,
+              aes(x = x,
+                  y = y,
+                  color = conditions),
+              linetype = "dashed")+
+    scale_color_manual(values = colorz)+
+    ggtitle("Time Between Events")+
+    ylab("Cumulative Probability")+
+    xlab("Time (s)")+
+    theme_cowplot(16)+
+    theme(
+      plot.title = element_text(hjust = 0.5),
+      legend.position = "none")
+
+  return(list(
+    gg = ton_cdf,
+    rate = ton_rate,
+    toff_real_df = ton_real_df,
+    toff_predict_df = ton_predict_df,
+    toff_boot = ton_boot
+  )
+  )
+}
