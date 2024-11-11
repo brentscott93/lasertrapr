@@ -659,8 +659,12 @@ mod_hm_model_server <- function(input, output, session, f){
                
                )
              ),
+          fluidRow(column(2, checkboxInput(ns("add_stage"), "Add Stage", value = FALSE))),
              fluidRow(
                plotOutput(ns("export_ggplot"), height = "175px")
+             ),
+             fluidRow(
+               plotOutput(ns("gg_stage"), height = "175px")
              )
         )
       )
@@ -695,7 +699,6 @@ mod_hm_model_server <- function(input, output, session, f){
     })
     
     observeEvent(input$save_plot_overlay,{
-      
       dir_summary <- file.path(f$project$path, "summary")
       if(!dir.exists(dir_summary)) dir.create(dir_summary)
       
@@ -719,7 +722,8 @@ mod_hm_model_server <- function(input, output, session, f){
       gg <- plot_overlay(obs_path = f$obs$path,
                          time_period_dp = input$overlay_dygraph_date_window,
                          color = input$export_plot_event_color)
-                              
+
+      if(!input$add_stage){
       if(input$save_as_gg){
         saveRDS(gg, file = paste0(file_name, ".rds"))
       } else {
@@ -728,6 +732,31 @@ mod_hm_model_server <- function(input, output, session, f){
                          height =  as.numeric(input$export_plot_height),
                          width = as.numeric(input$export_plot_width),
                          units = "in")
+      }
+
+      } else {
+        ## add stage and save
+
+        opt_dat <- data.table::fread(file.path(f$obs$path, "options.csv"))
+        time_period_dp <- c(round_any(input$overlay_dygraph_date_window[[1]], 1/opt_dat$hz, f = round),
+                            round_any(input$overlay_dygraph_date_window[[2]], 1/opt_dat$hz, f = round))
+        time_period_dp <- time_period_dp*opt_dat$hz
+        stage_dat <- data.table::fread(file.path(f$obs$path, "trap-data.csv"))
+        stage_dat <- stage_dat[time_period_dp[[1]]:time_period_dp[[2]]]
+        stage_dat$time <- seq(1/opt_dat$hz, nrow(stage_dat)/opt_dat$hz, by = 1/opt_dat$hz)
+        gg_stage <- ggplot(stage_dat)+geom_line(aes(time, stage_position))+theme_void()
+        gg2 <-  cowplot::plot_grid(gg, gg_stage, nrow = 2)
+      if(input$save_as_gg){
+        saveRDS(gg, file = paste0(file_name, ".rds"))
+        saveRDS(gg_stage, file = paste0(file_name, "_STAGE", ".rds"))
+      } else {
+        cowplot::ggsave2(file = paste0(file_name, ".pdf"),
+                         plot = gg2,
+                         height =  as.numeric(input$export_plot_height)*2,
+                         width = as.numeric(input$export_plot_width),
+                         units = "in")
+      }
+
       }
       showNotification("Plot Saved", type = "message")
       removeModal()
