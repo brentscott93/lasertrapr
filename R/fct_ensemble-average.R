@@ -302,23 +302,23 @@ prep_ensemble <- function(trap_selected_project,
 
       ## event_ensembles[[event]] <- ensemble
 
-      ## substeps[[event]] <- data.table(
-      ##   project = options_data$project[[i]],
-      ##   conditions = options_data$conditions[[i]],
-      ##   date = options_data$date[[i]],
-      ##   obs = options_data$obs[[i]],
-      ##   bead = b,
-      ##   event_id = measured_events$id[[event]],
-      ##   prior_unbound_position_nm = mean_baseline_prior,
-      ##   bead_position_substep_1_nm = s1_avg,
-      ##   substep_1_nm = s1_avg-mean_baseline_prior,
-      ##   bead_position_substep_2_nm = s2_avg,
-      ##   substep_2_nm = s2_avg-s1_avg,
-      ##   total_step_nm = (s1_avg-mean_baseline_prior)+(s2_avg-s1_avg),
-      ##   substep_2_nm_alt = (s2_avg-mean_baseline_after)-(s1_avg-mean_baseline_prior),
-      ##   total_step_nm_alt = s2_avg - mean_baseline_after,
-      ##   after_unbound_position_nm = mean_baseline_after
-      ## )
+      substeps[[event]] <- data.table(
+        project = options_data$project[[i]],
+        conditions = options_data$conditions[[i]],
+        date = options_data$date[[i]],
+        obs = options_data$obs[[i]],
+        bead = b,
+        event_id = measured_events$id[[event]],
+        prior_unbound_position_nm = mean_baseline_prior,
+        bead_position_substep_1_nm = s1_avg,
+        substep_1_nm = s1_avg-mean_baseline_prior,
+        bead_position_substep_2_nm = s2_avg,
+        substep_2_nm = s2_avg-s1_avg,
+        total_step_nm = (s1_avg-mean_baseline_prior)+(s2_avg-s1_avg),
+        substep_2_nm_alt = (s2_avg-mean_baseline_after)-(s1_avg-mean_baseline_prior),
+        total_step_nm_alt = s2_avg - mean_baseline_after,
+        after_unbound_position_nm = mean_baseline_after
+      )
 
       ## print(paste0("b = ", b, "id: ", measured_events$id[[event]], "; substep1: ", s1_avg, "; substep2: ", s2_avg))
     }
