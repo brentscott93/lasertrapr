@@ -45,7 +45,9 @@ app_server <- function( input, output, session ) {
 
   callModule(mod_isometric_force_clamp_server, "isometric_force_clamp", f = f)
 
-  callModule(mod_ensemble_average_server, "ensemble_average", f = f, input_sidemenu = reactive(input$sidemenu))
+  callModule(mod_ensemble_average_myosin_server, "ensemble_average_myosin", f = f, input_sidemenu = reactive(input$sidemenu))
+
+  callModule(mod_ensemble_average_force_ramp_server, "ensemble_average_force_ramp", f = f, input_sidemenu = reactive(input$sidemenu))
   
   callModule(mod_summarize_server, "summarize", f = f)
   

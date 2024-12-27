@@ -34,7 +34,9 @@ app_ui <- function(request) {
            menuSubItem(text = 'Mini-Ensemble', tabName = 'mini_ensemble'),
            menuSubItem(text = 'Isometric Force Clamp', tabName = 'isometric_force_clamp')),
           menuItem(text = 'Summarize', tabName = 'summarize', icon = icon('sort')),
-          menuItem(text = 'Ensemble Average', tabName = 'ensemble_average', icon = icon('align-left')),
+          menuItem(text = 'Ensemble Average', icon = icon('align-left'),
+           menuSubItem(text = 'Myosin', tabName = 'ensemble_average_myosin'),
+           menuSubItem(text = 'Force Ramp', tabName = 'ensemble_average_force_ramp')),
           menuItem(text = 'Figures', tabName = 'figures', icon = icon('chart-bar'))
           #menuItem(text = 'Mean-Variance', tabName = 'mv')
         
@@ -52,7 +54,8 @@ app_ui <- function(request) {
           tabItem('hm_model', mod_hm_model_ui("hm_model_ui")),
           tabItem('covariance', mod_covariance_ui("covariance_1")),
           tabItem('mini_ensemble', mod_mini_ensemble_ui("mini_ensemble")),
-          tabItem('ensemble_average', mod_ensemble_average_ui("ensemble_average")),
+          tabItem('ensemble_average_myosin', mod_ensemble_average_myosin_ui("ensemble_average_myosin")),
+          tabItem('ensemble_average_force_ramp', mod_ensemble_average_force_ramp_ui("ensemble_average_force_ramp")),
           tabItem('isometric_force_clamp', mod_isometric_force_clamp_ui("isometric_force_clamp")),
           tabItem('summarize', mod_summarize_ui("summarize")),
           tabItem('figures', mod_figures_ui("figures"))
