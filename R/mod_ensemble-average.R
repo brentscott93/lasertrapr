@@ -7,7 +7,7 @@
 #'
 #' @noRd 
 #' @importFrom shiny NS tagList 
-mod_ensemble_average_ui <- function(id){
+mod_ensemble_average_myosin_ui <- function(id){
   ns <- NS(id)
   tagList(
     fluidRow(
@@ -128,7 +128,7 @@ mod_ensemble_average_ui <- function(id){
 #'
 #' @noRd
 #' @import data.table ggplot2 cowplot
-mod_ensemble_average_server <- function(input, output, session, f, input_sidemenu){
+mod_ensemble_average_myosin_server <- function(input, output, session, f, input_sidemenu){
   ns <- session$ns
   ee <- reactiveValues()
   
