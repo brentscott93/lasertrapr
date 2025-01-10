@@ -136,7 +136,7 @@ mod_ensemble_average_myosin_server <- function(input, output, session, f, input_
     req(input_sidemenu)
     print("sidemenu-test")
 str(input_sidemenu())
-    if(input_sidemenu() == "ensemble_average"){
+    if(input_sidemenu() == "ensemble_average_myosin"){
      req(f$project_input)
      req(f$project$path)
 
