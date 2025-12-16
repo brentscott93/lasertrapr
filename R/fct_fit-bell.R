@@ -9,7 +9,13 @@
 ##' @return a list containing "plot" and "boot_data". "plot" - is a ggplot2 object. "boot_data" - is a nested data frame containing information about the fits and bootstrapping.
 ##' @import ggplot2 ggtext cowplot
 ##' @export
-fit_force_clamp <- function(measured_events, tmin = NULL, plot_colors = NULL, basesize = 12, textsize = 10, is_shiny = FALSE){
+fit_force_clamp <- function(measured_events,
+                            tmin = NULL,
+                            plot_colors = NULL,
+                            basesize = 12,
+                            textsize = 10,
+                            pars = c(50, 1),
+                            is_shiny = FALSE){
 
   ## if(!length(time)==length(force)){
   ##   stop("The vectors passed to force and time must be equal in length")
