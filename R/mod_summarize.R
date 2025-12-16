@@ -134,17 +134,44 @@ mod_summarize_server <- function(input, output, session, f){
                      ~div(style = 'display:inline-block', colourpicker::colourInput(ns(paste0('color', .x)),
                                                                                     label = paste('Color', .x),
                                                                                     value = .y))),
-         numericInput(ns("fmin"), label = "Fmin (pN)", value = -1),
-         numericInput(ns("ifc_tmin_ms"), label = "Tmin (ms)", value = 0)
+         div(style = "display:inline-block",
+             numericInput(ns("fmin"),
+                          label = "Fmin (pN)",
+                          value = -1)),
+         div(style = "display:inline-block",
+         numericInput(ns("ifc_tmin_ms"),
+                      label = "Tmin (ms)",
+                      value = 0)),
+         div(style = "display:inline-block",
+         numericInput(ns("ifc_k0_estimate"),
+                      label = "k0 estimate",
+                      value = 50)),
+         div(style = "display:inline-block",
+         numericInput(ns("ifc_d_estimate"),
+                      label = "d estimate",
+                      value = 1))
        )
      } else {
        tagList(
          div(style = 'display:inline-block', colourpicker::colourInput(ns('color1'),
                                                                        label = 'Color 1',
                                                                        value = colorz())),
-
-         numericInput(ns("fmin"), label = "Fmin (pN)", value = -1),
-         numericInput(ns("ifc_tmin_ms"), label = "Tmin (ms)", value = 0)
+         div(style = "display:inline-block",
+             numericInput(ns("fmin"),
+                          label = "Fmin (pN)",
+                          value = -1)),
+         div(style = "display:inline-block",
+         numericInput(ns("ifc_tmin_ms"),
+                      label = "Tmin (ms)",
+                      value = 0)),
+         div(style = "display:inline-block",
+         numericInput(ns("ifc_k0_estimate"),
+                      label = "k0 estimate",
+                      value = 50)),
+         div(style = "display:inline-block",
+         numericInput(ns("ifc_d_estimate"),
+                      label = "d estimate",
+                      value = 1))
        )
      }
 

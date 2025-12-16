@@ -10,6 +10,7 @@ fit_force_clamp(
   plot_colors = NULL,
   basesize = 12,
   textsize = 10,
+  pars = c(50, 1),
   is_shiny = FALSE
 )
 }
