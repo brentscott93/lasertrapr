@@ -289,14 +289,14 @@ mod_split_obs_ui <- function(id){
                                       value = 50,
                                       step = 1,
                                       width = '100%'),
-                          actionButton(ns('step_button'), 'Step Cal', width = '100%', style = 'margin-top: 25px;'),
-      tags$style(".small-box.bg-yellow { background-color: #1B9E77 !important; color: #f2f2f2 !important; }"),
-      valueBoxOutput(ns("step_cal_valueBox"), width = 2),
-                          ),
+                          actionButton(ns('step_button'), 'Step Cal', width = '100%')
 
+      ## tags$style(".small-box.bg-yellow { background-color: #1B9E77 !important; color: #f2f2f2 !important; }"),
+      ),
                    column(9,
                           plotOutput(ns('step'), width = '100%', height = '275px') |>
-                          shinycssloaders::withSpinner(type = 8, color = "#373B38"))
+                          shinycssloaders::withSpinner(type = 8, color = "#373B38"),
+      valueBoxOutput(ns("step_cal_valueBox"), width = "100%"))
                    )
 
           ), #box close
@@ -490,27 +490,23 @@ mod_split_obs_server <- function(input, output, session, f){
     )
   })
   
-  observeEvent(input$step_button, {
+
+  step_calibration <- eventReactive(input$step_button, {
     if(rlang::is_empty(input$step_files)){
       showNotification('No data uploaded', type = 'error')
-    } else if(substring(input$step_files$name, 1, 4) != 'Step') {
-      showNotification("Not a valid 'Step' file.", type = 'error')
-    }
-  })
-    
-  
-  step_calibration <- eventReactive(input$step_button, {
+    } else {
     req(input$step_files$datapath)
     ## req(substring(input$step_files$name, 1, 4) == 'Step')
     withProgress(message = "Step Calibration", min= 0, max = 1, value = 0.01, {
       incProgress(0.4, detail = "Reading Data")
-      files <- purrr::map(input$step_files$datapath, fread, col.names = c('bead', 'trap')) |>
-        purrr::map(dplyr::pull, bead)
+      files <- purrr::map(input$step_files$datapath, fread) |>
+        purrr::map(dplyr::pull, 1)
       incProgress(0.75, detail = "Calculating...This may take a while...")
       steps <- purrr::map(files, step_cal, step = input$step_cal_stepsize)
       incProgress(1, detail = "Done!")
     })
     return(steps)
+    }
   })
   
   conversion <- reactive({
