@@ -276,8 +276,8 @@ mod_split_obs_ui <- function(id){
     fluidRow(
       box(title = 'Step Calibration', width = 6, collapsible = T, collapsed = T,
           fluidRow(column(3, fileInput(ns('step_files'),
-                                       'Upload Step File (.txt)',
-                                       accept = 'text/plain',
+                                       'Upload Step File',
+                                       ## accept = 'text/plain',
                                        multiple = T,
                                        width = '100%',
                                        placeholder = 'Step.txt'),
@@ -304,9 +304,10 @@ mod_split_obs_ui <- function(id){
       box(title = 'Equipartition', width = 6, collapsible = T, collapsed = T,
           fluidRow(
             column(3, fileInput(ns('equi_file'),
-                                'Upload Equi File (.txt)',
-                                placeholder = 'Equi.txt',
-                                accept = '.txt'),
+                                'Upload Equi File',
+                                placeholder = 'Equi.txt'
+                                ## accept = '.txt'
+                                ),
                    numericInput(ns('equi_mv2nm'),
                                'mV to nm conversion',
                                min = NA,
@@ -319,11 +320,13 @@ mod_split_obs_ui <- function(id){
                    actionButton(ns('equi_button'),
                                 'Equi Cal',
                                 width = '100%',
-                                style = 'margin-top: 25px;'),
-      valueBoxOutput(ns("equipartition_valueBox"), width = 2)),
+                                style = 'margin-top: 25px;')
+      ),
             column(9,
                    plotOutput(ns('equi'), width = '100%', height = '275px') |>
-                   shinycssloaders::withSpinner(type = 8, color = "#373B38"))
+                   shinycssloaders::withSpinner(type = 8, color = "#373B38"),
+      valueBoxOutput(ns("equipartition_valueBox"), width = "100%")
+     )
           )
           )
 
@@ -459,11 +462,16 @@ mod_split_obs_server <- function(input, output, session, f){
     } else {
     withProgress(message = "Equipartition Calibration", min= 0, max = 1, value = 0.01, {
       incProgress(0.25, detail = "Reading Data")
-      files <- data.table::fread(input$equi_file$datapath, col.names = c('bead', 'trap')) |>
-        dplyr::mutate(bead = bead * input$equi_mv2nm) |>
-        dplyr::pull(bead)
-      mean_equi <- mean(files)
-      equi_data <- files - mean_equi
+      ## files <- data.table::fread(input$equi_file$datapath) |>
+      ##   dplyr::mutate(bead = bead * input$equi_mv2nm) |>
+      ##   dplyr::pull(bead)
+
+      equi_data <- data.table::fread(input$equi_file$datapath) |>
+        dplyr::pull(1)
+
+      equi_data[[1]] <- equi_data[[1]] * input$equi_mv2nm
+      ## mean_equi <- mean(files)
+      ## equi_data <- files - mean_equi
       e$vector <- equi_data
       incProgress(0.75, detail = "Calculating")
       e$cal <-  equipartition(equi_data)

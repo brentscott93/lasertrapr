@@ -48,7 +48,10 @@ step_cal <- function(data, step){
   find_changepoint <- changepoint::cpt.mean(data)
   
   change_point <- changepoint::cpts(find_changepoint)
-  
+
+  #should this 1000 data points be changed?
+  #this was originally placed because UMass lab sampled at 5kHZ
+  # this was a good estimate to ignore the transition window
   indices <- list(c(1, change_point - 1000),
                   c(change_point + 1000, length(data)))
   
