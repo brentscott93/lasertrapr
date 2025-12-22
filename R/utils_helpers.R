@@ -217,6 +217,9 @@ plot_overlay <- function(obs_path, time_period_dp, color, bead_offset = 0){
 
 if(options$analyzer == "hm/cp"){
   #workaround for marangatang
+  if(is.null(options$lab)){
+   options$lab <- "none"
+  }
   if(options$lab=="lumicks"){
     ## trap_data$processed_bead <- trap_data$processed_bead_1
     trap_data$processed_bead <- trap_data[[paste0("processed_bead_", options$preferred_channel)]]

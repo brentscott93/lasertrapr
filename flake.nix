@@ -57,7 +57,8 @@
                                     devtools
                                     lubridate
                                     tibble
-                                    rhdf5];
+                                    rhdf5
+                                    flexdashboard];
     in {
       devShells.default = pkgs.mkShell {
         packages = [ pkgs.bashInteractive 

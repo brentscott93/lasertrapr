@@ -296,7 +296,7 @@ mod_summarize_server <- function(input, output, session, f){
 
       setProgress(0.7)
       ggforce <- plot_ecdf(all_measured_events,
-                           var = "force",
+                           var = "force_pn",
                            colorz = plot_colors,
                            x_lab = "piconewtons",
                            title = "Forces",

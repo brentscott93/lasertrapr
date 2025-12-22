@@ -284,6 +284,7 @@ changepoint_analysis <- function(measured_hm_events,
                                  hz,
                                  conversion,
                                  mv2nm,
+                                 nm2pn,
                                  conditions,
                                  front_cp_method, 
                                  back_cp_method, 
@@ -329,6 +330,7 @@ changepoint_analysis <- function(measured_hm_events,
   keep_event <- vector()
   
   better_displacements <- vector()
+  better_forces <- vector()
   absolute_better_displacements <- vector()
   displacement_marker <- vector()
   
@@ -540,6 +542,7 @@ changepoint_analysis <- function(measured_hm_events,
     
     #difference in step sizes nad baseline for tablems
     better_displacements[[i]] <- mean_event_step - state_1_avg[[i]]
+    better_forces[[i]] <- better_displacements[[i]]*nm2pn
     
     #absolute postion for graph overlay
     absolute_better_displacements[[i]] <- mean_event_step
@@ -577,6 +580,7 @@ changepoint_analysis <- function(measured_hm_events,
                                    is_positive = is_positive,
                                    keep = keep_event,
                                    cp_displacements = better_displacements,
+                                   cp_forces = better_forces,
                                    trap_stiffness = trap_stiffness,
                                    myo_stiffness = myo_stiffness,
                                    front_signal_ratio = front_var_ratio,

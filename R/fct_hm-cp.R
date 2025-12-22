@@ -154,7 +154,8 @@ hidden_markov_changepoint_analysis <- function(trap_data,
          cp_data <- changepoint_analysis(measured_hm_events = measured_hm_events, 
                                          hz = hz, 
                                          conversion = conversion,
-                                         mv2nm = mv2nm, 
+                                         mv2nm = mv2nm,
+                                         nm2pn = nm2pn,
                                          conditions = conditions,
                                          front_cp_method = front_cp_method,
                                          back_cp_method = back_cp_method,
@@ -171,6 +172,9 @@ hidden_markov_changepoint_analysis <- function(trap_data,
                          final_displacements = ifelse(is.na(start)  | is.na(stop)  | cp_time_on_dp <= 0,
                                                       displacement_nm,
                                                       cp_displacements),
+                         final_forces = ifelse(is.na(start)  | is.na(stop)  | cp_time_on_dp <= 0,
+                                                      force,
+                                                      cp_forces),
                          analyzer = 'hm-model/cp',
                          hm_event_start = measured_hm_events$hm_event_transitions$state_1_end + 1,
                          hm_event_stop = measured_hm_events$hm_event_transitions$state_2_end,
@@ -195,12 +199,13 @@ hidden_markov_changepoint_analysis <- function(trap_data,
                         time_off_ms, 
                         final_time_ons_ms, 
                         final_displacements,
-                        force, 
+                        final_forces,
                         analyzer,
                         everything()) %>% 
-          dplyr::select(-c(time_on_ms, displacement_nm)) %>% 
+          dplyr::select(-c(time_on_ms, displacement_nm, force)) %>%
           dplyr::rename("time_on_ms" = final_time_ons_ms,
-                 "displacement_nm" = final_displacements)   
+                 "displacement_nm" = final_displacements,
+                 "force_pn" = final_forces)
         
        
        ####EVENT FREQ####
