@@ -17,7 +17,7 @@ app_ui <- function(request) {
                                                 shinyWidgets::dropdownButton('Files',
                                                                              icon = icon('folder')),
                                                 mod_folder_manager_ui("folder_manager_ui"),
-                                              placement = 'left-start',
+                                              placement = 'left',
                                               theme = 'translucent',
                                               padding = '1px') #dropMenu close
                                       ) #tags$li close
