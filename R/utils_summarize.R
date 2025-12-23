@@ -1,6 +1,7 @@
 #' Combine and save all "measured-events.csv" files
 #' @param project a lasertrapr project folder
 #' @param save_to_summary a logical. If TRUE will save to project/summary folder
+#' @param n_channels 1 or 2. number of channels in dataset. If covariance analyzer used this is 2.
 #' @return df or nothing. saves a .csv to the project/summary folder named "{date}_{project}_all-measured-events.csv"
 #' @export
 #' @import data.table
@@ -85,6 +86,9 @@ rbind_measured_events <- function(project, save_to_summary = FALSE, n_channels =
 
 #' Quick Summary
 #' @param all_measured_events a df made from rbind_measured_events
+#' @param by vector to group conditions by, usually just "conditions"
+#' @param n_channels 1 or 2. number of channels in your datasets
+#' @examples summarize_trap(rbind_measured_events('path'))
 #' @import data.table
 #' @export
 summarize_trap <- function(all_measured_events, by, n_channels = 1){
@@ -217,9 +221,16 @@ split_conditions_column <- function(df, var_names, sep){
 
 
 
-
+#' Quick ECDF plot
 #' @import ggplot2 cowplot
-#' @noRd
+#' @param measured_events a measured events dataframe
+#' @param var a column from measured events to plot (e.g. "displacement_nm")
+#' @param colorz vector of colors for plot
+#' @param x_lab a character string for x-axis label
+#' @param title a character string for title of plot
+#' @param basesize the size of the text
+#' @return a ggplot2 object
+#' @export
 plot_ecdf <- function(measured_events, var, colorz, x_lab = "x_label", title,  basesize){
 
   gg <-
@@ -241,11 +252,32 @@ plot_ecdf <- function(measured_events, var, colorz, x_lab = "x_label", title,  b
 }
 
 
+#' Randomly sample a normal distribution for plotting ECDF fit line
+#' @param measured_events a measured_events dataframe MUST HAVE A "displacement_nm" column! This is what it uses!!!!! it is hardcoded at the moment
+#' @return a dataframe with random numbers generated from a normal distrubtion with mean and sd equal to that of your conditions data
+#' @export
+#' @import data.table
+fit_normal_displacements <- function(measured_events){
+
+  gen_rnorm <- function(x){
+    dat <- data.frame(fitted_displacements = rnorm(n = 1000, mean = mean(x[["displacement_nm"]]), sd = sd(x[["displacement_nm"]])))
+    return(dat)
+  }
+  me_nest <- measured_events[, list(data=list(.SD)), by = conditions]
+  me_nest[, fitted_displacements := lapply(data, gen_rnorm)]
+
+  result <- me_nest[, fitted_displacements[[1]], by = conditions]
+  return(result)
+}
+
+
 
 
 #' Define a function to use mle to estimate detachment rate and boostrap CI
 #' @import ggplot2 cowplot
-#' @noRd
+#' @param data a "measured-events.csv" dataframe. First, read in data with rbind_measured_events. Needs a time_on_s columns. You might need to add this yourself, some measured events files have "time on" in miliseconds.
+#' @param colorz a vector of colors for plotting. Should be same length as number of conditions
+#' @export
 fit_attachment_durations <- function(data, colorz){
 
   fit_ton <- function(data){

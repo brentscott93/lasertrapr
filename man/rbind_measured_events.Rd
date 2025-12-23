@@ -10,6 +10,8 @@ rbind_measured_events(project, save_to_summary = FALSE, n_channels = 1)
 \item{project}{a lasertrapr project folder}
 
 \item{save_to_summary}{a logical. If TRUE will save to project/summary folder}
+
+\item{n_channels}{1 or 2. number of channels in dataset. If covariance analyzer used this is 2.}
 }
 \value{
 df or nothing. saves a .csv to the project/summary folder named "{date}_{project}_all-measured-events.csv"

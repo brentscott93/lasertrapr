@@ -8,7 +8,14 @@ summarize_trap(all_measured_events, by, n_channels = 1)
 }
 \arguments{
 \item{all_measured_events}{a df made from rbind_measured_events}
+
+\item{by}{vector to group conditions by, usually just "conditions"}
+
+\item{n_channels}{1 or 2. number of channels in your datasets}
 }
 \description{
 Quick Summary
+}
+\examples{
+summarize_trap(rbind_measured_events('path'))
 }
