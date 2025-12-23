@@ -55,9 +55,9 @@ run_app()
 
 
 
-measured_events <- data.table::fread("~/lasertrapr/project_lasertrapr-paper-fig2-simulations/summary/2025-12-22_project_lasertrapr-paper-fig2-simulations_all-measured-events.csv")
+## measured_events <- data.table::fread("~/lasertrapr/project_lasertrapr-paper-fig2-simulations/summary/2025-12-22_project_lasertrapr-paper-fig2-simulations_all-measured-events.csv")
 
-fit_normal_variable(measured_events)
+## fit_normal_variable(measured_events)
 ##
 ## cname
 
