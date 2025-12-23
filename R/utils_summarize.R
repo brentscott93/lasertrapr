@@ -254,23 +254,29 @@ plot_ecdf <- function(measured_events, var, colorz, x_lab = "x_label", title,  b
 
 #' Randomly sample a normal distribution for plotting ECDF fit line
 #' @param measured_events a measured_events dataframe MUST HAVE A "displacement_nm" column! This is what it uses!!!!! it is hardcoded at the moment
+#' @param var the column/variable to fit. Default "displacement_nm". Can also do substep 1 or 2 etc if present.
 #' @return a dataframe with random numbers generated from a normal distrubtion with mean and sd equal to that of your conditions data
 #' @export
 #' @import data.table
-fit_normal_displacements <- function(measured_events){
+fit_normal_variable <- function(measured_events, var = "displacement_nm"){
 
-  gen_rnorm <- function(x){
-    dat <- data.frame(fitted_displacements = rnorm(n = 1000, mean = mean(x[["displacement_nm"]]), sd = sd(x[["displacement_nm"]])))
+ cname <- paste0("fitted_", var)
+
+  gen_rnorm <- function(x, cname = cname){
+    dat <- data.frame(fitted = rnorm(n = 10000, mean = mean(x[[var]]), sd = sd(x[[var]])))
+    ## dat[[cname]] <- dat$fitted
+    ## dat$fitted <- NULL
     return(dat)
   }
-  me_nest <- measured_events[, list(data=list(.SD)), by = conditions]
-  me_nest[, fitted_displacements := lapply(data, gen_rnorm)]
 
-  result <- me_nest[, fitted_displacements[[1]], by = conditions]
+  me_nest <- measured_events[, list(data=list(.SD)), by = conditions]
+  me_nest[, fitted := lapply(data, gen_rnorm)]
+
+  result <- me_nest[, fitted[[1]], by = conditions]
+  result[[cname]] <- result$fitted
+  result$fitted <- NULL
   return(result)
 }
-
-
 
 
 #' Define a function to use mle to estimate detachment rate and boostrap CI
