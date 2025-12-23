@@ -34,8 +34,7 @@ run_app()
 ##                               pattern = "measured-events.csv",
 ##                               full.names = TRUE,
 ##                               recursive = TRUE)
-
-
+## name
 ## file_list <- c(trap_data_files, options_files, me_files)
 
 ## for(i in seq_along(file_list)){
@@ -52,3 +51,14 @@ run_app()
 ##   ## f$conditions <- "10uM-dani_1mM-atp"
 ##   data.table::fwrite(f, fname)
 ## }
+
+
+
+
+measured_events <- data.table::fread("~/lasertrapr/project_lasertrapr-paper-fig2-simulations/summary/2025-12-22_project_lasertrapr-paper-fig2-simulations_all-measured-events.csv")
+
+fit_normal_variable(measured_events)
+##
+## cname
+
+## gen_rnorm(measured_events, cname)
