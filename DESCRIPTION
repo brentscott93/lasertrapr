@@ -36,7 +36,8 @@ Imports:
     ggplot2,
     dplyr,
     stringr,
-    shinyFiles
+    shinyFiles,
+    ggtext
 Encoding: UTF-8
 LazyData: true
 RoxygenNote: 7.3.2
