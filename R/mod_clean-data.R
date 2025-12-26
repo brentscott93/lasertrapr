@@ -650,24 +650,24 @@ column(3,
 
 
           } else {
-        if(has_header){
-         mv2nm <- o$data$mv2nm
-         mv2nm2 <- o$data$mv2nm2
-        } else {
-        stop("App only supports 2 channel datasets that contain calibrations in header file")
-        }
+            if(has_header){
+              mv2nm <- o$data$mv2nm
+              mv2nm2 <- o$data$mv2nm2
+            } else {
+              stop("App only supports 2 channel datasets that contain calibrations in header file")
+            }
 
-        trap_data <- trap_data[, .(
-                         time_sec = .I/hz(),
-                         bead_1 = raw_bead_1*as.numeric(mv2nm),
-                         bead_2 = raw_bead_2*as.numeric(mv2nm2)
-                         )
-             ]
+            trap_data <- trap_data[, .(
+              time_sec = .I/hz(),
+              bead_1 = raw_bead_1*as.numeric(mv2nm),
+              bead_2 = raw_bead_2*as.numeric(mv2nm2)
+            )
+            ]
 
-        if(input$flip_trace == "y"){
-          trap_data$bead_1 <- trap_data$bead_1*-1
-          trap_data$bead_2 <- trap_data$bead_2*-1
-        }
+            if(input$flip_trace == "y"){
+              trap_data$bead_1 <- trap_data$bead_1*-1
+              trap_data$bead_2 <- trap_data$bead_2*-1
+            }
 
           }
         }
@@ -1235,9 +1235,10 @@ output$move_files <- renderText({
             pb2 <- pb2-base$range_2
 
           } else if(input$how_to_process == 'remove_mv'){
-
-            ## data <- dplyr::mutate(data, processed_bead = processed_bead - base$baseline_fit$estimate[1])
+             showNotification("Remove MV not supported with 2 channels. Not doing what you think. Please re-save data.")
+                    ## data <- dplyr::mutate(data, processed_bead = processed_bead - base$baseline_fit$estimate[1])
           } else {
+             showNotification("Saving without detrend or baseline removal.")
           }
 
 
