@@ -118,7 +118,7 @@ fit_hm_model <- function(trap_data, run_mean, run_var, use_channels, em_random_s
 #' @param conversion 
 #' @param hz 
 #' @param nm2pn 
-measure_hm_events <- function(processed_data, hm_model_results, conversion, hz, nm2pn){
+measure_hm_events <- function(processed_data, hm_model_results, conversion, hz, nm2pn, force_balance = FALSE){
   
   #hm_model_results <- hm_model_results
   #convert running mean object to tibble
@@ -218,21 +218,35 @@ measure_hm_events <- function(processed_data, hm_model_results, conversion, hz, 
   
   positive_events <- sum(calculate_mean_differences > 0)
   negative_events <- sum(calculate_mean_differences < 0)
+
+
+  #work around for force balance - never flip
+  if(force_balance){
+   positive_events <- Inf
+  }
   
   #if there are more negative step sizes than positive, actin filament assumed backward and all events flipped (multipled by -1)
   #also raw trace, state 1 averages, and step sizes flipped for hmm overlay
- if(negative_events > positive_events){
+   # and a workaround for addition of force balance which will not ever flip data
+  ## if(!force_balance){
+    if(negative_events > positive_events){
       flip_mean_differences <- calculate_mean_differences * -1
       flip_raw <-  processed_data * -1
       flip_state_1_avg <- unlist(state_1_avg) * -1
       flip_state_2_avg <-  unlist(state_2_avg) * -1
       
-  } else {
+    } else {
       flip_mean_differences <- calculate_mean_differences
       flip_raw <- processed_data
       flip_state_1_avg <- unlist(state_1_avg)
       flip_state_2_avg <-  unlist(state_2_avg)
-  }
+    }
+  ## } else if(force_balance) {
+  ##   flip_mean_differences <- calculate_mean_differences
+  ##   flip_raw <- processed_data
+  ##   flip_state_1_avg <- unlist(state_1_avg)
+  ##   flip_state_2_avg <-  unlist(state_2_avg)
+  ## }
   
   ends_in_state_1 <- FALSE
   if(viterbi_rle$values[length(viterbi_rle$values)] == 1){
@@ -246,13 +260,22 @@ measure_hm_events <- function(processed_data, hm_model_results, conversion, hz, 
     flip_state_1_avg <- c(flip_state_1_avg, last_state_1_avg)
   }
   
-  
- did_it_flip <- negative_events > positive_events
- is_positive <- calculate_mean_differences > 0 
- 
- if(did_it_flip == TRUE){
-   is_positive <- ifelse(is_positive == TRUE, FALSE, TRUE)
- } 
+
+   # and a workaround for addition of force balance which will not ever flip data
+  ## if(!force_balance){
+    did_it_flip <- negative_events > positive_events
+    is_positive <- calculate_mean_differences > 0
+
+    if(did_it_flip == TRUE){
+      is_positive <- ifelse(is_positive == TRUE, FALSE, TRUE)
+    }
+
+  ## } else if(force_balance){
+
+  ##   did_it_flip <- FALSE
+  ##   is_positive <- calculate_mean_differences > 0
+
+  ## }
   #add step sizes and forces to the on_off_times table
   measured_events <- on_off_times %>%
     dplyr::mutate(displacement_nm = flip_mean_differences,

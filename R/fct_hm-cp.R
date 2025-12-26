@@ -263,7 +263,8 @@ hidden_markov_changepoint_analysis <- function(trap_data,
           cbind(opt_df) %>%
           dplyr::mutate( analyzer = 'hm/cp',
                         status = 'analyzed',
-                        report = report_data,) %>%
+                        report = report_data,
+                        did_it_flip = measured_hm_events$did_it_flip) %>%
           dplyr::select(project, conditions, date, obs, everything())
         ## } else {
         ##   options_df <-

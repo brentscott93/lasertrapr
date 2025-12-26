@@ -73,6 +73,7 @@ golem::add_module( name = "ensemble_average" )
 golem::add_module( name = "figures" )
 golem::add_module( name = "isometric_force_clamp" )
 golem::add_module( name = "covariance" )
+golem::add_module( name = "force_balance" )
 golem::add_module( name = "ensemble_average_force_ramp" )
 
 #golem::add_module( name = "name_of_module2" ) # Name of the module

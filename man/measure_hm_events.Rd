@@ -4,7 +4,14 @@
 \alias{measure_hm_events}
 \title{Measured events identified by HM-Model}
 \usage{
-measure_hm_events(processed_data, hm_model_results, conversion, hz, nm2pn)
+measure_hm_events(
+  processed_data,
+  hm_model_results,
+  conversion,
+  hz,
+  nm2pn,
+  force_balance = FALSE
+)
 }
 \arguments{
 \item{hm_model_results}{results of fit_hm_model()}
