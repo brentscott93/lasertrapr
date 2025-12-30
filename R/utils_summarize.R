@@ -56,14 +56,27 @@ rbind_measured_events <- function(project, save_to_summary = FALSE, n_channels =
 
   measured_events <- data.table::rbindlist(lapply(filtered_options$measured_events_path, data.table::fread), fill = TRUE)
 
+
   if(analyzer != "mini"){
     if(n_channels == 2){
       measured_events[, keep_add := keep_1+keep_2]
       measured_events[, keep := ifelse(keep_add == 2, TRUE, FALSE)]
+    } else if(n_channels == 1){
+      if(is.null(measured_events$force_pn)){
+        measured_events$force_pn <- measured_events$force
+      }
     }
     measured_events_filtered  <- measured_events[keep == TRUE & event_user_excluded == FALSE]
-  } else {
-    measured_events_filtered <- measured_events
+  } else if(analyzer == "mini") {
+    hz_ms <- unique(filtered_options$hz)/1000
+    measured_events[, time_to_peak_ms := (peak_nm_index-event_start)/hz_ms]
+    measured_events[, velocity_nm_ms := displacement_nm/time_to_peak_ms]
+    measured_events[, time_at_peak_ms := (event_stop-peak_nm_index)/hz_ms]
+    if(is.null(measured_events$force_pn)){
+      measured_events$force_pn <- measured_events$force
+    }
+
+    measured_events_filtered <- copy(measured_events)
   }
 
   summary_folder <- file.path(project_path, "summary")
@@ -91,9 +104,19 @@ rbind_measured_events <- function(project, save_to_summary = FALSE, n_channels =
 #' @examples summarize_trap(rbind_measured_events('path'))
 #' @import data.table
 #' @export
-summarize_trap <- function(all_measured_events, by, n_channels = 1){
+summarize_trap <- function(all_measured_events, by, n_channels = 1, analyzer){
 ## browser()
+##
+
+  if(analyzer == "hm/cp"){
   if(n_channels == 1){
+
+
+  if(is.null(all_measured_events$force_pn)){
+    all_measured_events$force_pn <- all_measured_events$force
+  }
+
+    summary_df <-
     all_measured_events[,
                         .(time_on_avg = mean(time_on_ms, na.rm = TRUE),
                           time_on_se = sd(time_on_ms, na.rm = TRUE)/sqrt(.N),
@@ -119,6 +142,7 @@ summarize_trap <- function(all_measured_events, by, n_channels = 1){
     all_measured_events[, step1 := (substep_1_bead_1_nm + substep_1_bead_2_nm)/2 ]
     all_measured_events[, step2 := (substep_2_bead_1_nm + substep_2_bead_2_nm)/2 ]
 
+    summary_df <-
     all_measured_events[,
                         .(time_on_avg = mean(time_on_ms, na.rm = TRUE),
                         time_on_se = sd(time_on_ms, na.rm = TRUE)/sqrt(.N),
@@ -146,7 +170,60 @@ summarize_trap <- function(all_measured_events, by, n_channels = 1){
                         ## myo_stiffness = mean(myo_stiffness, na.rm = T),
                         num_events = .N),
     by = by]
+    }
+  } else if(analyzer == "mini"){
+
+  if(is.null(all_measured_events$force_pn)){
+    all_measured_events$force_pn <- all_measured_events$force
   }
+
+    summary_df <-
+    all_measured_events[,
+                        .(time_on_avg = mean(time_on_ms, na.rm = TRUE),
+                          time_on_se = sd(time_on_ms, na.rm = TRUE)/sqrt(.N),
+                          time_on_sd = sd(time_on_ms, na.rm = TRUE),
+                          time_on_median = median(time_on_ms, na.rm = TRUE),
+
+                          time_off_avg = mean(time_off_ms, na.rm = TRUE),
+                          time_off_se = sd(time_off_ms, na.rm = TRUE)/sqrt(.N),
+                          time_off_sd = sd(time_off_ms, na.rm = TRUE),
+                          time_off_median = median(time_off_ms, na.rm = TRUE),
+
+                          displacement_avg = mean(displacement_nm, na.rm = TRUE),
+                          displacement_se = sd(displacement_nm, na.rm = TRUE)/sqrt(.N),
+                          displacement_sd = sd(displacement_nm, na.rm = TRUE),
+                          displacement_median = median(displacement_nm, na.rm = TRUE),
+
+                          force_avg = mean(force_pn, na.rm = TRUE),
+                          force_se = sd(force_pn, na.rm = TRUE)/sqrt(.N),
+                          force_sd = sd(force_pn, na.rm = TRUE),
+                          force_median = median(force_pn, na.rm = TRUE),
+
+                          time_to_peak_avg = mean(time_to_peak_ms, na.rm = TRUE),
+                          time_to_peak_sd = sd(time_to_peak_ms, na.rm = TRUE),
+                          time_to_peak_se = sd(time_to_peak_ms, na.rm = TRUE)/sqrt(.N),
+                          time_to_peak_median = median(time_to_peak_ms, na.rm = TRUE),
+
+                          velocity_avg = mean(velocity_nm_ms, na.rm = TRUE),
+                          velocity_sd = sd(velocity_nm_ms, na.rm = TRUE),
+                          velocity_se = sd(velocity_nm_ms, na.rm = TRUE)/sqrt(.N),
+                          velocity_median = median(velocity_nm_ms, na.rm = TRUE),
+
+                          time_at_peak_avg = mean(time_at_peak_ms, na.rm = TRUE),
+                          time_at_peak_sd = sd(time_at_peak_ms, na.rm = TRUE),
+                          time_at_peak_se = sd(time_at_peak_ms, na.rm = TRUE)/sqrt(.N),
+                          time_at_peak_median = median(time_at_peak_ms, na.rm = TRUE),
+                          ## trap_stiffness = mean(trap_stiffness, na.rm = T),
+                          ## myo_stiffness = mean(myo_stiffness, na.rm = T),
+                          num_events = .N),
+                        by = by]
+
+
+  } else {
+    stop("Analyzer not supported in summarize_trap")
+  }
+
+  return(summary_df)
 }
 
 

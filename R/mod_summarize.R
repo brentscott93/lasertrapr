@@ -58,7 +58,8 @@ mod_summarize_ui <- function(id){
           title = 'Plots',
           # The id lets us use input$tabset1 on the server to find the current tab
           id = ns("distributions"),
-           plotOutput(ns('summary_plots'), height = '400px') |> shinycssloaders::withSpinner(type = 8, color = '#373B38'),
+           uiOutput(ns("plots"))
+          ## plotOutput(ns("summary_plots"), height = "auto") |> shinycssloaders::withSpinner(type = 8, color = '#373B38')
           ## tabPanel("Displacements", plotOutput(ns('step'), height = '600px') %>% shinycssloaders::withSpinner(type = 8, color = '#373B38')),
           ## tabPanel("Force",  plotOutput(ns('force'), height = '600px') %>% shinycssloaders::withSpinner(type = 8, color = '#373B38')),
           ## tabPanel("Time On",  plotOutput(ns('ton'), height = '600px') %>% shinycssloaders::withSpinner(type = 8, color = '#373B38')),
@@ -95,7 +96,7 @@ mod_summarize_server <- function(input, output, session, f){
 
  analyzer <- reactive({
    req(f$project$path)
-
+    req(f$project$path != "please select")
    opt_path <- list.files(f$project$path,
                           pattern = "options.csv",
                           recursive = TRUE,
@@ -242,7 +243,7 @@ mod_summarize_server <- function(input, output, session, f){
       plot_colors <- purrr::map_chr(paste0('color', seq_along(conditions())), ~input[[.x]])
       analyzer <- unique(opt$analyzer)
       rv$analyzer <- analyzer
-      if(analyzer %in% c("hm/cp", "mini")){
+      if(analyzer == "hm/cp"){
       if(input$split_conditions){
         variables <- strsplit(conditions(), "_")
         number_variables <- sapply(variables, length)
@@ -251,7 +252,7 @@ mod_summarize_server <- function(input, output, session, f){
         all_measured_events <- rbind_measured_events(project = f$project$name, save_to_summary = FALSE)
         all_measured_events <- split_conditions_column(all_measured_events, var_names = var_names, sep = "_")
         
-        summary_data <- summarize_trap(all_measured_events, by = c("conditions", var_names))
+        summary_data <- summarize_trap(all_measured_events, by = c("conditions", var_names), analyzer = analyzer)
         
         sc <- split_conditions_column(data.frame(conditions=summary_data$conditions), var_names = var_names, sep = "_")
         data.table::fwrite(sc, 
@@ -263,8 +264,8 @@ mod_summarize_server <- function(input, output, session, f){
                                      )
                                 )
       } else {
-        all_measured_events <- rbind_measured_events(project = f$project_input, save_to_summary = TRUE)
-        summary_data <- summarize_trap(all_measured_events, by = "conditions")
+        all_measured_events <- rbind_measured_events(project = f$project_input, save_to_summary = FALSE)
+        summary_data <- summarize_trap(all_measured_events, by = "conditions", analyzer = analyzer)
       }
       
       tt <- total_trap_time(f$project_input, is_shiny = TRUE)
@@ -333,6 +334,128 @@ mod_summarize_server <- function(input, output, session, f){
       ## rv$ggoff <- ggoff
 
       rv$summary_plots <- cowplot::plot_grid(ggstep, ggforce, ggton, ggoff, nrow = 1)
+
+     } else if(analyzer == "mini"){
+## browser()
+      if(input$split_conditions){
+        variables <- strsplit(conditions(), "_")
+        number_variables <- sapply(variables, length)
+        var_names <- purrr::map_chr(paste0('var', seq_len(number_variables[[1]])), ~input[[.x]])
+
+        all_measured_events <- rbind_measured_events(project = f$project$name, save_to_summary = FALSE)
+        all_measured_events <- split_conditions_column(all_measured_events, var_names = var_names, sep = "_")
+
+        summary_data <- summarize_trap(all_measured_events, by = c("conditions", var_names), analyzer = analyzer)
+
+        sc <- split_conditions_column(data.frame(conditions=summary_data$conditions), var_names = var_names, sep = "_")
+        data.table::fwrite(sc,
+                           file.path(summary_folder,
+                                     paste(Sys.Date(),
+                                           f$project_input,
+                                           "split-conditions.csv",
+                                           sep = "_")
+                                     )
+                                )
+      } else {
+        all_measured_events <- rbind_measured_events(project = f$project_input, save_to_summary = FALSE)
+        summary_data <- summarize_trap(all_measured_events, by = "conditions", analyzer = analyzer)
+      }
+
+      tt <- total_trap_time(f$project_input, is_shiny = TRUE)
+
+      summary_data <- merge(summary_data, tt, by = "conditions", all = TRUE)
+
+      purrr::walk2(list(all_measured_events, summary_data),
+            c("all-measured-events.csv", "summary-data.csv"),
+           ~ data.table::fwrite(.x,
+                               file.path(summary_folder,
+                                         paste(Sys.Date(),
+                                               f$project$name,
+                                               .y,
+                                               sep = "_"))))
+
+      rv$all_measured_events <- copy(all_measured_events)
+      rv$summary_data <- summary_data
+      golem::print_dev("before colors")
+## browser()
+      setProgress(0.6)
+      ggstep <- plot_ecdf(all_measured_events,
+                          var = "displacement_nm",
+                          colorz = plot_colors,
+                          x_lab = "Distance (nm)",
+                          title = "Displacements",
+                          basesize = 18)
+
+      rv$ggstep <- ggstep
+
+      setProgress(0.7)
+      ggforce <- plot_ecdf(all_measured_events,
+                           var = "force_pn",
+                           colorz = plot_colors,
+                           x_lab = "Force (pN)",
+                           title = "Forces",
+                           basesize = 18)
+      rv$ggforce <- ggforce
+
+
+      ggtime_to_peak <- plot_ecdf(all_measured_events,
+                           var = "time_to_peak_ms",
+                           colorz = plot_colors,
+                           x_lab = "Time (ms)",
+                           title = "Time to Peak",
+                           basesize = 18)
+      rv$ggtime_to_peak <- ggtime_to_peak
+
+
+      ggtime_at_peak <- plot_ecdf(all_measured_events,
+                           var = "time_at_peak_ms",
+                           colorz = plot_colors,
+                           x_lab = "Time (ms)",
+                           title = "Time at Peak",
+                           basesize = 18)
+      rv$ggtime_at_peak <- ggtime_at_peak
+
+
+      ggvelocity <- plot_ecdf(all_measured_events,
+                           var = "velocity_nm_ms",
+                           colorz = plot_colors,
+                           x_lab = "Velocity (nm/ms)",
+                           title = "Velocity",
+                           basesize = 18)
+      rv$ggvelocity <- ggvelocity
+
+      setProgress(0.8)
+      ## ggton <- plot_ecdf(all_measured_events,
+      ##                    var = "time_on_ms",
+      ##                    colorz = plot_colors,
+      ##                    x_lab = "milliseconds",
+      ##                    title = "Time On",
+      ##                    basesize = 18)
+## browser()
+      ggton <- plot_ecdf(all_measured_events,
+                           var = "time_on_ms",
+                           colorz = plot_colors,
+                           x_lab = "Time (ms)",
+                           title = "Total Attachment Duration",
+                           basesize = 18)
+      rv$ggton <- ggton
+
+
+      ## rv$ggton <- ggton
+      setProgress(0.9)
+      ggoff <- plot_ecdf(all_measured_events,
+                         var = "time_off_ms",
+                         colorz = plot_colors,
+                         x_lab = "Time (ms)",
+                         title = "Time Off",
+                         basesize = 18)
+      rv$ggoff <- ggoff
+
+      top_plots <- cowplot::plot_grid(ggstep, ggforce, nrow = 1)
+      middle_plots <- cowplot::plot_grid(ggton, ggtime_to_peak, ggvelocity, nrow = 1)
+      bottom_plots <- cowplot::plot_grid(ggtime_at_peak, ggoff, nrow = 1)
+      rv$summary_plots <- cowplot::plot_grid(top_plots, middle_plots, bottom_plots, nrow = 3)
+
 
      } else if(analyzer == "covar"){
       if(input$split_conditions){
@@ -602,7 +725,7 @@ mod_summarize_server <- function(input, output, session, f){
                levels = input$factor_order)
     }
 
-     if(rv$analyzer %in% c("hm/cp", "mini")){
+     if(rv$analyzer == "hm/cp"){
 
       req(rv$ton_rate)
       req(rv$toff_rate)
@@ -622,6 +745,34 @@ mod_summarize_server <- function(input, output, session, f){
                     "Detachment Rate (Hz)" = html_label,
                     "Attachment Rate (Hz)" = attach_rate,
                     ## "Time Off (ms)" = time_off_avg,
+                    ## "SE Toff" = time_off_se,
+                    "No. Events" = num_events,
+                    "Minutes Collected" = minutes
+      ) |>
+      dplyr::mutate_if(is.numeric, ~round(.,digits = 2)) |>
+      DT::datatable(
+                extensions = 'FixedColumns',
+                options = list(
+                  dom = 't',
+                  scrollX = TRUE,
+                  fixedColumns = list(leftColumns = 2)
+                ))
+
+     } else if(rv$analyzer == "mini"){
+
+    rv$summary_data |>
+      dplyr::arrange(conditions) |>
+      dplyr::select("Conditions" = conditions,
+                    "Displacement (nm)" = displacement_avg,
+                    ## "SE Step Size" = displacement_se,
+                    "Force (pN)" = force_avg,
+                    ## "SE Force" = force_se,
+                    "Time On (ms)" = time_on_avg,
+                    "Time to Peak (ms)" = time_to_peak_avg,
+                    "Velocity (nm/ms)" = velocity_avg,
+                    "Time at Peak (ms)" = time_at_peak_avg,
+
+                    "Time Off (ms)" = time_off_avg,
                     ## "SE Toff" = time_off_se,
                     "No. Events" = num_events,
                     "Minutes Collected" = minutes
@@ -670,10 +821,23 @@ mod_summarize_server <- function(input, output, session, f){
   })
 
 
+
+ output$plots <- renderUI({
+   req(analyzer())
+   ## browser()
+    if(analyzer() == "mini"){
+     plotOutput(ns("summary_plots"), height = "1000px") |> shinycssloaders::withSpinner(type = 8, color = '#373B38')
+    } else {
+     plotOutput(ns("summary_plots"), height = "400px") |> shinycssloaders::withSpinner(type = 8, color = '#373B38')
+    }
+   })
+
  output$summary_plots <- renderPlot({
    req(rv$summary_plots)
    rv$summary_plots
  })
+
+ ## })
   ## output$step <- renderPlot({
   ##   req(rv$step)
   ##   rv$step

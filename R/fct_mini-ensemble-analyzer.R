@@ -195,7 +195,8 @@ mini_ensemble_analyzer <- function(opt, w_width_ms = 10, displacement_threshold 
              event_start = state_1_end + 1,
              peak_nm_index = peak_nm_index,
              index = 1:nrow(rescaled_events)) %>% 
-      dplyr::rename("event_stop" = state_2_end) %>%
+      dplyr::rename("event_stop" = state_2_end,
+                    "force_pn" = force)%>%
       dplyr::select(project,
                     conditions,
                     date, 
@@ -203,7 +204,7 @@ mini_ensemble_analyzer <- function(opt, w_width_ms = 10, displacement_threshold 
                     time_off_ms, 
                     time_on_ms,
                     displacement_nm, 
-                    force, 
+                    force_pn,
                     index, 
                     event_start, 
                     event_stop, 
