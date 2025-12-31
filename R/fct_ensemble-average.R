@@ -323,8 +323,10 @@ prep_ensemble <- function(trap_selected_project,
       ## print(paste0("b = ", b, "id: ", measured_events$id[[event]], "; substep1: ", s1_avg, "; substep2: ", s2_avg))
     }
 
-      running_average_f <- running_average_f/event
-      running_average_b <- running_average_b/event
+
+      # do not AVERAGE here
+      ## running_average_f <- running_average_f/event
+      ## running_average_b <- running_average_b/event
 
       forward_ensemble[, data := running_average_f]
       backwards_ensemble[, data := running_average_b]
@@ -397,6 +399,7 @@ prep_ensemble <- function(trap_selected_project,
 
     event_ensembles_list <- data.table::rbindlist(event_ensembles_list)
 
+    #average by bead
     event_ensembles_list <- event_ensembles_list[, .(data = mean(data)), by = .(project,
                                                                                 conditions,
                                                                                 date,
@@ -410,7 +413,7 @@ prep_ensemble <- function(trap_selected_project,
     ensemble_path <- file.path(path, "ensemble-data.csv")
     data.table::fwrite(event_ensembles_list, file = ensemble_path, sep = ",")
 
-    ensemble_options <- data.table::data.table( ms_extend_s2, ms_extend_s1, ms_2_skip)
+    ensemble_options <- data.table::data.table( ms_extend_s2, ms_extend_s1, ms_2_skip, event)
     data.table::fwrite(ensemble_options, file = file.path(path, "options-prep-ensemble.csv"), sep = ",")
 
     substeps_path <- file.path(path, "substeps.csv")
@@ -456,13 +459,25 @@ avg_ensembles <- function(project, is_shiny = TRUE){
                            pattern = "ensemble-data.csv")
 
 
+    ee_options <- list.files(path = file.path(project_path, con[[i]]),
+                           recursive = TRUE,
+                           full.names = TRUE,
+                           pattern = "options-prep-ensemble.csv")
+
+
     ee_data <- lapply(ee_paths, ee_fread, is_shiny = is_shiny)
     ee_data <- data.table::rbindlist(ee_data)
 
+
+    ee_opt_data <- lapply(ee_options, fread)
+    ee_opt_data <- data.table::rbindlist(ee_opt_data)
+
+    num_events <- sum(ee_opt_data$event)
+
     forward_backward[[i]] <- ee_data[,
-      .(avg = mean(data, na.rm = TRUE),
-        sd = sd(data, na.rm = TRUE),
-        se = sd(data, na.rm = TRUE)/sqrt(.N)),
+      .(avg = sum(data)/num_events),
+        ## sd = sd(data, na.rm = TRUE),
+        ## se = sd(data, na.rm = TRUE)/sqrt(.N)),
       by = .(conditions, direction, ensemble_index, forward_backward_index)]
 }
     ####################
@@ -579,11 +594,7 @@ fit_ensembles <- function(data, fit, hz, max_l_forward, max_l_backwards, is_shin
   forward_avg <- data[direction == "forward", 
                       .(conditions,
                         ensemble_index, 
-                        avg, 
-                        sd, 
-                        se
-                        ## n
-                        )]
+                        avg)]
   
   forward_nest <- forward_avg[, .(ensemble_data = list(.SD)), by = conditions]
   
@@ -631,11 +642,7 @@ fit_ensembles <- function(data, fit, hz, max_l_forward, max_l_backwards, is_shin
   backwards_avg <- data[direction == "backwards", 
                       .(conditions,
                         ensemble_index, 
-                        avg, 
-                        sd, 
-                        se
-                        ## n
-                        )]
+                        avg)]
   
   backwards_nest <- backwards_avg[, .(ensemble_data = list(.SD)), by = conditions]
   

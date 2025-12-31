@@ -18,9 +18,6 @@ prep_forward_ensemble_exp <- function(x, max_l, hz){
   x[ensemble_index >= 0 & ensemble_index <= max_l,
     .(ensemble_index,
       avg,
-      sd,
-      se,
-      ## n,
       time = ensemble_index/hz)]
 }
 
@@ -140,9 +137,6 @@ prep_backwards_ensemble_exp <- function(x, max_l, hz){
   x[ensemble_index <= 0 & ensemble_index >= -max_l,
     .(ensemble_index,
       avg,
-      sd,
-      se,
-      ## n,
       time = sort(seq(0, by = -1/hz, along.with = ensemble_index)))]
 }
 
@@ -151,9 +145,6 @@ prep_backwards_baseline_shift <- function(x, hz){
   x[ensemble_index > 0,
     .(ensemble_index,
       avg,
-      sd,
-      se,
-      ## n,
       time = seq(1/hz, by = 1/hz, along.with = ensemble_index))]
 }
 #' @noRd

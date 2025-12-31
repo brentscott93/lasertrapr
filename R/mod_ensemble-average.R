@@ -269,7 +269,7 @@ str(input_sidemenu())
         column(6,
 
         numericInput(ns("length_of_ensembles_backwards"),
-                    "Backwards Length (seconds)",
+                    "Backwards Length (s)",
                     min = 0.1,
                     value = 1)
         )
@@ -297,7 +297,7 @@ str(input_sidemenu())
                          withMathJax(helpText("$$ y = d_1(1-e^{-k_1x}) + d_2(1-e^{-k_2x}) + d_3(1-e^{-k_3x}) $$"))),
 
         actionButton(ns("avg_ensembles"), "Avg Ensembles", width = "49%", style  = "margin-top: 25px", icon = icon("calculator")),
-        actionButton(ns("fit_ensembles"), "Avg Ensembles", width = "49%", style  = "margin-top: 25px", icon = icon("square-root-variable"))
+        actionButton(ns("fit_ensembles"), "Fit Ensembles", width = "49%", style  = "margin-top: 25px", icon = icon("square-root-variable"))
       )
 
     } else if(ee$analyzer == "mini"){
@@ -429,6 +429,7 @@ str(input_sidemenu())
      })
 
    observeEvent(input$fit_ensembles, {
+
      defend_if_null(f$project_input, ui = 'Please Select a Project', type = 'error')
      defend_if_blank(f$project_input, ui = "Please Select a Project", type = "error")
 ## browser()

@@ -291,8 +291,8 @@ longest_event_df <-
       ## print(paste0("b = ", b, "id: ", measured_events$id[[event]], "; substep1: ", s1_avg, "; substep2: ", s2_avg))
     }
 
-      running_average_f <- running_average_f/event
-      running_average_b <- running_average_b/event
+      ## running_average_f <- running_average_f/event
+      ## running_average_b <- running_average_b/event
 
       forward_ensemble[, data := running_average_f]
       backwards_ensemble[, data := running_average_b]
@@ -312,7 +312,7 @@ longest_event_df <-
     ensemble_path <- file.path(path, "ensemble-data.csv")
     data.table::fwrite(ensemble, file = ensemble_path, sep = ",")
 
-    ensemble_options <- data.table::data.table( ms_extend_s2, ms_extend_s1, ms_2_skip)
+    ensemble_options <- data.table::data.table( ms_extend_s2, ms_extend_s1, ms_2_skip, event)
     data.table::fwrite(ensemble_options, file = file.path(path, "options-prep-ensemble.csv"), sep = ",")
 
     ## substeps_path <- file.path(path, "substeps.csv")
@@ -366,8 +366,19 @@ avg_ensembles_force_ramp <- function(project, is_shiny = TRUE){
     ee_data <- lapply(ee_paths, ee_fread, is_shiny = is_shiny)
     ee_data <- data.table::rbindlist(ee_data)
 
+    ee_options <- list.files(path = file.path(project_path, con[[i]]),
+                           recursive = TRUE,
+                           full.names = TRUE,
+                           pattern = "options-prep-ensemble.csv")
+
+    ee_opt_data <- lapply(ee_options, fread)
+    ee_opt_data <- data.table::rbindlist(ee_opt_data)
+
+    num_events <- sum(ee_opt_data$event)
+
+
     forward_backward[[i]] <- ee_data[,
-      .(avg = mean(data, na.rm = TRUE)),
+      .(avg = sum(data)/num_events),
       by = .(conditions, direction, ensemble_index, forward_backward_index)]
 }
   if(is_shiny) incProgress(1/(length(con)*2), detail = paste0("Combining all data", con[[i]]))
