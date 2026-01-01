@@ -50,6 +50,15 @@ prep_ensemble <- function(trap_selected_project,
                    recursive = TRUE)
 
   file.remove(old_files$path)
+
+
+  old_files <-
+    lasertrapr:::list_files(
+                   trap_selected_project,
+                   pattern = "options-prep-ensemble.csv",
+                   recursive = TRUE)
+
+  file.remove(old_files$path)
                                         # trap_data_paths <-
                                         #   lasertrapr:::list_files(
                                         #     trap_selected_project,

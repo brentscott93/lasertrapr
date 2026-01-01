@@ -28,7 +28,7 @@ Several peer-reviewed research articles have used either this app for some analy
 
 5) [Modeling thick filament activation suggests a molecular basis for force depression](https://www.cell.com/biophysj/pdf/S0006-3495(24)00040-7.pdf)
 
-6)[Characterizing the concentration and load dependence of phosphate binding to rabbit fast skeletal actomyosin](https://www.pnas.org/doi/epdf/10.1073/pnas.2504758122)
+6) [Characterizing the concentration and load dependence of phosphate binding to rabbit fast skeletal actomyosin](https://www.pnas.org/doi/epdf/10.1073/pnas.2504758122)
 
 7) [Danicamtiv reduces myosin’s working stroke but activates the thin filament by accelerating actomyosin attachment](https://www.pnas.org/doi/abs/10.1073/pnas.2515786122)
 
