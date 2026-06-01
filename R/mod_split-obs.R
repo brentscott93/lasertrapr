@@ -469,7 +469,7 @@ mod_split_obs_server <- function(input, output, session, f){
       equi_data <- data.table::fread(input$equi_file$datapath) |>
         dplyr::pull(1)
 
-      equi_data[[1]] <- equi_data[[1]] * input$equi_mv2nm
+      equi_data <- equi_data * input$equi_mv2nm
       ## mean_equi <- mean(files)
       ## equi_data <- files - mean_equi
       e$vector <- equi_data
