@@ -104,9 +104,9 @@ rbind_measured_events <- function(project, save_to_summary = FALSE, n_channels =
 #' @examples summarize_trap(rbind_measured_events('path'))
 #' @import data.table
 #' @export
-summarize_trap <- function(all_measured_events, by, n_channels = 1, analyzer){
+summarize_trap <- function(all_measured_events, by, n_channels = 1, analyzer = "hm/cp"){
 ## browser()
-##
+## the default analyzer == "hm/cp" is a workaround for older analyzed data that does not have an analyzer column in options.csv
 
   if(analyzer == "hm/cp"){
   if(n_channels == 1){
